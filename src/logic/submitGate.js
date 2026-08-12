@@ -24,6 +24,7 @@
 // Pure module, node-tested in test/submitGate.test.mjs.
 
 import { findRowForBoard } from './scoreRowMatch.js';
+import { isMatchRowKey } from './matchCodes.js';
 
 /**
  * @typedef {'duplicate' | 'divergent' | 'proceed'} SubmitVerdict
@@ -72,11 +73,23 @@ export function planScoreSubmission({ rows, uid, bucketKey, playedSeed, canonica
  * entirely, the guard silently no-opped on every weekly fit row ever
  * submitted. Deriving the path from the key is what stops that recurring.
  *
- * @param {string} bucketKey  'YYYY-MM-DD' or 'YYYY-MM-DD_weekly_first'
- * @returns {string} the Firebase path of the canonical's rngSeed
+ * A MATCH board has no canonical to diverge from, and saying so here is the
+ * point. Its bytes come from the committed library and every player of it
+ * re-certifies the stored payload through certifyStoredBoard's ground-truth
+ * audit, which proves more than a seed comparison could: that the numbers
+ * describe the mines and the board is solvable from its opener. Left to the
+ * default, `dailyBoard/match_<hash>/rngSeed` would read null forever and the
+ * divergence check would no-op by accident, which is exactly how the weekly's
+ * guard silently did nothing for every fit row it ever wrote. Returning null
+ * makes the caller skip a read it has no reason to make.
+ *
+ * @param {string} bucketKey  'YYYY-MM-DD', 'YYYY-MM-DD_weekly_first', or 'match_<hash>'
+ * @returns {string|null} the Firebase path of the canonical's rngSeed, or null
+ *                        when this bucket has no canonical
  */
 export function canonicalSeedPath(bucketKey) {
   const WEEKLY_SUFFIX = '_weekly_first';
+  if (isMatchRowKey(bucketKey)) return null;
   if (typeof bucketKey === 'string' && bucketKey.endsWith(WEEKLY_SUFFIX)) {
     return `weeklyBoard/${bucketKey.slice(0, -WEEKLY_SUFFIX.length)}/rngSeed`;
   }

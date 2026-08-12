@@ -44,21 +44,45 @@ test('REGRESSION: cruxes is world-readable and writable by NOBODY', () => {
 
 test('the nodes that DO grant an anonymous write still have a client writer', () => {
   // The question that should have been asked of cruxes when it was cloned.
-  // Each of these three is legitimate; the assertion names the writer so a
+  // Each of these is legitimate; the assertion names the writer so a
   // future reader can check the claim rather than trust the lineage.
   const src = srcOf('../src/firebase/dailyBoardSync.js')
     + srcOf('../src/firebase/weeklyBoardSync.js')
-    + srcOf('../src/firebase/firebaseLeaderboard.js');
+    + srcOf('../src/firebase/firebaseLeaderboard.js')
+    + srcOf('../src/firebase/firebaseMatch.js');
   for (const [node, writer] of [
     ['dailyBoard', 'saveDailyBoard'],
     ['weeklyBoard', 'saveWeeklyBoard'],
     ['dailyMeta', 'dailyMeta'],
+    // A match node is the SANCTIONED case, not an exception to it: the host
+    // is a real first-client writer, and there is no service account behind
+    // this path at all. The write-once form is what makes the boards frozen
+    // from the moment anyone can join them.
+    ['matches', 'createMatch'],
+    ['matchCodes', 'createMatch'],
   ]) {
-    const w = rules[node]?.$date?.['.write'] ?? rules[node]?.['$date']?.['.write'];
+    // Resolve the node's wildcard by NAME rather than guessing it: the
+    // original pair of `?? rules[node]?.['$date']` was the same lookup twice,
+    // so weeklyBoard (keyed $weekStart) silently resolved to undefined and
+    // was never actually checked against its writer.
+    const wildcard = Object.keys(rules[node] || {}).find((k) => k.startsWith('$'));
+    assert.ok(wildcard, `${node} has no wildcard child — this check is inert`);
+    const w = rules[node][wildcard]['.write'];
     if (w === false) continue;   // tightened since; nothing to justify
+    assert.ok(w, `${node}/${wildcard} has no write rule — this check is inert`);
     assert.match(src, new RegExp(writer),
       `${node} grants a client write, so ${writer} must exist to use it`);
   }
+});
+
+test('the match node write is write-ONCE and host-only, like every board node', () => {
+  // The grant's whole safety argument: it can be taken exactly once, by the
+  // player who names themselves host. After that the node's own write is
+  // false and only the per-uid player slots remain writable.
+  const w = rules.matches?.$matchId?.['.write'];
+  assert.match(w, /!data\.exists\(\)/, 'a match node must be write-once');
+  assert.match(w, /newData\.child\('host'\)\.val\(\) === auth\.uid/,
+    'and its creator must be the host it names');
 });
 
 test('no client module writes a crux', () => {

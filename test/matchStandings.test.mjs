@@ -1,0 +1,179 @@
+// The Challenge match's comparison surface and its fit rows.
+//
+// Both are decisions, not rendering: which player leads a live match, and
+// which cleared boards become par-fit rows. They live in a pure module so a
+// test can hand them inputs and read the answer, rather than a reviewer
+// grepping a Firebase callback for the string that looks right.
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { matchStandings, matchFinishedCount, matchFitRows, MATCH_FIT_MIN_TIME } from '../src/logic/matchStandings.js';
+import { matchRowKey } from '../src/logic/matchCodes.js';
+
+const node = (players, boards = 3) => ({
+  host: 'host',
+  boards: Array.from({ length: boards }, (_, i) => ({ seed: `s${i}` })),
+  players,
+});
+const results = (...times) => times.map((t) => ({ time: t, penalty: 0, strikes: 0 }));
+
+// ── Standings ───────────────────────────────────────────────────────────
+
+test('ranks by ADJUSTED time, not raw (his adjusted-only ruling for the mode)', () => {
+  // Slower on the clock but rated slower too, so the adjusted comparison
+  // reverses the raw one. That reversal IS the ruling.
+  const rows = matchStandings(node({
+    fast: { name: 'Fast', results: results(30, 30, 30), finishedAt: 1 },
+    slow: { name: 'Slow', results: results(45, 45, 45), finishedAt: 1 },
+  }), { handicaps: { fast: 1.0, slow: 2.0 } });
+  assert.deepEqual(rows.map((r) => r.name), ['Slow', 'Fast']);
+  assert.equal(rows[0].adjusted, 67.5);   // 135 / 2.0
+  assert.equal(rows[1].adjusted, 90);     // 90 / 1.0
+});
+
+test('an unrated player ranks on the raw clock and SAYS so', () => {
+  const rows = matchStandings(node({
+    rated: { name: 'Rated', results: results(60), finishedAt: 1 },
+    plain: { name: 'Plain', results: results(50), finishedAt: 1 },
+  }), { handicaps: { rated: 1.0 } });
+  const plain = rows.find((r) => r.name === 'Plain');
+  assert.equal(plain.rated, false, 'an unrated row must admit it');
+  assert.equal(plain.adjusted, 50, 'and rank on its raw total, never a pretend rating');
+});
+
+test('FINISHED players sort above unfinished ones, whatever their partial total', () => {
+  // The trap this exists to stop: a running total over one board is smaller
+  // than a real total over three, so sorting them together would put whoever
+  // has played least on top of the standings.
+  const rows = matchStandings(node({
+    done: { name: 'Done', results: results(30, 30, 30), finishedAt: 1 },
+    started: { name: 'Started', results: results(5) },
+  }), { handicaps: {} });
+  assert.deepEqual(rows.map((r) => r.name), ['Done', 'Started']);
+  assert.equal(rows[1].done, 1);
+  assert.equal(rows[1].of, 3);
+});
+
+test('among unfinished players, the further along leads', () => {
+  const rows = matchStandings(node({
+    a: { name: 'A', results: results(90) },
+    b: { name: 'B', results: results(40, 40) },
+  }), { handicaps: {} });
+  assert.deepEqual(rows.map((r) => r.name), ['B', 'A']);
+});
+
+test('finished is true when every board is banked, even with no finishedAt', () => {
+  // The two writes can be split by a failure between them, so banking all of
+  // them counts on its own.
+  const rows = matchStandings(node({
+    a: { name: 'A', results: results(10, 10, 10) },
+  }), { handicaps: {} });
+  assert.equal(rows[0].finished, true);
+  assert.equal(matchFinishedCount(rows), 1);
+});
+
+test('times are LIVE for everyone, finished or not (his ruling)', () => {
+  // No viewer argument reaches the ranking at all: there is no gate here to
+  // accidentally leave open or closed.
+  const n = node({
+    them: { name: 'Them', results: results(20, 20, 20), finishedAt: 1 },
+    me: { name: 'Me', results: results(25) },
+  });
+  for (const myUid of ['me', 'them', null]) {
+    const rows = matchStandings(n, { handicaps: {}, myUid });
+    assert.equal(rows.find((r) => r.name === 'Them').time, 60,
+      'a finished opponent\'s total shows regardless of who is looking');
+  }
+});
+
+test('marks the viewer, and the host', () => {
+  const rows = matchStandings(node({
+    host: { name: 'H', results: [] },
+    me: { name: 'M', results: [] },
+  }), { handicaps: {}, myUid: 'me' });
+  assert.equal(rows.find((r) => r.uid === 'me').isMe, true);
+  assert.equal(rows.find((r) => r.uid === 'host').isHost, true);
+});
+
+test('a garbage or empty node produces no rows rather than throwing', () => {
+  for (const bad of [null, undefined, {}, { players: null }, { players: 'x' }]) {
+    assert.deepEqual(matchStandings(bad, {}), []);
+  }
+  // A player entry with no results is a joiner who has not started.
+  const rows = matchStandings(node({ a: { name: 'A' } }), {});
+  assert.equal(rows[0].done, 0);
+  assert.equal(rows[0].finished, false);
+});
+
+test('a nameless player row still renders, and never as undefined', () => {
+  const rows = matchStandings(node({ a: { results: results(10) } }), {});
+  assert.equal(rows[0].name, 'Player');
+});
+
+// ── Fit rows ────────────────────────────────────────────────────────────
+
+const entry = (seed, mines = 10) => ({
+  seed,
+  par: 60,
+  spec: { shape: 'rect', cells: 81, mines },
+  features: { rows: 9, cols: 9, cellCount: 81, totalMines: mines },
+  payload: {},
+});
+
+test('one row per cleared board, keyed off the board SEED', () => {
+  const entries = [entry('seed-a'), entry('seed-b')];
+  const { rows } = matchFitRows(entries, [
+    { time: 40.25, strikes: 1, par: 60, bombHitEvents: [{ t: 1 }], wormEvents: [] },
+    { time: 55, strikes: 0, par: 60 },
+  ]);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].key, matchRowKey('seed-a'));
+  assert.equal(rows[1].key, matchRowKey('seed-b'));
+  assert.equal(rows[0].time, 40.3, 'times round to a tenth, like every other row family');
+  assert.equal(rows[0].bombHits, 1);
+  assert.equal(rows[0].totalMines, 10, 'the anti-cheat denominator rides the row');
+  assert.deepEqual(rows[0].features, entries[0].features);
+});
+
+test('the same board in two different matches files under the SAME key', () => {
+  // This is the property the per-shape fit is starved of: four people playing
+  // one Kites board across two matches is four observations of one board, not
+  // four unrelated keys. It is also why the key is the seed and not page:idx,
+  // which a full library rebuild re-sorts.
+  const a = matchFitRows([entry('shared-seed')], [{ time: 30 }]).rows[0];
+  const b = matchFitRows([entry('shared-seed')], [{ time: 44 }]).rows[0];
+  assert.equal(a.key, b.key);
+  assert.notEqual(a.time, b.time);
+});
+
+test('an unplayed board files nothing, and does not shift the others', () => {
+  const { rows, unplayed } = matchFitRows(
+    [entry('a'), entry('b'), entry('c')],
+    [{ time: 30 }, null, { time: 50 }],
+  );
+  assert.equal(unplayed, 1);
+  assert.deepEqual(rows.map((r) => r.key), [matchRowKey('a'), matchRowKey('c')]);
+});
+
+test('a board cleared under the row family\'s five-second floor is COUNTED, not silently dropped', () => {
+  // The daily/$entry rule refuses time < 5, so such a row could never land.
+  // Reporting the count is what makes a change in how often it happens
+  // visible, instead of a left-censoring nobody can see.
+  const { rows, tooFast } = matchFitRows([entry('a'), entry('b')], [
+    { time: MATCH_FIT_MIN_TIME - 0.1 },
+    { time: MATCH_FIT_MIN_TIME },
+  ]);
+  assert.equal(tooFast, 1);
+  assert.equal(rows.length, 1, 'exactly at the floor is admitted');
+});
+
+test('an entry with no features files nothing: a row that cannot join the fit is not a row', () => {
+  const bare = { seed: 'x', spec: { shape: 'rect', cells: 9, mines: 1 }, payload: {} };
+  assert.equal(matchFitRows([bare], [{ time: 30 }]).rows.length, 0);
+});
+
+test('garbage in, empty out, never a throw', () => {
+  for (const [e, r] of [[null, null], [undefined, []], ['x', 'y'], [[], null]]) {
+    assert.deepEqual(matchFitRows(e, r).rows, []);
+  }
+});

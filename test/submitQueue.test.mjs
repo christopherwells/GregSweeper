@@ -14,6 +14,7 @@
 import './helpers.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 const {
   _submitCooldownOk, _stampSubmitCooldown,
@@ -39,6 +40,42 @@ test('each path cools down independently of the others', () => {
   assert.equal(_submitCooldownOk('daily', t0 + 1000), false);
   assert.equal(_submitCooldownOk('timed', t0 + 1000), true);
   assert.equal(_submitCooldownOk('archive', t0 + 1000), true);
+  assert.equal(_submitCooldownOk('match', t0 + 1000), true);
+});
+
+test('the match path is registered, and is a real limit', () => {
+  const t0 = 3_000_000;
+  _stampSubmitCooldown('match', t0);
+  assert.equal(_submitCooldownOk('match', t0 + 1000), false,
+    'a match submission inside its own window must be refused');
+  assert.equal(_submitCooldownOk('match', t0 + 31_000), true);
+  assert.equal(_submitCooldownOk('daily', t0 + 1000), true,
+    'and it must not burn the daily clock (the #89 shape)');
+});
+
+test('REGRESSION: EVERY kind the module submits under is registered in the clock map', () => {
+  // The silent-trap this pins: `_submitCooldownOk` reads
+  // `_lastSubmitByKind[kind] || 0`, so a kind that is NOT a key in that
+  // literal is never rate-limited — it is always permitted, and every call
+  // site reads exactly like one that works. Derived from the source rather
+  // than hand-listed, because the failure it catches is a kind somebody
+  // forgot to add, and a hand-kept list forgets the same one.
+  const src = readFileSync(new URL('../src/firebase/firebaseLeaderboard.js', import.meta.url), 'utf8');
+
+  const literal = src.match(/const _lastSubmitByKind = \{([^}]*)\}/);
+  assert.ok(literal, 'the _lastSubmitByKind literal has moved — this test is now inert');
+  const registered = new Set([...literal[1].matchAll(/(\w+)\s*:/g)].map((m) => m[1]));
+
+  const used = new Set([...src.matchAll(/_(?:submitCooldownOk|stampSubmitCooldown)\('(\w+)'/g)]
+    .map((m) => m[1]));
+  // Non-vacuity: the scan must actually be finding the call sites.
+  assert.ok(used.size >= 4, `only found ${used.size} cooldown call sites — the pattern has gone stale`);
+  assert.ok(used.has('match') && used.has('daily'),
+    'the derivation missed a known path, so it is not reading the module');
+
+  const unregistered = [...used].filter((k) => !registered.has(k));
+  assert.deepEqual(unregistered, [],
+    `submission kinds used but NOT in _lastSubmitByKind (silently unlimited): ${unregistered.join(', ')}`);
 });
 
 test('REGRESSION #132: a queued daily entry is re-stamped to the CURRENT uid at flush', () => {

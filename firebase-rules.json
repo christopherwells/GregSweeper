@@ -5,7 +5,7 @@
       "$date": {
         ".read": true,
         ".indexOn": ["time"],
-        ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}(_weekly_first)?$/)",
+        ".validate": "$date.matches(/^(\\d{4}-\\d{2}-\\d{2}(_weekly_first)?|match_[0-9a-f]{16})$/)",
         "$entry": {
           ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid",
           ".validate": "newData.hasChildren(['name', 'time', 'timestamp', 'uid'])",
@@ -271,7 +271,7 @@
       ".read": true,
       "$date": {
         ".write": "auth != null && !data.exists()",
-        ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}(_weekly_first)?$/) && newData.hasChildren(['features', 'writtenAt'])",
+        ".validate": "$date.matches(/^(\\d{4}-\\d{2}-\\d{2}(_weekly_first)?|match_[0-9a-f]{16})$/) && newData.hasChildren(['features', 'writtenAt'])",
         "features": {
           ".validate": "newData.hasChildren(['rows', 'cols', 'totalMines'])"
         },
@@ -502,6 +502,47 @@
             }
           }
         },
+        "matchInvites": {
+          "$matchId": {
+            ".write": "auth != null && (auth.uid === $uid || (newData.exists() && auth.uid === newData.child('from').val() && root.child('users/' + $uid + '/friends/' + auth.uid).exists()))",
+            ".validate": "$matchId.matches(/^[A-Za-z0-9_-]{20}$/) && newData.hasChildren(['from', 'code', 'sentAt'])",
+            "from": {
+              ".validate": "newData.isString() && newData.val().length >= 10 && newData.val().length <= 64"
+            },
+            "code": {
+              ".validate": "newData.isString() && newData.val().matches(/^[A-Z2-9]{6}$/)"
+            },
+            "sentAt": {
+              ".validate": "newData.val() === now"
+            },
+            "state": {
+              ".validate": "newData.isString() && newData.val().matches(/^(pending|snoozed|declined)$/)"
+            },
+            "snoozedUntil": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now + 604800000"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "matches": {
+          "$matchId": {
+            ".validate": "$matchId.matches(/^[A-Za-z0-9_-]{20}$/) && newData.hasChildren(['joinedAt'])",
+            "code": {
+              ".validate": "newData.isString() && newData.val().matches(/^[A-Z2-9]{6}$/)"
+            },
+            "host": {
+              ".validate": "newData.isBoolean()"
+            },
+            "joinedAt": {
+              ".validate": "newData.val() === now"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
         "dailyHistory": {
           "$date": {
             ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}$/) && newData.hasChildren(['time', 'submittedAt'])",
@@ -630,6 +671,82 @@
         },
         "name": {
           ".validate": "newData.isString() && newData.val().length <= 20"
+        },
+        "createdAt": {
+          ".validate": "newData.val() === now"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "matches": {
+      "$matchId": {
+        ".read": "auth != null",
+        ".write": "auth != null && !data.exists() && newData.child('host').val() === auth.uid",
+        ".validate": "$matchId.matches(/^[A-Za-z0-9_-]{20}$/) && newData.hasChildren(['host', 'rules', 'boards', 'createdAt', 'playerCount'])",
+        "host": {
+          ".validate": "newData.isString() && newData.val().length >= 10 && newData.val().length <= 64"
+        },
+        "createdAt": {
+          ".validate": "newData.val() === now"
+        },
+        "playerCount": {
+          ".write": "auth != null && now < root.child('matches/' + $matchId + '/createdAt').val() + 604800000",
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 16 && ((!data.exists() && newData.val() === 1) || (data.exists() && newData.val() === data.val() + 1))"
+        },
+        "rules": {
+          ".validate": "newData.hasChildren(['count'])",
+          "count":   { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 10" },
+          "shapes":  { "$idx": { ".validate": "newData.isString() && newData.val().length <= 12" } },
+          "mods":    { "$idx": { ".validate": "newData.isString() && newData.val().length <= 12" } },
+          "time":    { ".validate": "newData.isString() && newData.val().length <= 12" },
+          "density": { ".validate": "newData.isString() && newData.val().length <= 12" },
+          "$other":  { ".validate": false }
+        },
+        "boards": {
+          ".validate": "newData.hasChildren()",
+          "$idx": {
+            ".validate": "$idx.matches(/^[0-9]$/) && newData.hasChildren(['seed', 'payload'])",
+            "seed":     { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80" },
+            "par":      { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
+            "features": { ".validate": "newData.hasChildren(['rows', 'cols', 'totalMines'])" },
+            "spec":     { ".validate": "newData.hasChildren(['shape', 'cells', 'mines'])" },
+            "payload":  { ".validate": "newData.hasChildren(['rows', 'cols', 'totalMines', 'cells'])" },
+            "$other":   { ".validate": false }
+          }
+        },
+        "players": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && now < root.child('matches/' + $matchId + '/createdAt').val() + 604800000",
+            ".validate": "newData.hasChildren(['name', 'joinedAt'])",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20 && newData.val().matches(/^[^<>&\"'`@]+$/)"
+            },
+            "joinedAt":   { ".validate": "newData.val() === now" },
+            "finishedAt": { ".validate": "newData.val() === now" },
+            "results": {
+              "$idx": {
+                ".validate": "$idx.matches(/^[0-9]$/) && newData.hasChildren(['time'])",
+                "time":    { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
+                "penalty": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
+                "strikes": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 50" },
+                "$other":  { ".validate": false }
+              }
+            },
+            "$other": { ".validate": false }
+          }
+        },
+        "$other": { ".validate": false }
+      }
+    },
+    "matchCodes": {
+      "$code": {
+        ".read": "auth != null && data.child('createdAt').val() > (now - 604800000)",
+        ".write": "auth != null && ((!data.exists() && root.child('matches/' + newData.child('matchId').val() + '/host').val() === auth.uid) || (data.exists() && !newData.exists() && root.child('matches/' + data.child('matchId').val() + '/host').val() === auth.uid))",
+        ".validate": "$code.matches(/^[A-Z2-9]{6}$/) && newData.hasChildren(['matchId', 'createdAt'])",
+        "matchId": {
+          ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{20}$/)"
         },
         "createdAt": {
           ".validate": "newData.val() === now"

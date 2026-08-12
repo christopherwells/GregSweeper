@@ -25,6 +25,8 @@
     "src/logic/weeklyAttemptSummary.js",
     "src/logic/moltDay.js",
     "src/logic/friendCodes.js",
+    "src/logic/matchCodes.js",
+    "src/logic/submitGate.js",
     "src/logic/nameFilter.js",
     "src/logic/hateSpeechTerms.js",
     "src/logic/leaderboardViews.js",

@@ -6381,6 +6381,166 @@ button.weekly-archive-row:focus-visible {
   font-size: 12px;
 }
 
+/* The invite / join surfaces. Both reuse the friends-tab vocabulary (code
+   block, input, secondary button) because a match code and a friend code are
+   the same object to a player; only .friends-btn-primary is left alone, since
+   its white-on-accent measures 1.30:1 on chalkboard. */
+.match-share-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.match-share-row .friends-btn {
+  flex: 1;
+}
+.match-join-warning {
+  margin-top: 10px;
+}
+
+/* Live standings on the match-complete card. Borders read the theme's own
+   token: about a dozen themes ship a LIGHT modal background, so a hardcoded
+   rgba would be invisible on half the catalogue. */
+.match-standings {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0;
+  margin: 4px 0 8px;
+  border-bottom: 1px solid var(--color-border, #333);
+}
+.match-standings-head {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  text-align: right;
+  padding-bottom: 2px;
+}
+.match-standings-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--font-family);
+  font-size: 13px;
+  color: var(--color-text-secondary, #888);
+  font-variant-numeric: tabular-nums;
+}
+.match-standings-place {
+  min-width: 1.4em;
+  text-align: right;
+}
+.match-standings-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.match-standings-value {
+  font-variant-numeric: tabular-nums;
+}
+.match-standings-me {
+  color: var(--color-text, #eee);
+  font-weight: 700;
+}
+
+/* The incoming-invite card. Above the modal layer (1001) because it can
+   arrive while the title screen or a sheet is open, and deliberately WITHOUT
+   backdrop-filter: a full-viewport blur re-rasterizes the board behind it
+   every frame under software compositing. */
+.match-invite-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 1100;
+  width: min(92vw, 420px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.15));
+  background: var(--color-btn-gradient, #2a2a4a);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+.match-invite-toast-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.match-invite-toast-text {
+  font-family: var(--font-family);
+  font-size: 13px;
+  color: var(--color-text, #eee);
+}
+.match-invite-toast-detail {
+  font-family: var(--font-family);
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+}
+.match-invite-toast-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+/* Three answers do not fit beside the text on a phone, so the card stacks. */
+@media (max-width: 480px) {
+  .match-invite-toast {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .match-invite-toast-actions .friends-btn { flex: 1; }
+}
+
+/* The review list: invites in every state, and the matches you are in. */
+.match-review {
+  margin: 4px 0 14px;
+}
+.match-review h3 {
+  margin: 10px 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+.match-review-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 4px;
+  border-bottom: 1px solid var(--color-border, rgba(255, 255, 255, 0.08));
+}
+.match-review-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text, #eee);
+}
+.match-review-note {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+.match-review-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 /* ── Skill Trainer ─────────────────────────────────── */
 
 .skill-trainer-container {

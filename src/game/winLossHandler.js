@@ -38,7 +38,8 @@ import {
   getAchievementState, getAllTierNames, getTierIcon, getTierColor,
 } from '../logic/achievements.js';
 import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js';
-import { submitOnlineScore, submitArchiveScore, submitWeeklyScore, fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
+import { submitOnlineScore, submitArchiveScore, submitWeeklyScore, fetchWeeklyLeaderboard, submitMatchFitRows } from '../firebase/firebaseLeaderboard.js';
+import { matchFitRows, MATCH_FIT_MIN_TIME } from '../logic/matchStandings.js';
 
 // (HTML escaping for the weekly leaderboard rows now comes from
 // ui/domHelpers.js's escapeHtml, single source of truth.)
@@ -430,6 +431,59 @@ function _renderMatchSummary() {
     : '';
   el.innerHTML = rows + totalRow + adjRow;
   el.classList.remove('hidden');
+
+  // A SHARED match also shows where everyone stands, live. The panel owns its
+  // own subscription and markup (ui/matchLobby.js) so this handler stays out
+  // of the Firebase listener business; it decides only whether to show one.
+  const board = document.getElementById('match-standings');
+  if (board && state.match.id) {
+    import('../ui/matchLobby.js')
+      .then((m) => m.renderMatchStandingsInto(board, state.match.id))
+      .catch((err) => reportCaughtError('match-standings-render', err));
+  } else if (board) {
+    board.classList.add('hidden');
+  }
+}
+
+/**
+ * Everything a finished match run owes the world, once.
+ *
+ * FILED ONCE, and the `filed` marker is why. handleWin can run more than once
+ * against the same completed match (a restored save re-rendering its card, a
+ * summary reopened), and while the submit path dedupes per (uid, board key) on
+ * a read that fails OPEN, a flag costs nothing and does not depend on a
+ * network read behaving.
+ *
+ * Par-fit rows go from EVERY match, solo or shared. The offset the refit
+ * fits describes the FRAME (a run of boards back to back, no daily ritual
+ * around it), and solo and shared runs share that frame exactly; holding solo
+ * rows back would throw away most of the data for no measured reason. A pinned
+ * practice board is the one exception, as it is for every other mode.
+ */
+function _finishMatchRun() {
+  const m = state.match;
+  if (!m || m.filed) return;
+  m.filed = true;
+  if (state.isLevelPractice) return;
+
+  const uid = getUid();
+  const name = (getPlayerName() || '').slice(0, 20).trim();
+  const { rows, tooFast } = matchFitRows(m.entries, m.results);
+  if (tooFast > 0) {
+    // Visible rather than silent: these are boards cleared under the daily row
+    // family's five-second floor. Rare by construction, and a change in how
+    // often it happens is worth being able to see.
+    console.warn(`match: ${tooFast} board(s) cleared under the ${MATCH_FIT_MIN_TIME}s fit floor, not filed`);
+  }
+  if (rows.length > 0 && uid && name) {
+    submitMatchFitRows(rows, name, uid)
+      .catch((err) => reportCaughtError('match-fit-submit', err));
+  }
+  if (m.id) {
+    import('../firebase/firebaseMatch.js')
+      .then((mod) => mod.finishMatch(m.id))
+      .catch((err) => reportCaughtError('match-finish', err));
+  }
 }
 
 // ── Handle Win ─────────────────────────────────────────
@@ -446,21 +500,24 @@ export async function handleWin() {
   resetBtn.classList.add('smiley-win-bounce');
   setTimeout(() => resetBtn.classList.remove('smiley-win-bounce'), 800);
 
-  // Name gate: daily / weekly wins submit to public leaderboards, so
-  // require a handle BEFORE anything submits or the end card renders (weekly
-  // used to drop a nameless win silently, the old Quick Play posted
-  // "Anonymous", and the daily's inline form was dismissible). A solo match
-  // submits nothing yet, so it is deliberately ungated until the match node
-  // gives it a public surface. Resolves immediately when a name is
-  // already saved or the mode isn't gated; awaited so every submission below
-  // sees the name. Fire-and-forget callers don't await handleWin, and
-  // state.status/stopTimer already ran synchronously above, so awaiting here is
-  // safe. (state.isArchivePlay is only meaningful in daily mode.)
+  // Name gate: daily / weekly / match wins put a name in front of other
+  // people, so require a handle BEFORE anything submits or the end card
+  // renders (weekly used to drop a nameless win silently, the old Quick Play
+  // posted "Anonymous", and the daily's inline form was dismissible). MATCH
+  // joined the set with the match node: a match board files a par-fit row
+  // under this name, and a shared match shows it in the standings every other
+  // player watches. Resolves immediately when a name is already saved or the
+  // mode isn't gated; awaited so every submission below sees the name.
+  // Fire-and-forget callers don't await handleWin, and state.status/stopTimer
+  // already ran synchronously above, so awaiting here is safe.
+  // (state.isArchivePlay is only meaningful in daily mode.)
   await ensureLeaderboardName(state.gameMode, {
     // Either archive lane: neither posts to a leaderboard, so neither has a
     // name to demand.
     isArchive: !!state.isArchivePlay || !!state.isWeeklyArchive,
-    isPractice: !!state.isDailyPractice,
+    // A pinned practice board (?seed=, ?matchboard=) records nothing anywhere,
+    // so it has no name to demand either.
+    isPractice: !!state.isDailyPractice || !!state.isLevelPractice,
   });
 
   const prevStats = loadStats();
@@ -741,13 +798,32 @@ export async function handleWin() {
     // Index-aligned assignment, not push: a board replayed out of a
     // restored mid-board save overwrites its own slot instead of banking
     // twice. `current` advances in the Next-board handler, never here.
+    //
+    // The strike and worm event logs ride the result because the fit rows are
+    // filed in ONE batch when the match ends (submitting per board would run
+    // into the 30-second cooldown and queue most of a short match), and by then
+    // state has been reset per board several times over. Both arrays reset in
+    // newGame, so each one describes exactly this board.
     state.match.results[state.match.current] = {
       seed: state.challengeBoardSeed || null,
       time: Math.round(precise * 10) / 10,
       penalty: getActiveBombPenaltyTotal(),
       strikes: state.dailyBombHits || 0,
       par: state.matchPar || 0,
+      bombHitEvents: (state.dailyBombHitEvents || []).slice(),
+      wormEvents: (state.wormEvents || []).slice(),
     };
+    // Post it live (his ruling: times appear as they land, for everyone,
+    // finished or not). Fire-and-forget: a refused post is almost always the
+    // seven-day gate closing, and the local summary still renders. Never from
+    // a solo match or a pinned practice board, neither of which has a node.
+    if (state.match.id && !state.isLevelPractice) {
+      const _postIdx = state.match.current;
+      const _postRow = state.match.results[_postIdx];
+      import('../firebase/firebaseMatch.js')
+        .then((m) => m.postMatchResult(state.match.id, _postIdx, _postRow))
+        .catch((err) => reportCaughtError('match-result-post', err));
+    }
     const n = state.match.entries.length;
     gameoverTime.innerHTML = `Board ${state.match.current + 1} of ${n} · ${precise.toFixed(1)}s${strikesInfo}`;
     if (parEl && state.matchPar > 0) {
@@ -768,8 +844,15 @@ export async function handleWin() {
     } else {
       gameoverTitle.textContent = 'Match complete!';
       _renderMatchSummary();
+      _finishMatchRun();
       const doneBtn = document.getElementById('gameover-done');
       if (doneBtn) doneBtn.classList.remove('hidden');
+      const againBtn = document.getElementById('gameover-match-again');
+      // His rematch ruling: a NEW set of boards under the SAME rules, so
+      // nobody replays a board they have already seen and it stays a fair
+      // fight. The button is the setup sheet's Start with the rules already
+      // chosen, which is why it needs no surface of its own.
+      if (againBtn && !state.isLevelPractice) againBtn.classList.remove('hidden');
     }
   } else if (state.gameMode === 'daily') {
     // Daily: show precise time + par comparison

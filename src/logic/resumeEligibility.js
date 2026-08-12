@@ -73,6 +73,7 @@ export function challengeSaveIsCurrent(gs, maxLevelReached) {
  *   canonicalWeek         - weekStart of the cached canonical weekly board, if any
  *   canonicalWeeklyRngSeed - rngSeed of that weekly board, if any
  *   maxLevelReached  - highest challenge level won (challengeSaveIsCurrent)
+ *   now              - wall-clock ms, for a shared match's seven-day life
  * @returns {boolean}
  */
 export function isSaveResumable(gs, ctx) {
@@ -142,14 +143,21 @@ export function isSaveResumable(gs, ctx) {
 
   // A Challenge match resumes only with its whole match structure intact:
   // the dealt entries ARE the match (a resume that re-dealt would hand the
-  // player different boards mid-match, and next PR different boards from
-  // the opponent's), and the board index has to point inside them. A save
+  // player different boards mid-match, and different boards from the
+  // opponent's), and the board index has to point inside them. A save
   // missing any of that is refused rather than half-restored, the same
   // shape the daily's seed-identity rule takes.
   if (gs.gameMode === 'match') {
     const m = gs.match;
     if (!m || !m.rules || !Array.isArray(m.entries) || m.entries.length === 0) return false;
     if (!Number.isInteger(m.current) || m.current < 0 || m.current >= m.entries.length) return false;
+    // A SHARED match is anchored to its node's seven-day life, and past it the
+    // node accepts no more results. Finishing an expired one would produce a
+    // summary nobody else can ever see and no fit rows, so the save is refused
+    // rather than offered as a run that still leads somewhere. A SOLO match
+    // carries no expiresAt and is never refused here: nothing about it has a
+    // deadline.
+    if (m.expiresAt && Number.isFinite(ctx.now) && ctx.now >= m.expiresAt) return false;
   }
 
   // Cells corrupted by the v1.5.19 canonical-board deserializer bug
@@ -222,15 +230,17 @@ export function weeklyEntryPlan(ctx) {
 }
 
 /**
- * Decide whether a LIVE (in-memory) game has expired because its date
- * anchor no longer matches the ET clock, i.e. the session slept
- * through midnight. Only daily (non-practice) and weekly games are
- * date-anchored; challenge, timed, and chaos sessions never expire.
+ * Decide whether a LIVE (in-memory) game has expired because its anchor no
+ * longer matches the clock, i.e. the session slept through a boundary. Daily
+ * (non-practice) and weekly games are date-anchored; a SHARED Challenge match
+ * is anchored to its node's seven-day life instead of to a date. The Climb,
+ * chaos and a solo match never expire, having nothing to be late for.
+ *
  * Only resumable statuses can expire: a finished game is history, not
  * an in-progress attempt.
  *
- * @param {object} live  - {gameMode, status, isDailyPractice, dailySeed, weeklySeed, weeklyDay}
- * @param {object} clock - {today, weekStart, weekDayIndex}
+ * @param {object} live  - {gameMode, status, isDailyPractice, dailySeed, weeklySeed, weeklyDay, match}
+ * @param {object} clock - {today, weekStart, weekDayIndex, now}
  * @returns {boolean}
  */
 export function isLiveGameExpired(live, clock) {
@@ -246,6 +256,14 @@ export function isLiveGameExpired(live, clock) {
   }
   if (live.gameMode === 'weekly' && live.weeklySeed != null) {
     return live.weeklySeed !== clock.weekStart || live.weeklyDay !== clock.weekDayIndex;
+  }
+  // A shared match stops accepting results seven days after it was created
+  // (his ruling: writes freeze, reads stay open). Without this clause an
+  // expired match would resume forever and every board cleared in it would
+  // post nothing, to a standings panel no opponent could ever be added to.
+  // A solo match has no expiresAt and falls through.
+  if (live.gameMode === 'match' && live.match && live.match.expiresAt) {
+    return Number.isFinite(clock.now) && clock.now >= live.match.expiresAt;
   }
   return false;
 }

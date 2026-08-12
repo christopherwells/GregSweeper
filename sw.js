@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.10.42';
+const CACHE_NAME = 'gregsweeper-v1.10.44';
 const ASSETS = [
   './',
   './index.html',
@@ -114,6 +114,8 @@ const ASSETS = [
   './src/logic/challenge250.js',
   './src/logic/climbLibrary.js',
   './src/logic/matchRules.js',
+  './src/logic/matchCodes.js',
+  './src/logic/matchStandings.js',
   './src/logic/challengeRules.js',
   './src/logic/challengePool.js',
   './src/logic/challenge250Builder.js',
@@ -153,6 +155,11 @@ const ASSETS = [
   './src/ui/shareActions.js',
   './src/ui/shareCardImage.js',
   './src/ui/matchSetup.js',
+  // Lazily imported (the invite/join surfaces and the match node's I/O), but
+  // precached so an offline resume of a shared match can still paint its
+  // standings and file its rows when the connection returns.
+  './src/ui/matchLobby.js',
+  './src/firebase/firebaseMatch.js',
   './src/ui/statsModal.js',
   './src/ui/titleScreen.js',
   './src/ui/wormRenderer.js',

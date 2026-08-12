@@ -370,6 +370,9 @@ PRIOR_MEANS <- list(
   # (Non-negativity also rides the class bound — the flat path's class-wide
   # lb = 0 blanket, or the base nlpar's bound on the nl path; see build_priors.)
   archivePlay          = 2.0,
+  # matchPlay has NO entry here on purpose: it is a SIGNED deviation, fitted in
+  # the `dev` nlpar alongside the shape deviations rather than in this bounded
+  # block. See the dev_cols construction in the fit section for why.
   zeroClusterCount     = 1.0
   # The old per-shape intercept offsets (shape488..shapeDeltoidal, seeded 0.05
   # each) are GONE (2026-08-01): board shape is now a full per-shape equation,
@@ -411,6 +414,7 @@ PRIOR_SIGMAS <- list(
   # clean ~15s estimate, with little need for the wide spread the others get.
   legacy_bombs         = 0.4,
   archivePlay          = 1.0,   # wide: little prior knowledge of the offset size
+  # No matchPlay entry: it is fitted as a signed deviation, not a bounded slope.
   zeroClusterCount     = 1.0,
   # No shape entries here: shape terms are DEVIATIONS (normal(0,
   # INTERACTION_PRIOR_SD), signed) routed around the lognormal machinery by
@@ -944,6 +948,23 @@ archive_raw <- tryCatch(
 message(sprintf("  archive rows: %d (pooled into the fit at >= %d)",
                 sum(map_int(archive_raw, length)), ARCHIVE_FIT_THRESHOLD))
 
+# Challenge MATCH rows arrive inside the same daily/* node, under keys of the
+# form `match_<16 hex>` derived from the board's own seed (see
+# src/logic/matchCodes.js matchRowKey). They are not dates, and that is
+# deliberate: a match board is a library board, not a day, so the same board
+# played in two different matches by four different people pools into one key
+# with one dailyMeta, which is exactly the structure the per-shape layer is
+# starved of. Their frame differs from a daily's, though — a run of boards
+# played back to back, with no once-a-day ritual around it — so a matchPlay
+# dummy absorbs the offset, fit-only and never shipped to predictPar.
+#
+# Instrument-first, the same shape archive replays take: accumulate and log
+# now, pool once the offset is identifiable. Held out entirely below that, so
+# n_scores, the outlier screen and every board coefficient see the daily frame
+# only.
+MATCH_ROW_PREFIX <- "^match_[0-9a-f]{16}$"
+MATCH_FIT_THRESHOLD <- 20
+
 # Canonical boards (dailyBoard/{date}): world-readable, no secret. Used to
 # derive the clue-digit shares at fit time (full historical coverage — every
 # board back to the canonical era carries the data, no client instrument).
@@ -1045,6 +1066,11 @@ scores_df <- bind_rows(
   filter(!(archive == 1L & cruxViewed)) |>
   mutate(
     archivePlay    = as.numeric(archive),  # nuisance dummy; in the fit only when pooled
+    # Challenge match boards live in the same daily/ node under a seed-derived
+    # `match_<hash>` key rather than a date. Their board coefficients are the
+    # daily's; only the frame around them differs, which matchPlay absorbs.
+    is_match       = grepl(MATCH_ROW_PREFIX, date),
+    matchPlay      = as.numeric(is_match),
     is_legacy_bomb = bombHits > 0 & totalBombPenalty == 0,
     legacy_bombs   = if_else(is_legacy_bomb, bombHits, 0),
     # clean_time = the time the player would have scored solving the FULL
@@ -1101,6 +1127,18 @@ if (pool_archive) {
 message(sprintf("  archive: %d row(s) after filters — %s", n_archive,
                 if (pool_archive) "POOLED into the fit (archivePlay offset)"
                 else sprintf("held out of the fit (< %d to pool)", ARCHIVE_FIT_THRESHOLD)))
+
+# Challenge match pooling gate, the same instrument-first shape. Below the
+# threshold the rows keep accumulating in Firebase and are held out entirely,
+# so no board coefficient moves on a frame offset nobody has measured yet.
+n_match <- sum(df$matchPlay)
+pool_match <- n_match >= MATCH_FIT_THRESHOLD
+if (!pool_match) {
+  df <- df |> filter(matchPlay == 0)
+}
+message(sprintf("  match: %d row(s) after filters — %s", n_match,
+                if (pool_match) "POOLED into the fit (matchPlay offset)"
+                else sprintf("held out of the fit (< %d to pool)", MATCH_FIT_THRESHOLD)))
 
 # v1.5.16+ structural features may not exist in older dailyMeta records
 # (the field is write-once per Firebase rules). Default missing columns
@@ -1287,6 +1325,12 @@ digit_shares <- if (length(board_raw) > 0) {
 digit_df <- NULL
 if (!is.null(digit_shares) && nrow(digit_shares) > 0) {
   digit_df <- df |>
+    # `date >= DIGIT_ERA_START` is a STRING comparison, and a match key sorts
+    # above every date under it, so match rows would pass this filter. The
+    # inner_join on the canonical boards would then drop them anyway (a match
+    # board has no dailyBoard entry), but the exclusion is written out rather
+    # than relied on: a study frame should say which rows it studies.
+    filter(!is_match) |>
     filter(uid %in% eligible_uids, date >= DIGIT_ERA_START) |>
     # RECTANGLES ONLY (2026-08-01). At fixed density the digit shares differ
     # BY LATTICE — rhombille's 5plus share measured 4.4x the 4.8.8's and 15x
@@ -1334,7 +1378,14 @@ contrib_df <- tryCatch({
     # those rows and an unfiltered study would read the shift as a finding
     # arriving mid-series. (The digit frame shares this latent gap;
     # flagged 2026-07-30, fix it there when archive pooling actually opens.)
-    cdf <- df |> filter(uid %in% eligible_uids, date >= DIGIT_ERA_START, archivePlay == 0)
+    # Match rows are excluded for the same reason archive replays are: this
+    # frame carries no offset to absorb a different cohort's pace, so once the
+    # gate upstream pools them, an unfiltered study would read the shift as a
+    # finding arriving mid-series. The backfill join would drop them regardless
+    # (no contribution keys exist for a library board), which is exactly why
+    # the filter is written rather than assumed.
+    cdf <- df |> filter(uid %in% eligible_uids, date >= DIGIT_ERA_START,
+                        archivePlay == 0, matchPlay == 0)
     for (f in CONTRIB_FEATURES) {
       if (!f %in% colnames(cdf)) cdf[[f]] <- NA_real_
       if (!f %in% colnames(bf)) bf[[f]] <- NA_real_
@@ -1414,6 +1465,12 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
   } else {
     fit_formula_fixed
   }
+  # Challenge match frame offset, on the same two conditions archivePlay has:
+  # the rows were pooled by the gate above, AND at least one survived the
+  # eligible-user filter, since an all-one-value column is a zero-variance
+  # predictor brms rejects. It does NOT join fit_formula_fixed_active: it is a
+  # SIGNED term and belongs in the dev nlpar (see dev_cols below).
+  add_match_term <- pool_match && length(unique(df_fit$matchPlay)) > 1
   # Worm Tiles (2026-07): enter the term only once real worm boards exist in
   # the fit data — same zero-variance gate as archivePlay. The shipped
   # coefficient additionally sits behind the NEW_FEATURE_DATA_THRESHOLD
@@ -1463,18 +1520,46 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
   # again — the retired make_positive_init only patched initialization, never
   # the boundary geometry, which is why the 2026-08-01 run initialized fine
   # and then diverged.
-  use_nl_split <- length(active_shape_cols) > 0
+  # The dev nlpar carries every SIGNED term. Shape deviations were its only
+  # occupants; matchPlay joins them, and the reason is the same reason the
+  # bound exists at all.
+  #
+  # The class-wide lb = 0 on the base block is a real modeling claim about
+  # BOARD FEATURES: par is monotonic non-decreasing in every one of them, so
+  # more mines cannot make a board faster and a negative slope would be
+  # nonsense. matchPlay is not a board feature. It is a group indicator (1 on a
+  # Challenge run's rows, 0 on a daily's), and its coefficient answers "how
+  # much slower is a match board than a daily board of identical difficulty".
+  # Nobody knows that sign. A match run is plausibly FASTER: the player is
+  # warmed up and goes straight from one board into the next with no
+  # once-a-day ritual around it.
+  #
+  # Under the bound it could not say so. The posterior would pile up just above
+  # zero and the real speed-up would have to be absorbed elsewhere, and it
+  # cannot be absorbed by the (1 | uid) intercept, because the same players
+  # supply both kinds of row and a player-level intercept cannot represent a
+  # WITHIN-player difference between them. It would leak into the board
+  # coefficients and the residual instead, growing exactly as the mode
+  # succeeds. In the dev nlpar it is unbounded and centered at zero, so the
+  # data pick the sign.
+  #
+  # INTERACTION_PRIOR_SD is reused rather than given its own constant: at 0.5
+  # on the log scale, +-1 SD spans roughly a 40% speed-up to a 65% slowdown,
+  # which is wide enough for a frame offset nobody has measured and, as the
+  # constant's own note says, far too wide to bind.
+  dev_cols <- c(active_shape_cols, if (add_match_term) "matchPlay" else NULL)
+  use_nl_split <- length(dev_cols) > 0
   base_terms <- all.vars(fit_formula_fixed_active)[-1]
   # OLS seeds cover the BASE terms only: a deviation's prior center is fixed
   # at zero (build_priors routes deviation_names around the means lookup).
   ols_seeds <- compute_log_ols_seeds(df_fit, base_terms)
   priors <- build_priors(ols_seeds, c("Intercept", base_terms),
-                         deviation_names = active_shape_cols)
+                         deviation_names = dev_cols)
   fit_formula <- if (use_nl_split) {
     bf(log(pure_time) ~ base + dev,
        as.formula(paste("base ~", paste(c("1", base_terms, "(1 | uid)"),
                                         collapse = " + "))),
-       as.formula(paste("dev ~ 0 +", paste(active_shape_cols, collapse = " + "))),
+       as.formula(paste("dev ~ 0 +", paste(dev_cols, collapse = " + "))),
        nl = TRUE)
   } else {
     update(fit_formula_fixed_active, ~ . + (1 | uid))
@@ -2137,7 +2222,16 @@ if (fit_method == "brms-ranef") {
   } else {
     0
   }
-  dayof <- df_fit$archive == 0
+  match_coef <- if ("matchPlay" %in% rownames(fe_all)) {
+    as.numeric(fe_all["matchPlay", "Estimate"])
+  } else {
+    0
+  }
+  # Match boards are excluded from the bias-correction set for the same reason
+  # archive replays are, and the reason is the whole point of having an offset:
+  # `archive == 0` alone would let a match run's pace into the anchor that sets
+  # day-of par, which is the leak the exclusion above exists to stop.
+  dayof <- df_fit$archive == 0 & df_fit$matchPlay == 0
   # log(apply_par_model(..., log_scale = TRUE)) recovers the linear predictor.
   # Earned deviations ride along so a tiling day-of row is calibrated on the
   # equation it will actually ship under, not the base one.
@@ -2150,6 +2244,14 @@ if (fit_method == "brms-ranef") {
   if (archive_coef != 0) {
     message(sprintf("  archivePlay coef: %+.3f log-multiplier (archive-replay offset, fit-only, not shipped)",
                     archive_coef))
+  }
+  if (match_coef != 0) {
+    # SIGNED, so the sign is a reading rather than an artifact of a bound:
+    # negative means a Challenge run is faster than a daily of the same board
+    # difficulty, positive means slower.
+    message(sprintf("  matchPlay coef: %+.3f log-multiplier (%.0f%% %s than a daily; Challenge-run offset, fit-only, not shipped)",
+                    match_coef, abs(exp(match_coef) - 1) * 100,
+                    if (match_coef < 0) "faster" else "slower"))
   }
 
   # Bombs are part of your HANDICAP, not par. predictPar stays clean board
@@ -2293,7 +2395,12 @@ if (fit_method == "seed-residuals") {
       )
     }
     handicaps <- setNames(as.list(round(per_user$k, 3)), per_user$uid)
-    dayof_pred <- df$predicted[df$archive == 0]
+    # refPar is the reference DAILY board the handicap's seconds display is
+    # quoted against, so it excludes match boards along with archive replays:
+    # the library's pars run a different distribution from the daily band's,
+    # and a median mixed across the two would quote a rating against a board
+    # nobody actually plays each morning.
+    dayof_pred <- df$predicted[df$archive == 0 & df$matchPlay == 0]
     if (length(dayof_pred) > 0) refPar <- round(median(dayof_pred, na.rm = TRUE), 1)
   } else {
     handicaps <- list()

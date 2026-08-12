@@ -12,9 +12,17 @@
 // flow lives in DOM-coupled winLossHandler.js). Consumed by
 // src/ui/nameCapture.js's ensureLeaderboardName.
 //
-// Prompt ONLY for the three modes that submit to a public leaderboard and only
+// Prompt ONLY for the modes that put a name in front of other people, and only
 // when no usable name is saved. Archive replays and practice dailies are
 // excluded (they don't post to the day-of leaderboard).
+//
+// MATCH joined the set when the match node shipped. PR 3 left a solo match
+// deliberately ungated on the reasoning that it submitted nothing anywhere;
+// both halves of that reasoning are now false. A match board files a par-fit
+// row under the player's name, and a shared match shows that name in the
+// standings every other player is watching. The gate fires at most once per
+// player: the first match board a nameless player clears, after which the name
+// is saved and every later mode finds it.
 //
 // NOT gated on the test environment: the gate is a real UX element that must be
 // reviewable on the /test/ build, and it stays harmless there (submissions are
@@ -22,7 +30,7 @@
 // automated e2e spec wins a game, so the modal never blocks CI; a future
 // win-journey spec would seed a player name (as a returning player has one).
 
-const GATED_MODES = new Set(['daily', 'weekly']);
+const GATED_MODES = new Set(['daily', 'weekly', 'match']);
 
 /**
  * @param {Object} args

@@ -10,15 +10,30 @@ import assert from 'node:assert/strict';
 import { shouldPromptForName } from '../src/logic/shouldPromptForName.js';
 
 test('prompts for the leaderboard modes when no name is saved', () => {
-  for (const mode of ['daily', 'weekly']) {
+  for (const mode of ['daily', 'weekly', 'match']) {
     assert.equal(shouldPromptForName({ mode, savedName: '' }), true, `${mode} with no name should prompt`);
   }
 });
 
 test('does not prompt once a usable name is saved', () => {
-  for (const mode of ['daily', 'weekly']) {
+  for (const mode of ['daily', 'weekly', 'match']) {
     assert.equal(shouldPromptForName({ mode, savedName: 'Greg' }), false, `${mode} with a name should not prompt`);
   }
+});
+
+test('REGRESSION (match node): a match win prompts, because the name is now public', () => {
+  // PR 3 exempted 'match' on the reasoning that a solo run submitted nothing
+  // anywhere. The match node made both halves false in one change: every
+  // cleared board files a par-fit row under this name, and a shared match puts
+  // it in a standings panel the other players are watching. This assertion is
+  // the one that fails if the mode is ever quietly dropped from the set again.
+  assert.equal(shouldPromptForName({ mode: 'match', savedName: '' }), true);
+});
+
+test('a pinned practice match board never prompts — it records nothing', () => {
+  // ?matchboard= is the test-env practice lane: no stats, no node, no fit row,
+  // so there is no name to demand. winLossHandler passes isLevelPractice here.
+  assert.equal(shouldPromptForName({ mode: 'match', savedName: '', isPractice: true }), false);
 });
 
 test('a whitespace-only saved name is treated as unset', () => {
@@ -26,10 +41,10 @@ test('a whitespace-only saved name is treated as unset', () => {
 });
 
 test('never prompts for non-leaderboard modes', () => {
-  // 'match' is here deliberately: a solo Challenge match submits nothing,
-  // so demanding a handle for one would gate a private game. The
-  // head-to-head build gives matches a public surface and moves it.
-  for (const mode of ['normal', 'match', 'chaos', undefined, null, 'gym']) {
+  // 'match' left this list when the match node shipped (see the regression
+  // above). The Climb, chaos and the gym stay: none of them puts a name in
+  // front of anyone.
+  for (const mode of ['normal', 'chaos', undefined, null, 'gym']) {
     assert.equal(shouldPromptForName({ mode, savedName: '' }), false, `${mode} should never prompt`);
   }
 });

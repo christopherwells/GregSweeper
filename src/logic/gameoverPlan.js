@@ -34,6 +34,7 @@ export const GAMEOVER_ELEMENT_IDS = [
   'gameover-share',
   'gameover-crux-challenge',
   'gameover-match-next',
+  'gameover-match-again',
   'gameover-remind-tomorrow',
   'gameover-retry',
   'gameover-done',
@@ -44,6 +45,7 @@ export const GAMEOVER_ELEMENT_IDS = [
   'gameover-chaos-next',
   'chaos-run-summary',
   'match-summary',
+  'match-standings',
   'share-card-preview',
 ];
 
@@ -69,8 +71,8 @@ export function gameoverModalPlan(outcome, mode) {
     plan['gameover-share'] = true;
     plan['gameover-crux-challenge'] = isDailyLike;
     // A match board, once won, is banked: Play Again on it would hand the
-    // player a fresh clock on a layout they have already cleared, the same
-    // reason the canonical modes hide it. The match's own flow buttons
+    // player a fresh clock on a layout they have already cleared, which is why
+    // the canonical modes leave it out too. The match's own flow buttons
     // (Next board mid-match, Done on the last) are data-dependent and
     // unhidden by the handler.
     plan['gameover-retry'] = !isDailyLike && !isMatch;
@@ -79,7 +81,9 @@ export function gameoverModalPlan(outcome, mode) {
     // Data-dependent, unhidden by handleWin after content renders:
     // par, history-dots, receipt, record, nextlevel, powerup-earned,
     // achievements, remind-tomorrow, share-card-preview, match-next,
-    // match-summary (and done doubles as the match's last-board close).
+    // match-again, match-summary, match-standings (and done doubles as the
+    // match's last-board close). match-standings additionally needs a SHARED
+    // match: a solo run has no node and nobody to stand against.
   } else if (outcome === 'loss') {
     plan['gameover-retry'] = true;
     plan['gameover-encouragement'] = true;

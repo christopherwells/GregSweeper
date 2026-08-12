@@ -14,6 +14,7 @@ import {
   defaultMatchRules, sanitizeMatchRules,
   matchIndexRow, parseMatchIndex, boardMatchesRules, eligibleRows,
   pickMatchBoards, matchAdvance, matchTotals,
+  matchRulesForLaunch, unmetMatchRules,
 } from '../src/logic/matchRules.js';
 import { LIB_SHAPE_INTROS, LIB_MOD_INTROS } from '../src/logic/climbLibrary.js';
 import { TILING_TYPES } from '../src/logic/tilingGeometry.js';
@@ -227,4 +228,58 @@ test('an unrated player gets no adjusted total, never a fake 1.0 pretense', () =
   assert.equal(matchTotals(results, 0).adjusted, null);
   assert.equal(matchTotals(results, NaN).adjusted, null);
   assert.equal(matchTotals([], 2).raw, 0);
+});
+
+// ── Whose rules a launch plays (the host-unlocks ruling) ────────────────
+
+test('a HOST re-sanitizes against their own current unlocks', () => {
+  // A saved rule set from before a progression reset must never reach outside
+  // what this player has met (his rule: the host's filter IS the rules).
+  const unlocks = { shapes: ['rect'], mods: [] };
+  const out = matchRulesForLaunch(
+    { count: 4, shapes: ['rect', 'hex'], mods: ['worm'], time: 'any', density: 'any' },
+    null, unlocks,
+  );
+  assert.deepStrictEqual(out.shapes, ['rect']);
+  assert.deepStrictEqual(out.mods, []);
+  assert.strictEqual(out.count, 4);
+});
+
+test('REGRESSION: a GUEST plays the stored rules verbatim, never the intersection', () => {
+  // His ruling is that the HOST's unlocks build the match, with a warning
+  // naming what the guest has not met. Re-sanitizing here against the guest's
+  // own unlocks would silently rewrite the match the two of them agreed to
+  // play, and the boards are already dealt and frozen, so it would also
+  // describe a set of boards that is not the one being played.
+  const hostRules = { count: 5, shapes: ['rect', 'cairo'], mods: ['worm', 'liar'], time: 'quick', density: 'any' };
+  const guestUnlocks = { shapes: ['rect'], mods: [] };
+  const out = matchRulesForLaunch(null, { rules: hostRules }, guestUnlocks);
+  assert.strictEqual(out, hostRules, 'the stored object must pass through untouched');
+  assert.deepStrictEqual(out.shapes, ['rect', 'cairo']);
+  assert.deepStrictEqual(out.mods, ['worm', 'liar']);
+});
+
+test('a shared node with no rules still degrades to a sanitized set', () => {
+  const unlocks = { shapes: ['rect'], mods: [] };
+  for (const shared of [{}, { rules: null }, { rules: 'nope' }]) {
+    const out = matchRulesForLaunch(null, shared, unlocks);
+    assert.ok(out && Array.isArray(out.shapes) && out.shapes.length > 0);
+  }
+});
+
+test('unmetMatchRules NAMES what a guest has not met, and removes nothing', () => {
+  const rules = { shapes: ['rect', 'cairo', 'floret'], mods: ['worm', 'liar'] };
+  const unmet = unmetMatchRules(rules, { shapes: ['rect', 'cairo'], mods: ['liar'] });
+  assert.deepStrictEqual(unmet.shapes, ['floret']);
+  assert.deepStrictEqual(unmet.mods, ['worm']);
+  // The rules object itself is untouched: this reports, it does not filter.
+  assert.deepStrictEqual(rules.shapes, ['rect', 'cairo', 'floret']);
+});
+
+test('unmetMatchRules is empty when the guest has met everything, and never throws', () => {
+  assert.deepStrictEqual(
+    unmetMatchRules({ shapes: ['rect'], mods: [] }, { shapes: ['rect', 'hex'], mods: ['worm'] }),
+    { shapes: [], mods: [] });
+  assert.deepStrictEqual(unmetMatchRules(null, null), { shapes: [], mods: [] });
+  assert.deepStrictEqual(unmetMatchRules({}, { shapes: [], mods: [] }), { shapes: [], mods: [] });
 });

@@ -185,6 +185,9 @@ function resumeContext(slot) {
     // progression cannot hold, the pre-C250 save the epoch reset never
     // reached (issue #239).
     maxLevelReached: loadStats().modeStats?.challenge?.maxLevelReached || 1,
+    // A shared Challenge match's seven-day life. Passed in rather than read
+    // inside the pure module, the way every other anchor here is.
+    now: Date.now(),
   };
 }
 

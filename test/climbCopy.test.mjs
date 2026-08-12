@@ -49,6 +49,20 @@ const SANCTIONED_PHRASES = [
   "normal: 'THE CLIMB', match: 'CHALLENGE'",
   'GregSweeper · Challenge',
   'Build a Challenge run to see your history!',
+  // The head-to-head surfaces (match node, PR 4a). Every one of these names
+  // the mode a player joins with a code, never the 250-level ladder, which is
+  // the distinction this file exists to keep. Sanctioned line by line rather
+  // than by loosening the scan, so the next stretch of copy still has to
+  // justify itself.
+  'Join a Challenge',
+  'Challenge code',
+  'A board in this Challenge failed its check',
+  'That Challenge run has closed.',
+  'You need a connection to join a Challenge.',
+  'That Challenge is full.',
+  'That Challenge is no longer available.',
+  'Could not join that Challenge.',
+  'invited you to a Challenge.',
 ];
 
 // ── index.html: visible text and the attributes a human reads ──────────────
