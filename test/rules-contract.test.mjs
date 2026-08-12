@@ -178,6 +178,30 @@ test('users/{uid}/matchInvites: a friend may write one, a stranger may not', () 
     'an invite must not store a display name — join-at-read from playerNames instead');
 });
 
+test('REGRESSION: the friend grant stops at CREATION, so only the recipient may answer', () => {
+  // The friend branch has to carry `!data.exists()`. Without it the grant is
+  // standing rather than one-shot, and both halves of that are reachable:
+  //
+  //   - a partial update() leaves `from` untouched, and the rule reads it from
+  //     the MERGED result, so `auth.uid === newData.child('from').val()` stays
+  //     true for the sender forever. They could write `state` on the
+  //     recipient's invite and answer it for them.
+  //   - sendMatchInvite uses set(), which REPLACES the node. Re-inviting after
+  //     a decline would drop `state` entirely, and an absent state reads as
+  //     pending, so a re-send would silently undo someone's "no thanks".
+  //
+  // His ruling is that all three answers belong to the person who was asked
+  // and are theirs to take back. That is a rules property, not a UI one.
+  const w = rules.users.$uid.matchInvites.$matchId['.write'];
+  assert.match(w, /!data\.exists\(\)/,
+    'the friend branch must be creation-only, or the sender can answer for the recipient');
+  // Non-vacuity: the clause has to sit in the FRIEND branch, past the owner
+  // test, not merely appear somewhere in the expression.
+  const friendBranch = w.slice(w.indexOf('auth.uid === $uid') + 'auth.uid === $uid'.length);
+  assert.match(friendBranch, /!data\.exists\(\)/,
+    'the creation-only clause belongs to the friend branch, not the owner branch');
+});
+
 test('every match timestamp is the server sentinel, never a client clock', () => {
   // A field validated `=== now` written with Date.now() is silently rejected
   // and drops the WHOLE write (the 866683d incident froze stats for two weeks).
