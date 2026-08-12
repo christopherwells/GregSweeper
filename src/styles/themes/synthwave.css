@@ -162,11 +162,6 @@
   letter-spacing: 1px;
 }
 
-[data-theme="synthwave"] .mode-btn {
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
 /* Scanline overlay */
 [data-theme="synthwave"] #app::before {
   content: '';
