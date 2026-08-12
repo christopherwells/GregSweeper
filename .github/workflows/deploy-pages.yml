@@ -73,6 +73,18 @@ jobs:
       - name: Compose site
         run: |
           set -euo pipefail
+          # Start from an EMPTY _site every run. The runner is self-hosted, so
+          # the workspace survives between runs, and actions/checkout only
+          # cleans the paths it checks out (main-content, test-content). The
+          # tar extractions below overlay files, they never remove one that
+          # disappeared from the repo, so without this a deleted file stays on
+          # production forever. Measured 2026-08-12: the deployed artifact
+          # still carried assets/sprites/mode-quickplay.svg at root hours after
+          # the commit that deleted it. The visible symptom is a URL that keeps
+          # returning 200 after its file is gone; the dangerous one is a
+          # deleted-and-renamed module still resolving, which hides a broken
+          # import behind a file that should have 404'd.
+          rm -rf _site
           mkdir -p _site
           # Copy main contents into root. Use tar for clean dotfile
           # handling and to exclude .git / .github + any stray test/
