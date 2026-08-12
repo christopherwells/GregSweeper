@@ -300,6 +300,27 @@ function wire() {
     });
   }
 
+  // The two shared routes. Both leave the sheet's rules exactly as they are:
+  // the invite DEALS under them (the boards are frozen before anyone can
+  // join), while joining reads nothing from the sheet at all, since a joined
+  // match plays the host's rules.
+  const inviteBtn = $('#match-invite-btn');
+  if (inviteBtn) {
+    inviteBtn.addEventListener('click', async () => {
+      hideModal('match-setup-modal');
+      const m = await import('./matchLobby.js');
+      m.createSharedMatch(_rules);
+    });
+  }
+  const joinBtn = $('#match-join-btn');
+  if (joinBtn) {
+    joinBtn.addEventListener('click', async () => {
+      hideModal('match-setup-modal');
+      const m = await import('./matchLobby.js');
+      m.openMatchJoin('');
+    });
+  }
+
   const modal = $('#match-setup-modal');
   if (modal) {
     modal.querySelector('.modal-close')?.addEventListener('click',

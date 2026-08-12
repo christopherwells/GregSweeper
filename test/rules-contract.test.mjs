@@ -98,7 +98,85 @@ test('users/{uid}: all written progress fields are whitelisted', () => {
     'dailyHistory', 'weeklyAttempts', 'weeklyCompletions', 'weekStreak',
     'pushSubscription', 'notificationPrefs',
     'powerUps', 'moltDay', 'challenge250',
+    // matchInvites is written by a FRIEND, not the owner, but it lives under
+    // the same strict $other:false, so an un-whitelisted entry would drop the
+    // whole progress write for everyone (the 866683d class).
+    'matchInvites',
   ]);
+});
+
+test('matches/{matchId}: the node the host writes is fully whitelisted', () => {
+  // src/firebase/firebaseMatch.js createMatch writes this node WHOLE, once.
+  assertWhitelist(rules.matches.$matchId, 'matches/$matchId', [
+    'host', 'rules', 'boards', 'createdAt', 'playerCount', 'players',
+  ]);
+  assertWhitelist(rules.matches.$matchId.rules, 'matches/$matchId/rules', [
+    'count', 'shapes', 'mods', 'time', 'density',
+  ]);
+  // A stored board is the five fields certifyStoredBoard reads, and no more.
+  assertWhitelist(rules.matches.$matchId.boards.$idx, 'matches/$matchId/boards/$idx', [
+    'seed', 'par', 'features', 'spec', 'payload',
+  ]);
+  assertWhitelist(rules.matches.$matchId.players.$uid, 'matches/$matchId/players/$uid', [
+    'name', 'joinedAt', 'finishedAt', 'results',
+  ]);
+  assertWhitelist(rules.matches.$matchId.players.$uid.results.$idx,
+    'matches/$matchId/players/$uid/results/$idx', ['time', 'penalty', 'strikes']);
+});
+
+test('matches: boards and results are CAPPED in the rules, not in the client', () => {
+  // Anyone holding a six-character code can write a player entry, so the
+  // bounds have to be server-side. Both ride a single-digit index regex,
+  // which caps each at ten and matches MATCH_BOARD_MAX exactly.
+  for (const [label, node] of [
+    ['boards', rules.matches.$matchId.boards.$idx],
+    ['results', rules.matches.$matchId.players.$uid.results.$idx],
+  ]) {
+    const v = node['.validate'];
+    assert.match(v, /\$idx\.matches\(\/\^\[0-9\]\$\/\)/,
+      `${label} must cap its index at one digit (ten entries)`);
+  }
+});
+
+test('matches: a player slot is keyed by its OWN writer, and expiry gates the write', () => {
+  // The users/{uid}/friends/{friendUid} grant idiom: the key IS the writer's
+  // uid, so a stranger with the code writes exactly one slot and no other.
+  const w = rules.matches.$matchId.players.$uid['.write'];
+  assert.match(w, /auth\.uid === \$uid/, 'a player may write only their own slot');
+  assert.match(w, /now </, 'and only while the match still accepts writes');
+  // Reads deliberately carry NO expiry: his ruling freezes writes and leaves
+  // results readable forever.
+  const r = rules.matches.$matchId['.read'];
+  assert.equal(r, 'auth != null');
+  assert.ok(!/now/.test(r), 'reads must NOT expire — an old match stays readable');
+  // And the node itself is not enumerable: only $matchId is readable.
+  assert.equal(rules.matches['.read'], undefined,
+    'the matches root must not be readable, or every match could be downloaded');
+});
+
+test('users/{uid}/matchInvites: a friend may write one, a stranger may not', () => {
+  const w = rules.users.$uid.matchInvites.$matchId['.write'];
+  assert.match(w, /auth\.uid === \$uid/, 'the owner can always dismiss their own invite');
+  assert.match(w, /friends/, 'a non-owner must be an established friend of the recipient');
+  assert.match(w, /auth\.uid === newData\.child\('from'\)\.val\(\)/,
+    'and must name themselves as the sender');
+  assertWhitelist(rules.users.$uid.matchInvites.$matchId, 'matchInvites/$matchId',
+    ['from', 'code', 'sentAt']);
+  // The sender's NAME is deliberately absent: it resolves from playerNames at
+  // render time, so there is no unswept name-bearing field here.
+  assert.ok(!('fromName' in rules.users.$uid.matchInvites.$matchId),
+    'an invite must not store a display name — join-at-read from playerNames instead');
+});
+
+test('every match timestamp is the server sentinel, never a client clock', () => {
+  // A field validated `=== now` written with Date.now() is silently rejected
+  // and drops the WHOLE write (the 866683d incident froze stats for two weeks).
+  const sentinel = 'newData.val() === now';
+  assert.equal(rules.matches.$matchId.createdAt['.validate'], sentinel);
+  assert.equal(rules.matches.$matchId.players.$uid.joinedAt['.validate'], sentinel);
+  assert.equal(rules.matches.$matchId.players.$uid.finishedAt['.validate'], sentinel);
+  assert.equal(rules.matchCodes.$code.createdAt['.validate'], sentinel);
+  assert.equal(rules.users.$uid.matchInvites.$matchId.sentAt['.validate'], sentinel);
 });
 
 test('dailyBoard/{date}: every stamped canonical field is whitelisted', () => {

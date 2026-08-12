@@ -675,10 +675,16 @@ export async function newGame() {
       state.match.entries = deal.entries;
     }
 
+    // A SHARED match may not shorten. Splicing a failed board out renumbers
+    // every board after it, so "board 3" would stop meaning the same board to
+    // the two players, and each result posts under its INDEX. A solo match has
+    // no one to disagree with and keeps the shortening behavior.
+    const shared = !!state.match.id;
     let res = null;
     while (!res && state.match.current < state.match.entries.length) {
       const entry = state.match.entries[state.match.current];
       res = certifyStoredBoard(entry, `match #${state.match.current + 1}`);
+      if (!res && shared) break;
       if (!res) {
         // Drop the failing entry and let the next one take its slot; the
         // match shortens rather than shipping an unverified board.
@@ -689,7 +695,9 @@ export async function newGame() {
     }
     if (staleRun()) return;
     if (!res) {
-      abortModeStart('match', 'The boards could not be verified. Try again.');
+      abortModeStart('match', shared
+        ? 'A board in this Challenge failed its check, so it cannot be played fairly.'
+        : 'The boards could not be verified. Try again.');
       return;
     }
 

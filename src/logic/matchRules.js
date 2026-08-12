@@ -162,6 +162,50 @@ export function sanitizeMatchRules(raw, unlocks) {
   };
 }
 
+/**
+ * The rules a launch should actually play under.
+ *
+ * A HOST's rules are re-sanitized against their current unlocks, so a stale or
+ * hand-edited saved rule set can never reach outside them (his rule: the
+ * host's filter is the rules).
+ *
+ * A JOINED match plays the stored rules VERBATIM. Re-sanitizing them against
+ * the guest's unlocks would silently rewrite the match the two players agreed
+ * to, which is the opposite of his ruling that the host's unlocks build the
+ * match with a warning rather than the intersection of both players'. The
+ * boards are dealt and frozen before anyone joins, so at that point the rules
+ * are a record of how they were chosen, not a filter still being applied.
+ *
+ * Extracted from launchMatch because that function persists, mutates state and
+ * calls newGame, so the decision inside it could not otherwise be tested.
+ *
+ * @param {object|null} rawRules  the sheet's working copy (host path)
+ * @param {object|null} shared    the joined match's stored node, if any
+ * @param {{shapes: string[], mods: string[]}} unlocks this player's unlocks
+ */
+export function matchRulesForLaunch(rawRules, shared, unlocks) {
+  if (shared && shared.rules && typeof shared.rules === 'object') return shared.rules;
+  return sanitizeMatchRules(rawRules, unlocks);
+}
+
+/**
+ * Which of a joined match's rules name something this player has not met.
+ *
+ * His ruling: the host's unlocks build the match, WITH A WARNING naming
+ * anything a guest has not met. This returns those names so the join card can
+ * say them; it never filters, because filtering is the intersection he ruled
+ * against.
+ */
+export function unmetMatchRules(rules, unlocks) {
+  if (!rules || !unlocks) return { shapes: [], mods: [] };
+  const shapeSet = new Set(unlocks.shapes || []);
+  const modSet = new Set(unlocks.mods || []);
+  return {
+    shapes: (rules.shapes || []).filter((s) => !shapeSet.has(s)),
+    mods: (rules.mods || []).filter((m) => !modSet.has(m)),
+  };
+}
+
 // ── The index row: ONE shape, two writers ───────────────────────────────
 //
 // match-index.json carries a compact row per stored board so one fetch

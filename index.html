@@ -583,11 +583,17 @@
           <div class="chaos-summary-stat"><span class="chaos-stat-label">Best Run</span><span id="chaos-best-run" class="chaos-stat-value">0</span></div>
         </div>
         <div id="match-summary" class="match-summary hidden"></div>
+        <!-- Where everyone in a shared Challenge stands, live: times appear as
+             they are posted, whether or not the viewer has finished. -->
+        <div id="match-standings" class="match-standings hidden"></div>
         <div class="gameover-actions">
           <button id="gameover-retry" class="action-btn">Play Again</button>
           <button id="gameover-explore" class="action-btn hidden">Explore Board</button>
           <button id="gameover-nextlevel" class="action-btn primary hidden">Next Level</button>
           <button id="gameover-match-next" class="action-btn primary hidden">Next board</button>
+          <!-- Rematch: the same rules on a NEW set of boards, so nobody
+               replays a layout they have already seen. -->
+          <button id="gameover-match-again" class="action-btn hidden">Play these rules again</button>
           <button id="gameover-chaos-next" class="action-btn primary hidden">Next Board →</button>
           <!-- Daily-win opt-in CTA: shown on daily/weekly wins ONLY when
                push notifications are currently disabled. The single
@@ -1089,7 +1095,54 @@
 
         <div id="match-supply" class="match-supply" aria-live="polite"></div>
         <button id="match-start" class="match-start-btn" type="button">Start Challenge</button>
+        <!-- His two invite routes: share a code, or invite a friend you
+             already have. Both start from the same rules the sheet is
+             showing, because the boards are dealt when the invite is made. -->
+        <div class="match-share-row">
+          <button id="match-invite-btn" class="friends-btn" type="button">Invite a friend</button>
+          <button id="match-join-btn" class="friends-btn" type="button">Use a code</button>
+        </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Challenge: the invite a host hands out (code, link, friend list). -->
+  <div id="match-invite-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content match-setup-content">
+      <div class="modal-header">
+        <h2>Invite a friend</h2>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
+      </div>
+      <div class="modal-body" id="match-invite-body"></div>
+    </div>
+  </div>
+
+  <!-- Challenge: taking someone else's invite. Also where a ?match= link lands. -->
+  <div id="match-join-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content match-setup-content">
+      <div class="modal-header">
+        <h2>Join a Challenge</h2>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
+      </div>
+      <div class="modal-body">
+        <div class="friends-add-block">
+          <input id="match-join-input" class="friends-input" type="text" maxlength="8"
+                 placeholder="Enter a code" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <button id="match-join-lookup" class="friends-btn" type="button">Look up</button>
+        </div>
+        <p id="match-join-status" class="friends-status hidden"></p>
+        <div id="match-join-preview"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Challenge: a friend's invite, offered live or on the next open. Sits
+       outside #app so it can show over the title screen, which is a sibling. -->
+  <div id="match-invite-toast" class="match-invite-toast hidden" role="status">
+    <span id="match-invite-toast-text" class="match-invite-toast-text"></span>
+    <div class="match-invite-toast-actions">
+      <button id="match-invite-accept" class="friends-btn" type="button">Join</button>
+      <button id="match-invite-later" class="friends-btn" type="button">Later</button>
     </div>
   </div>
 

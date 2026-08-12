@@ -14,6 +14,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { planScoreSubmission, canonicalSeedPath } from '../src/logic/submitGate.js';
+import { matchRowKey } from '../src/logic/matchCodes.js';
 
 const UID = 'player-1';
 const DATE = '2026-08-07';
@@ -114,4 +115,35 @@ test('the two paths are never the same node for the same week', () => {
   // Non-vacuity: if a refactor collapsed these, the weekly rows would go back
   // to being compared against a node that does not exist.
   assert.notEqual(canonicalSeedPath('2026-08-03_weekly_first'), canonicalSeedPath('2026-08-03'));
+});
+
+test('a MATCH bucket has no canonical, and says so explicitly', () => {
+  // A match board comes from the committed library, not from a canonical, so
+  // there is nothing for it to diverge from. Returning null makes the caller
+  // SKIP the read. Left to the default it would have read
+  // `dailyBoard/match_<hash>/rngSeed`, found null, and the divergence check
+  // would have no-opped by accident — which is exactly how the weekly's guard
+  // silently did nothing for every fit row it ever wrote.
+  const key = matchRowKey('match:rect|5x5|3|:1:5');
+  assert.equal(canonicalSeedPath(key), null);
+  // And the date forms are untouched by the new branch.
+  assert.equal(canonicalSeedPath(DATE), `dailyBoard/${DATE}/rngSeed`);
+  assert.equal(canonicalSeedPath('2026-08-03_weekly_first'), 'weeklyBoard/2026-08-03/rngSeed');
+  // A near-miss that is not a real match key keeps the daily behavior rather
+  // than silently skipping the check.
+  assert.equal(canonicalSeedPath('match_nothex'), 'dailyBoard/match_nothex/rngSeed');
+});
+
+test('a match row still dedupes per (uid, board) with no rngSeed stored', () => {
+  // Match rows omit rngSeed (the bucket key already names the board), so the
+  // effective-seed reconstruction has to resolve to the key itself, or a
+  // player could file the same board twice.
+  const key = matchRowKey('seed-x');
+  const rows = rowsWith({ uid: UID, time: 30 });
+  assert.equal(planScoreSubmission({
+    rows, uid: UID, bucketKey: key, playedSeed: key, canonicalSeed: null,
+  }).verdict, 'duplicate');
+  assert.equal(planScoreSubmission({
+    rows, uid: 'someone-else', bucketKey: key, playedSeed: key, canonicalSeed: null,
+  }).verdict, 'proceed');
 });

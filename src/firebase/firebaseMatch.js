@@ -1,0 +1,358 @@
+/**
+ * The Challenge match node, Firebase I/O.
+ *
+ * Thin plumbing over the pure logic in src/logic/matchCodes.js (codes, the
+ * seven-day lifetime, the join verdict, the fit-row key) and
+ * src/logic/matchStandings.js (the ranked panel). Every decision lives there;
+ * only reads and writes live here.
+ *
+ * Model (see firebase-rules.json):
+ *  - matches/{matchId} = { host, rules, boards, createdAt, playerCount,
+ *    players }. Created WHOLE by the host in one write-once set, so the boards
+ *    are frozen from the first moment anyone can see them. `boards` are the
+ *    dealt library entries stored verbatim, which is the arc's standing rule:
+ *    both players play the same bytes, never a shared seed re-derived at play
+ *    time. The guest still re-certifies every board through
+ *    certifyStoredBoard's ground-truth audit before installing it, so trust in
+ *    the host is never required, and no signature is needed to replace it.
+ *  - matches/{matchId}/players/{uid} keyed by the WRITER's uid, the
+ *    users/{uid}/friends/{friendUid} grant idiom: a stranger holding the code
+ *    can write exactly one slot, their own, and no other.
+ *  - matchCodes/{CODE} = { matchId, createdAt }, the friendCodes shape at the
+ *    match's own seven-day life (his ruling: one lifetime for both). Expiry is
+ *    server-enforced in the read gate, so an old code is unreadable regardless
+ *    of the client clock.
+ *  - users/{uid}/matchInvites/{matchId} = { from, code, sentAt }. A friend may
+ *    write this into your node, which is the second deliberate write exception
+ *    on users/ after friends/. The sender's NAME is deliberately not stored:
+ *    it resolves from playerNames at render time (join-at-read), so there is
+ *    one fewer name-bearing path to sweep and a renamed friend reads correctly.
+ *
+ * EXPIRY IS ONE-SIDED, his ruling: after seven days the match takes no new
+ * joins and no new results, and stays readable to everyone who has its id,
+ * forever. The rules derive that deadline from `createdAt` rather than from a
+ * stored `expiresAt`, because createdAt is the server sentinel and is exact,
+ * while any client-computed expiry would have to survive clock skew; a player
+ * whose phone runs five minutes fast would otherwise fail to create a match at
+ * all.
+ */
+
+import { waitForFirebaseReady } from './waitForFirebase.js';
+import { getUid } from './firebaseProgress.js';
+import { getPlayerName } from '../storage/statsStorage.js';
+import { isTestEnvironment } from './env.js';
+import { reportCaughtError } from '../diagnostics/errorReporter.js';
+import {
+  generateCode, normalizeCode, MATCH_TTL_MS, planMatchJoin,
+} from '../logic/matchCodes.js';
+
+function db() {
+  return firebase.database();
+}
+
+// The offline contract every function here documents, rather than letting
+// waitForFirebaseReady's raw throw leak out of a click handler (the shape
+// firebaseFriends settled on after exactly that bug).
+async function _readyOrNull() {
+  try {
+    return await waitForFirebaseReady();
+  } catch {
+    return null;
+  }
+}
+
+function _fail(reason, message) {
+  const e = new Error(message || reason);
+  e.reason = reason;
+  return e;
+}
+
+/** The five fields a guest needs to play a board, and nothing else. */
+function _storableEntry(entry) {
+  return {
+    seed: entry.seed,
+    par: entry.par || 0,
+    features: entry.features,
+    spec: entry.spec,
+    payload: entry.payload,
+  };
+}
+
+/** When a match created at `createdAt` stops accepting writes. */
+export function matchExpiresAt(createdAt) {
+  return (typeof createdAt === 'number' ? createdAt : 0) + MATCH_TTL_MS;
+}
+
+/**
+ * Create a match from the sheet's rules and the boards already dealt for it.
+ *
+ * Writes the node first and the code second, because the code's write rule
+ * checks that the caller hosts the match it names. A code that cannot be
+ * allocated leaves a playable match with no invite rather than no match; the
+ * caller says so and can retry.
+ *
+ * @param {object} rules   the sanitized match rules
+ * @param {Array<object>} entries the dealt library entries, in play order
+ * @returns {Promise<{matchId: string, code: string|null}>}
+ * @throws Error with .reason in {'offline','test','failed'}
+ */
+export async function createMatch(rules, entries) {
+  // A test build must never create a real match: /test/ shares this origin's
+  // storage and this database with production.
+  if (isTestEnvironment()) throw _fail('test', 'test build');
+  const ready = await _readyOrNull();
+  const uid = getUid();
+  if (!ready || !uid) throw _fail('offline');
+  if (!Array.isArray(entries) || entries.length === 0) throw _fail('failed', 'no boards');
+
+  const matchId = db().ref('matches').push().key;
+  const name = (getPlayerName() || 'Player').slice(0, 20);
+  const node = {
+    host: uid,
+    rules,
+    boards: entries.map(_storableEntry),
+    createdAt: firebase.database.ServerValue.TIMESTAMP,
+    playerCount: 1,
+    players: {
+      [uid]: { name, joinedAt: firebase.database.ServerValue.TIMESTAMP },
+    },
+  };
+  try {
+    await db().ref(`matches/${matchId}`).set(node);
+  } catch (err) {
+    reportCaughtError('match-create', err);
+    throw _fail('failed');
+  }
+
+  // Collision odds at 31^6 are negligible; the retry exists because the
+  // create-only-if-absent rule reports a clash as a permission denial, which
+  // is indistinguishable from any other write failure.
+  let code = null;
+  for (let attempt = 0; attempt < 3 && !code; attempt++) {
+    const candidate = generateCode();
+    try {
+      await db().ref(`matchCodes/${candidate}`).set({
+        matchId,
+        createdAt: firebase.database.ServerValue.TIMESTAMP,
+      });
+      code = candidate;
+    } catch { /* clash or transient, try another code */ }
+  }
+  return { matchId, code };
+}
+
+/** Read a match node. Null when it is absent or unreadable. */
+export async function fetchMatch(matchId) {
+  const ready = await _readyOrNull();
+  if (!ready || !matchId) return null;
+  try {
+    return (await db().ref(`matches/${matchId}`).once('value')).val();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve an invite code to its match.
+ *
+ * The rules hide codes older than the seven-day window, so an expired code is
+ * unreadable and indistinguishable from one that never existed. Both report
+ * 'expired', which is the truer thing to tell a player holding an old text
+ * message than "no such code".
+ *
+ * @returns {Promise<{matchId: string, match: object}>}
+ * @throws Error with .reason in {'invalid','offline','expired'}
+ */
+export async function fetchMatchByCode(input) {
+  const code = normalizeCode(input);
+  if (!code) throw _fail('invalid');
+  const ready = await _readyOrNull();
+  if (!ready) throw _fail('offline');
+
+  let entry = null;
+  try {
+    entry = (await db().ref(`matchCodes/${code}`).once('value')).val();
+  } catch {
+    throw _fail('expired');
+  }
+  if (!entry || !entry.matchId) throw _fail('expired');
+  const match = await fetchMatch(entry.matchId);
+  if (!match) throw _fail('expired');
+  return { matchId: entry.matchId, match };
+}
+
+/**
+ * Take a slot in a match. Idempotent for a player already in it (their entry
+ * stands and the count is left alone, so a resume never inflates it).
+ *
+ * The slot and the count go in ONE multi-location update: the count is what
+ * bounds a match's size in the rules, and writing it separately would leave a
+ * window where a slot exists that the count does not know about.
+ *
+ * @returns {Promise<'joined'|'resume'>}
+ * @throws Error with .reason in {'offline','expired','full','missing','failed'}
+ */
+export async function joinMatch(matchId, match) {
+  const ready = await _readyOrNull();
+  const uid = getUid();
+  if (!ready || !uid) throw _fail('offline');
+
+  const verdict = planMatchJoin({ match, uid, now: Date.now() });
+  if (verdict === 'resume') return 'resume';
+  if (verdict !== 'join') throw _fail(verdict);
+
+  const name = (getPlayerName() || 'Player').slice(0, 20);
+  const count = Number(match.playerCount) || Object.keys(match.players || {}).length;
+  const update = {
+    [`matches/${matchId}/players/${uid}`]: {
+      name,
+      joinedAt: firebase.database.ServerValue.TIMESTAMP,
+    },
+    [`matches/${matchId}/playerCount`]: count + 1,
+  };
+  try {
+    await db().ref().update(update);
+  } catch (err) {
+    reportCaughtError('match-join', err);
+    throw _fail('failed');
+  }
+  return 'joined';
+}
+
+/**
+ * Post one cleared board's result.
+ *
+ * An `update` under the player's own slot, never a `set` of the whole slot:
+ * `joinedAt` validates as the server sentinel, so rewriting the slot would
+ * both re-stamp a join time that already happened and put the write at the
+ * mercy of a rule it has no reason to touch.
+ */
+export async function postMatchResult(matchId, index, result) {
+  const ready = await _readyOrNull();
+  const uid = getUid();
+  if (!ready || !uid || !matchId) return false;
+  if (!Number.isInteger(index) || index < 0 || index > 9) return false;
+  try {
+    await db().ref(`matches/${matchId}/players/${uid}`).update({
+      [`results/${index}`]: {
+        time: Math.round((Number(result.time) || 0) * 10) / 10,
+        penalty: Math.round((Number(result.penalty) || 0) * 10) / 10,
+        strikes: Number(result.strikes) || 0,
+      },
+    });
+    return true;
+  } catch (err) {
+    // A refused post is almost always the seven-day gate closing mid-run.
+    // The board still counted locally and the match summary still renders.
+    reportCaughtError('match-result-post', err);
+    return false;
+  }
+}
+
+/** Mark this player's run over, after the last result has landed. */
+export async function finishMatch(matchId) {
+  const ready = await _readyOrNull();
+  const uid = getUid();
+  if (!ready || !uid || !matchId) return false;
+  try {
+    await db().ref(`matches/${matchId}/players/${uid}`).update({
+      finishedAt: firebase.database.ServerValue.TIMESTAMP,
+    });
+    return true;
+  } catch (err) {
+    reportCaughtError('match-finish', err);
+    return false;
+  }
+}
+
+/**
+ * Watch a match for live standings (his ruling: times appear as they land).
+ * @returns {Function} an unsubscribe
+ */
+export function subscribeMatch(matchId, callback) {
+  if (!matchId || typeof callback !== 'function') return () => {};
+  let ref = null;
+  let handler = null;
+  try {
+    ref = db().ref(`matches/${matchId}`);
+    handler = ref.on('value', (snap) => {
+      try { callback(snap.val()); } catch (err) { reportCaughtError('match-subscribe-cb', err); }
+    }, () => { /* permission or network drop: the panel keeps its last render */ });
+  } catch (err) {
+    reportCaughtError('match-subscribe', err);
+    return () => {};
+  }
+  return () => { try { ref.off('value', handler); } catch { /* already gone */ } };
+}
+
+// ── Friend invites ──────────────────────────────────────────────────────
+
+/**
+ * Invite a friend directly, so they see the match without anyone reading a
+ * code aloud (his ruling: "you can either share a code or invite someone if
+ * you're friends already"). The invite carries the code, so accepting it takes
+ * the same path a pasted code does.
+ */
+export async function sendMatchInvite(friendUid, matchId, code) {
+  const ready = await _readyOrNull();
+  const uid = getUid();
+  if (!ready || !uid || !friendUid || !matchId || !code) return false;
+  try {
+    await db().ref(`users/${friendUid}/matchInvites/${matchId}`).set({
+      from: uid,
+      code,
+      sentAt: firebase.database.ServerValue.TIMESTAMP,
+    });
+    return true;
+  } catch (err) {
+    // The rules refuse an invite from someone the recipient has not befriended.
+    reportCaughtError('match-invite-send', err);
+    return false;
+  }
+}
+
+/**
+ * Watch this player's invites.
+ *
+ * `child_added` fires once for every invite already sitting there when the
+ * listener attaches, and again for each new one, which is exactly his rule:
+ * the invite arrives while the app is open, or the next time it opens.
+ * Invites past the match's own lifetime are skipped rather than shown, since
+ * the match behind them no longer accepts anyone.
+ *
+ * @returns {Function} an unsubscribe
+ */
+export function subscribeMatchInvites(callback) {
+  const uid = getUid();
+  if (!uid || typeof callback !== 'function') return () => {};
+  let ref = null;
+  let handler = null;
+  try {
+    ref = db().ref(`users/${uid}/matchInvites`);
+    handler = ref.on('child_added', (snap) => {
+      const v = snap.val();
+      if (!v || !v.code) return;
+      if (typeof v.sentAt === 'number' && Date.now() >= v.sentAt + MATCH_TTL_MS) return;
+      try {
+        callback({ matchId: snap.key, from: v.from, code: v.code, sentAt: v.sentAt });
+      } catch (err) { reportCaughtError('match-invite-cb', err); }
+    }, () => { /* offline: invites arrive on the next open instead */ });
+  } catch (err) {
+    reportCaughtError('match-invite-subscribe', err);
+    return () => {};
+  }
+  return () => { try { ref.off('child_added', handler); } catch { /* already gone */ } };
+}
+
+/** Clear an invite once it has been accepted or waved off. */
+export async function dismissMatchInvite(matchId) {
+  const ready = await _readyOrNull();
+  const uid = getUid();
+  if (!ready || !uid || !matchId) return false;
+  try {
+    await db().ref(`users/${uid}/matchInvites/${matchId}`).remove();
+    return true;
+  } catch {
+    return false;
+  }
+}

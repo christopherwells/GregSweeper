@@ -38,3 +38,26 @@ test('REGRESSION #54: the sweep set includes timed and dailyArchive', () => {
     assert.ok(scrubSrc.includes(`ref('${path}')`), `scrub must sweep ${path}/`);
   }
 });
+
+test('match player names are swept even though the derivation exempts them', () => {
+  // `matches` is read-gated on `auth != null` rather than world-readable, so
+  // the derivation above skips it the way it skips friendCodes. That is a
+  // deliberate read posture (a match is found by its code, never by browsing,
+  // and the node must not be enumerable), NOT a decision that the names inside
+  // it do not matter. Every one of them is shown to other players, so the
+  // backstop covers them; this assertion is what keeps the sweep from being
+  // dropped on the grounds that the derivation no longer demands it.
+  assert.equal(rules.matches?.['.read'], undefined,
+    'the matches root must stay non-enumerable');
+  assert.equal(rules.matches?.$matchId?.['.read'], 'auth != null');
+  assert.ok(scrubSrc.includes("ref('matches')"),
+    'scrub must sweep matches/ — its player names are shown to other players');
+});
+
+test('expired match codes are swept, not just friend codes', () => {
+  // A match code lives seven days rather than fifteen minutes, so without a
+  // sweep the node accumulates a week of dead codes at a time.
+  assert.ok(scrubSrc.includes("ref('matchCodes')"), 'scrub must sweep matchCodes/');
+  assert.ok(/MATCH_CODE_SWEEP_AGE_MS\s*=\s*7 \* 24 \* 60 \* 60 \* 1000/.test(scrubSrc),
+    'the match-code sweep window must be the seven-day lifetime');
+});

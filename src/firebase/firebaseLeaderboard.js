@@ -28,7 +28,12 @@ const PLAYER_NAMES_TTL_MS = 60000;
 // clock let a timed (Quick Play) win suppress a daily/weekly_first submission
 // landing within the cooldown window (issue #89), the paths look independent
 // to the player, so one must never burn the other's clock.
-const _lastSubmitByKind = { daily: 0, archive: 0, timed: 0 };
+//
+// EVERY path must appear in this literal. `_submitCooldownOk` reads
+// `_lastSubmitByKind[kind] || 0`, so an unregistered kind is not rate-limited
+// at all. It is always permitted, and a reader of the call site cannot tell
+// that from a limit that is working.
+const _lastSubmitByKind = { daily: 0, archive: 0, timed: 0, match: 0 };
 const SUBMIT_COOLDOWN_MS = 30000; // 30 seconds between submissions per path
 
 // Exported for the #89 regression pin: the per-path clocks are independent.
@@ -316,10 +321,16 @@ async function _doSubmitOnlineScore(dateString, name, time, bombHits, extras) {
         existingRows = (await db.ref(`daily/${dateString}`).once('value')).val();
       } catch { /* read failed, nothing blocks the push */ }
     }
+    // A null path means this bucket has no canonical to diverge from (a match
+    // board; see canonicalSeedPath). Skip the read rather than making one whose
+    // answer is null by construction and could only ever no-op the check.
     let canonicalSeed = null;
-    try {
-      canonicalSeed = (await db.ref(canonicalSeedPath(dateString)).once('value')).val();
-    } catch { /* read failed, proceed with the push */ }
+    const seedPath = canonicalSeedPath(dateString);
+    if (seedPath) {
+      try {
+        canonicalSeed = (await db.ref(seedPath).once('value')).val();
+      } catch { /* read failed, proceed with the push */ }
+    }
 
     const { verdict } = planScoreSubmission({
       rows: existingRows, uid: extras.uid || null,
@@ -504,6 +515,69 @@ export async function submitArchiveScore(date, name, time, bombHits = 0, extras 
     console.warn('Archive score submission failed:', err && err.message);
     return false;
   }
+}
+
+/**
+ * Submit a finished Challenge match's boards as par-fit rows.
+ *
+ * One row per cleared board, into the SAME `daily/*` + `dailyMeta/*` tables
+ * the refit reads, keyed `match_<hash>` off the board's own seed
+ * (logic/matchCodes.matchRowKey). The weekly's first attempt already lands in
+ * those tables under its own suffix; this is that pattern with a key that
+ * identifies a BOARD instead of a date, which is what lets the same library
+ * board pool rows across matches and hosts.
+ *
+ * BATCHED, and the batch is the reason this is not a loop over
+ * submitOnlineScore. A ten-board match produces ten rows at one moment, and
+ * the 30-second per-path cooldown would queue nine of them for a later boot.
+ * The cooldown's job is to stop a player spamming one submission path, so the
+ * MATCH is the right unit: one check and one stamp for the whole run, with
+ * each row pushed through the un-rate-limited core the retry flush uses.
+ *
+ * Fire-and-forget per row: a failed push queues for the next boot through the
+ * same pending queue every daily row uses, and the flush restamps the uid.
+ *
+ * @param {Array<object>} rows from logic/matchStandings.matchFitRows
+ * @param {string} name  the player's leaderboard name
+ * @param {string} uid
+ * @returns {Promise<{submitted: number, refused: number}>}
+ */
+export async function submitMatchFitRows(rows, name, uid) {
+  const out = { submitted: 0, refused: 0 };
+  if (isTestEnvironment()) return out;
+  if (!Array.isArray(rows) || rows.length === 0) return out;
+  const sanitizedName = String(name || '').slice(0, 20).trim();
+  if (!sanitizedName || !uid) return out;
+
+  const now = Date.now();
+  if (!_submitCooldownOk('match', now)) return out;
+  _stampSubmitCooldown('match', now);
+
+  for (const row of rows) {
+    // The daily's own probing guard, per board: match strikes ride the daily
+    // frame, so a run that found most of a board's mines by stepping on them
+    // is refused here for the same reason it is there. The board still counts
+    // for the player and the match; only the fit row is refused.
+    if (isBombHitCheat(row.bombHits, row.totalMines)) { out.refused++; continue; }
+    const extras = {
+      uid,
+      par: row.par,
+      features: row.features,
+      bombHitEvents: row.bombHitEvents,
+      wormEvents: row.wormEvents,
+      totalMines: row.totalMines,
+      // A match board's seed IS its bucket key's source, so a row never needs
+      // an rngSeed to say which board it was: the key already does.
+    };
+    if (!isFirebaseOnline()) {
+      _queueFailedSubmission(row.key, sanitizedName, row.time, row.bombHits, extras);
+      continue;
+    }
+    const ok = await _doSubmitOnlineScore(row.key, sanitizedName, row.time, row.bombHits, extras);
+    if (ok === true) out.submitted++;
+    else if (ok === false) _queueFailedSubmission(row.key, sanitizedName, row.time, row.bombHits, extras);
+  }
+  return out;
 }
 
 /**

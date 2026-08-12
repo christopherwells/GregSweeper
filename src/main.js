@@ -68,6 +68,7 @@ import { isLiveGameExpired, isWeeklyAttemptCacheStale, weeklyEntryPlan } from '.
 import { blocksManualRestart } from './logic/modeRules.js';
 import { remindCtaOutcome } from './logic/remindCta.js';
 import { parseCoastlineParam, tilingLabel } from './logic/coastlineLink.js';
+import { normalizeCode } from './logic/matchCodes.js';
 import { setDailyShapeOverride } from './logic/shapeRotation.js';
 // 2026-07-10 split: main.js keeps entry wiring + init; these modules own
 // their surfaces (each also binds its own DOM wiring at import time).
@@ -1607,6 +1608,17 @@ if (matchNextBtn) {
   });
 }
 
+// Challenge match: "Play these rules again" deals a NEW set of boards under
+// the same rules (his rematch ruling: a new set, so it stays a fair fight and
+// generates fresh data rather than replaying a known layout).
+const matchAgainBtn = $('#gameover-match-again');
+if (matchAgainBtn) {
+  matchAgainBtn.addEventListener('click', async () => {
+    const m = await import('./ui/matchLobby.js');
+    m.startRematch();
+  });
+}
+
 // Chaos mode: "Next Board" advances to the next round
 const chaosNextBtn = $('#gameover-chaos-next');
 if (chaosNextBtn) {
@@ -2204,6 +2216,11 @@ async function init() {
     && Number.isInteger(_matchBoard[0]) && _matchBoard[0] >= 0
     && Number.isInteger(_matchBoard[1]) && _matchBoard[1] >= 0)
     ? { page: _matchBoard[0], idx: _matchBoard[1] } : null;
+  // ?match=CODE, the shared invite link. NOT test-gated: this is the whole
+  // point of an invite, and it reaches a real player on production. Parsed
+  // through normalizeCode so a mistyped or hostile value resolves to null
+  // rather than reaching Firebase as a path fragment.
+  const deepLinkMatchCode = normalizeCode(urlParams.get('match'));
   // ?coastline=, test-environment-only tiling board (Project Coastline
   // Phase 2). Gated exactly like ?level=, so it is UNREACHABLE in production
   // no matter which of the six lattices the link names; the player-facing
@@ -2399,6 +2416,14 @@ async function init() {
     hideTitleScreen();
     await newGame();
     showToast(`Practice run at Level ${deepLinkLevel}. Nothing records.`, 5000);
+  } else if (deepLinkMatchCode) {
+    // ?match=CODE: land on the title screen with the join card open and the
+    // code already looked up. The title screen goes up FIRST so a code that
+    // has expired, filled up, or never existed leaves the player somewhere
+    // real rather than on a dead end.
+    showTitleScreen();
+    const _lobby = await import('./ui/matchLobby.js');
+    _lobby.openMatchJoin(deepLinkMatchCode);
   } else if (deepLinkMode === 'daily') {
     // Deep link to daily mode. ?seed=<custom> lets you play a fresh puzzle
     // under a non-today seed (e.g. after you've finished today's). Practice
@@ -2468,6 +2493,16 @@ async function init() {
   // All routing settled and the appropriate UI surface (tutorial /
   // daily board / title screen) has rendered, release the boot overlay.
   hideBootOverlay();
+
+  // Challenge invites from friends. Attached AFTER the overlay is released
+  // and never awaited: the boot path may only wait on things that are
+  // bounded, and a listener is not one of them (test/bootHang.test.mjs).
+  // child_added replays whatever is already sitting there, which is his
+  // "at the time the app is next opened" half, and fires on new ones, which
+  // is the "while the app is open" half.
+  import('./ui/matchLobby.js')
+    .then((m) => m.initMatchInvites())
+    .catch((err) => reportCaughtError('match-invites-init', err));
 
   // Persist game state periodically (only when actively playing)
   let _lastPersistTime = 0;
@@ -2539,6 +2574,7 @@ function expireRolledOverGame() {
     today: getLocalDateString(),
     weekStart: getWeekStart(),
     weekDayIndex: getWeekDayIndex(),
+    now: Date.now(),
   });
   // The title screen is date-sensitive even with no game in progress
   // ("Completed today!", par line, weekly attempts), refresh its cards
@@ -2550,10 +2586,16 @@ function expireRolledOverGame() {
     return false;
   }
   stopTimer();
+  // A match expires on its own seven-day clock rather than at midnight, so it
+  // needs its own sentence: the daily's copy would tell the player a new day
+  // arrived when what actually happened is that the run ran out of week.
+  const wasMatch = state.gameMode === 'match';
   state.status = 'expired';
   clearGameState(state.gameMode);
   showTitleScreen();
-  showToast("New day! Yesterday's unfinished puzzle has expired.");
+  showToast(wasMatch
+    ? 'That Challenge run has closed. Start a new one to play those rules again.'
+    : "New day! Yesterday's unfinished puzzle has expired.");
   return true;
 }
 

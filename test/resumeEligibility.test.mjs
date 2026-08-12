@@ -220,6 +220,63 @@ test('finished or modeless games never expire', () => {
   assert.equal(isLiveGameExpired({ gameMode: 'timed', status: 'playing' }, CLOCK), false);
 });
 
+// ── A shared match's seven-day life ────────────────────
+
+const NOW = 1_750_000_000_000;
+const MATCH_CLOCK = { ...CLOCK, now: NOW };
+const matchLive = (match) => ({ gameMode: 'match', status: 'playing', match });
+
+test('REGRESSION: a SHARED match past its seven days expires on wake', () => {
+  // Without this clause a match had no anchor at all, so an expired one
+  // resumed forever and every board cleared in it posted nothing, to a
+  // standings panel no opponent could ever be added to.
+  assert.equal(isLiveGameExpired(matchLive({ id: 'm1', expiresAt: NOW - 1 }), MATCH_CLOCK), true);
+  assert.equal(isLiveGameExpired(matchLive({ id: 'm1', expiresAt: NOW }), MATCH_CLOCK), true);
+  assert.equal(isLiveGameExpired(matchLive({ id: 'm1', expiresAt: NOW + 1 }), MATCH_CLOCK), false);
+});
+
+test('a SOLO match never expires: nothing about it has a deadline', () => {
+  // Solo runs still file par-fit rows, and those have no deadline. Expiring
+  // one would throw away a real run for no reason.
+  assert.equal(isLiveGameExpired(matchLive({ id: null, expiresAt: null }), MATCH_CLOCK), false);
+  assert.equal(isLiveGameExpired(matchLive({}), MATCH_CLOCK), false);
+  assert.equal(isLiveGameExpired({ gameMode: 'match', status: 'playing' }, MATCH_CLOCK), false);
+});
+
+test('a clock with no `now` never expires a match, rather than expiring it always', () => {
+  // Fail OPEN: an absent clock value must not silently end a live run. (An
+  // older caller that has not been updated passes exactly this shape.)
+  assert.equal(isLiveGameExpired(matchLive({ id: 'm1', expiresAt: NOW - 1 }), CLOCK), false);
+});
+
+test('the match clause does not disturb daily, weekly, or the archive exemption', () => {
+  // Non-vacuity for the clause's placement: everything that expired before
+  // still expires, and everything exempt is still exempt, with `now` present.
+  assert.equal(isLiveGameExpired({ gameMode: 'daily', status: 'playing', dailySeed: YESTERDAY }, MATCH_CLOCK), true);
+  assert.equal(isLiveGameExpired({ gameMode: 'weekly', status: 'playing', weeklySeed: LAST_WEEK, weeklyDay: DAY_IDX }, MATCH_CLOCK), true);
+  assert.equal(isLiveGameExpired(
+    { gameMode: 'daily', status: 'playing', dailySeed: YESTERDAY, isArchivePlay: true }, MATCH_CLOCK), false);
+  assert.equal(isLiveGameExpired(
+    { gameMode: 'weekly', status: 'playing', weeklySeed: LAST_WEEK, weeklyDay: DAY_IDX, isWeeklyArchive: true },
+    MATCH_CLOCK), false);
+});
+
+test('an expired shared match is not resumable from its SAVE either', () => {
+  // The save-side counterpart: the sheet must not offer "Resume run" on a run
+  // that leads nowhere. A solo save with no expiresAt is untouched.
+  const board = [[{ row: 0, col: 0 }]];
+  const save = (match) => ({ gameMode: 'match', board, match });
+  const m = { rules: { count: 2 }, entries: [{ seed: 'a' }, { seed: 'b' }], current: 0 };
+  const base = { mode: 'match', today: TODAY, weekStart: WEEK, weekDayIndex: DAY_IDX, now: NOW };
+
+  assert.equal(isSaveResumable(save({ ...m, id: 'm1', expiresAt: NOW + 1 }), base), true);
+  assert.equal(isSaveResumable(save({ ...m, id: 'm1', expiresAt: NOW - 1 }), base), false);
+  assert.equal(isSaveResumable(save({ ...m }), base), true, 'a solo save has no deadline');
+  // And the PR-3 structural rules still hold, so this clause did not replace them.
+  assert.equal(isSaveResumable(save({ ...m, entries: [] }), base), false);
+  assert.equal(isSaveResumable(save({ ...m, current: 5 }), base), false);
+});
+
 // ── Weekly-attempt cache rollover (long-open session) ──
 
 test('REGRESSION: weekly-attempt cache is stale when the week rolled over while open', () => {

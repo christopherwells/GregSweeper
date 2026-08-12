@@ -175,6 +175,60 @@ async function sweepPlayerNames() {
   return hits;
 }
 
+// matches/{matchId}/players/{uid}.name — the name every other player in a
+// Challenge match sees in the standings.
+//
+// The derivation in test/scrubCoverage.test.mjs does NOT force this sweep,
+// because `matches` is read-gated on `auth != null` rather than world-readable
+// (a match is found by its code, not by browsing, so the node is deliberately
+// not enumerable). Read posture is not the question that matters here though:
+// the name is shown to other humans, so it gets the same backstop every other
+// name-bearing path gets. The coverage test asserts this sweep exists anyway,
+// so the choice stays deliberate rather than accidental.
+async function sweepMatchNames() {
+  const snap = await db.ref('matches').once('value');
+  const root = snap.val() || {};
+  const updates = {};
+  let hits = 0;
+  for (const matchId of Object.keys(root)) {
+    const players = (root[matchId] && root[matchId].players) || {};
+    for (const uid of Object.keys(players)) {
+      const name = players[uid] && players[uid].name;
+      if (isHateSpeech(name)) {
+        console.log(`  matches/${matchId}/players/${uid}: "${name}" → ${SCRUBBED}`);
+        updates[`matches/${matchId}/players/${uid}/name`] = SCRUBBED;
+        hits++;
+      }
+    }
+  }
+  if (!dryRun && hits > 0) await db.ref().update(updates);
+  return hits;
+}
+
+// Expired match codes. Unlike friend codes this is not only tidiness: a match
+// lives seven days, so without a sweep the node accumulates a week of dead
+// codes at a time and never releases them back to the alphabet. Deleting the
+// code does NOT delete the match, which stays readable forever by anyone who
+// already joined it (his ruling: writes freeze, reads do not).
+const MATCH_CODE_SWEEP_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+async function sweepExpiredMatchCodes() {
+  const snap = await db.ref('matchCodes').once('value');
+  const root = snap.val() || {};
+  const updates = {};
+  let hits = 0;
+  const cutoff = Date.now() - MATCH_CODE_SWEEP_AGE_MS;
+  for (const code of Object.keys(root)) {
+    const createdAt = root[code] && root[code].createdAt;
+    if (typeof createdAt !== 'number' || createdAt < cutoff) {
+      console.log(`  matchCodes/${code}: expired (createdAt=${createdAt})`);
+      updates[`matchCodes/${code}`] = null;
+      hits++;
+    }
+  }
+  if (!dryRun && hits > 0) await db.ref().update(updates);
+  return hits;
+}
+
 // Expired friend codes: the rules read gate already hides codes older
 // than 15 minutes, so this is pure tidiness — delete codes older than
 // an hour so the node never accumulates dead entries.
@@ -204,8 +258,10 @@ async function sweepExpiredFriendCodes() {
   const t = await sweepTimed();
   const a = await sweepDailyArchive();
   const p = await sweepPlayerNames();
+  const m = await sweepMatchNames();
   const c = await sweepExpiredFriendCodes();
-  console.log(`Done. daily hits: ${d}, weekly hits: ${w}, timed hits: ${t}, archive hits: ${a}, playerNames hits: ${p}, expired codes: ${c}${dryRun ? ' (dry run — nothing written)' : ''}.`);
+  const mc = await sweepExpiredMatchCodes();
+  console.log(`Done. daily hits: ${d}, weekly hits: ${w}, timed hits: ${t}, archive hits: ${a}, playerNames hits: ${p}, match hits: ${m}, expired friend codes: ${c}, expired match codes: ${mc}${dryRun ? ' (dry run — nothing written)' : ''}.`);
   process.exit(0);
 })().catch(err => {
   console.error('Sweep FAILED:', err);

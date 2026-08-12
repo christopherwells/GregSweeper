@@ -4,7 +4,7 @@ import { newGame, clearAllPlateTimers, rearmPlateTimers } from './gameActions.js
 import { persistGameState, tryResumeGame } from './gamePersistence.js';
 import { loadCheckpoint, loadStats } from '../storage/statsStorage.js';
 import { CHAOS_UNLOCK_LEVEL } from '../logic/difficulty.js';
-import { sanitizeMatchRules, matchUnlocks } from '../logic/matchRules.js';
+import { matchRulesForLaunch, matchUnlocks } from '../logic/matchRules.js';
 import { restorePreChaosTheme } from '../ui/themeManager.js';
 
 // ── Mode Manager ──────────────────────────────────────
@@ -132,22 +132,42 @@ export function switchMode(mode) {
  *
  * A pinned board (?matchboard=, test-env) rides in as pinnedEntries with
  * isLevelPractice already set: the deal is skipped and nothing records.
+ *
+ * A SHARED match arrives with `shared` = { id, code, expiresAt, rules,
+ * entries }, whose identity rides inside state.match and therefore inside the
+ * save: the id is what every posted result needs, and the expiry is what stops
+ * a stale run resuming into a node that will refuse it. A solo match passes
+ * null and carries none of it, which is exactly what "solo" means to every
+ * gate downstream. Its boards come in through `shared.entries` rather than
+ * `pinnedEntries` so the two never blur: pinned means the test-env practice
+ * board, and practice records nothing.
  */
-export function launchMatch(rawRules, pinnedEntries = null) {
+export function launchMatch(rawRules, pinnedEntries = null, shared = null) {
   persistGameState();
   if (state.gameMode === 'chaos') restorePreChaosTheme();
   clearAllPlateTimers();
   const stats = loadStats();
   const maxLevel = stats.modeStats?.challenge?.maxLevelReached || 1;
-  const rules = sanitizeMatchRules(rawRules, matchUnlocks(maxLevel));
-  if (pinnedEntries) rules.count = pinnedEntries.length;
+  // Host re-sanitizes, guest plays the stored rules verbatim; the reasoning is
+  // in matchRulesForLaunch, where a test can reach it.
+  const rules = matchRulesForLaunch(rawRules, shared, matchUnlocks(maxLevel));
+  const sharedEntries = (shared && Array.isArray(shared.entries)) ? shared.entries : null;
+  const entries = sharedEntries || (Array.isArray(pinnedEntries) ? pinnedEntries : []);
+  if (entries.length) rules.count = entries.length;
   state.gameMode = 'match';
   state.match = {
     rules,
-    entries: Array.isArray(pinnedEntries) ? pinnedEntries : [],
+    entries,
     current: 0,
     results: [],
+    id: (shared && shared.id) || null,
+    code: (shared && shared.code) || null,
+    expiresAt: (shared && shared.expiresAt) || null,
   };
+  // A shared match is never the pinned practice lane, and clearing the flag
+  // here rather than trusting the caller keeps a stale practice run from
+  // silently swallowing a real match's results.
+  if (shared) state.isLevelPractice = false;
   state.isArchivePlay = false;
   state._archiveRaw = null;
   state.isWeeklyArchive = false;
