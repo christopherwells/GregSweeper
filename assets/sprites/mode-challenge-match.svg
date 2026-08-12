@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="5.5 9.5 115.5 115.5">
+  <!-- Challenge: a run of boards. Three cards in a dealt stack, the top one
+       a live board with a flag and a mine. The stack carries the meaning: a
+       Challenge run is 1-10 boards, where Daily is a single puzzle. Cards are
+       listed back to front, so the furthest one is drawn first and the fills
+       lighten toward the viewer. Reordering them collapses the two back cards
+       into one doubled outline. -->
+  <rect x="10" y="12" width="90" height="90" rx="12" fill="#d4dae6" stroke="#232838" stroke-width="5"/>
+  <rect x="18" y="22" width="90" height="90" rx="12" fill="#eef3fb" stroke="#232838" stroke-width="5"/>
+  <rect x="26" y="32" width="90" height="90" rx="12" fill="#f3f6fb" stroke="#232838" stroke-width="6"/>
+  <!-- 3x3 board, 20u cells on a 26u pitch, 9u margin on every side -->
+  <g stroke="#232838" stroke-width="4">
+    <rect x="35" y="41" width="20" height="20" rx="5" fill="#dfe5ee"/>
+    <rect x="61" y="41" width="20" height="20" rx="5" fill="#dfe5ee"/>
+    <rect x="87" y="41" width="20" height="20" rx="5" fill="#dfe5ee"/>
+    <rect x="35" y="67" width="20" height="20" rx="5" fill="#dfe5ee"/>
+    <rect x="61" y="67" width="20" height="20" rx="5" fill="#dfe5ee"/>
+    <rect x="87" y="67" width="20" height="20" rx="5" fill="#dfe5ee"/>
+    <rect x="35" y="93" width="20" height="20" rx="5" fill="#dfe5ee"/>
+    <rect x="61" y="93" width="20" height="20" rx="5" fill="#dfe5ee"/>
+    <rect x="87" y="93" width="20" height="20" rx="5" fill="#dfe5ee"/>
+  </g>
+  <!-- Flag, top-left cell. No yellow highlight: that motif belongs to Daily. -->
+  <line x1="41" y1="46" x2="41" y2="56" stroke="#232838" stroke-width="4" stroke-linecap="round"/>
+  <polygon points="41,45 51,49.5 41,54" fill="#e4453a" stroke="#232838" stroke-width="3.5" stroke-linejoin="round"/>
+  <!-- Mine, bottom-right cell. A plain disc: at 27.5px one unit is 0.21px, so
+       spikes at any stroke weight would render thinner than a pixel. -->
+  <circle cx="97" cy="103" r="5.5" fill="#2c3142"/>
+</svg>

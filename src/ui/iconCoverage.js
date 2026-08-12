@@ -20,8 +20,9 @@ export const ICON_STATUS = {
   '💥': 'sprite',   // strike / explosion
 
   // ── Mode cards (Tier 3, SVG) ──
-  '⛏️': 'sprite',   // challenge
-  '⏱️': 'sprite',   // quick play / timed
+  '⛏️': 'sprite',   // the climb (mode-challenge.svg keeps the stored name)
+  '🃏': 'sprite',   // challenge, the dealt run of boards
+  '⏱️': 'sprite',   // timedSpeed achievement; Quick Play's card is retired
   '📅': 'sprite',   // daily
   '🏁': 'sprite',   // weekly
   '🌀': 'sprite',   // chaos (also wormhole modifier)
@@ -53,8 +54,9 @@ export const ICON_STATUS = {
 
   // ── Achievement category icons (Wave B, SVG) ──
   // Rendered by category id (achievementSpriteImgHTML), so the glyph is
-  // only a fallback. 📅 / ⛏️ / ⏱️ are shared with mode cards (already
-  // 'sprite' above); 🔥 stays 'plain' below (also used as streak fire).
+  // only a fallback. 📅 / ⛏️ are shared with mode cards (already 'sprite'
+  // above); ⏱️ is the achievement's alone now that Quick Play's card is
+  // gone; 🔥 stays 'plain' below (also used as streak fire).
   '🏆': 'sprite',   // wins / Victory
   '⚡': 'sprite',   // speed / Speed Demon
   '🏳️': 'sprite',   // flagless

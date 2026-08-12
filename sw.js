@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.10.40';
+const CACHE_NAME = 'gregsweeper-v1.10.41';
 const ASSETS = [
   './',
   './index.html',
@@ -169,7 +169,7 @@ const ASSETS = [
   './assets/sprites/loss.png',
   './assets/sprites/strike.png',
   './assets/sprites/mode-challenge.svg',
-  './assets/sprites/mode-quickplay.svg',
+  './assets/sprites/mode-challenge-match.svg',
   './assets/sprites/mode-daily.svg',
   './assets/sprites/mode-weekly.svg',
   './assets/sprites/mode-chaos.svg',
