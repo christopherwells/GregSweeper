@@ -31,26 +31,23 @@
 // alone the mode pours rows into the coefficients that need them least, and the
 // per-shape par layer is the thing matches were supposed to fix.
 //
-// WHAT STEERING CAN AND CANNOT SEE. The match index row is deliberately compact
-// ([page, idx, shape, cells, mines, par, mods]) because one fetch answers the
-// setup sheet's live counts, so a row has fields for its board's SHAPE and its
-// modifier set, and no field for the feature vector; the full `features` object
-// lives in the page files, which the deal reads only for boards already picked.
-// So steering reaches shape-coverage and gimmick-presence missions, and it
-// cannot reach feature-level ones:
+// WHAT STEERING SEES. Every index row carries its board's FEATURE VECTOR (his
+// call, 2026-08-12), so a mission scores on the same numbers the par model
+// reads. Three kinds of mission are therefore reachable, and the scorer is the
+// daily's own in all three cases:
 //
-//  - the digit shares (clueShare2/3/4/5plus) are not in the index, and they are
-//    OBSERVATIONAL besides (measured on every board, never maximized, see
-//    experimentDesign's OBSERVATIONAL_TARGETS), so a primary target of
-//    clueShare4 correctly steers nothing;
-//  - the DECORRELATION mission scores a residual of a digit share against
-//    density, which needs the same missing column, so it is passed as null
-//    below rather than half-implemented.
+//  - COVERAGE and PRIMARY targets score on the real count, so a board with
+//    four compass cells outranks one with a single cell rather than tying it;
+//  - the DECORRELATION mission works, because the residual it scores needs a
+//    digit share AND its confounder, and the vector carries both. This is the
+//    one place a digit share may be aimed at: as a LEVEL they are
+//    observational, measured on every board and never maximized, and
+//    missionCandidateScore keeps refusing them on that basis;
+//  - SHAPE coverage, which has no feature key and rides a synthetic one below.
 //
-// Carrying the four digit shares in the index would grow it from 37 KB to
-// 61 KB (+61%), measured, on a file every host fetches to open the setup sheet.
-// That is his call to make, not a thing to widen quietly, so today steering
-// works with what the index already holds.
+// The vector is positional against the index's `featureKeys` header, which is
+// what keeps it affordable: 119 KB raw and 28 KB gzipped against 7.7 KB
+// before, where an object per row would have been 633 KB. See matchRules.js.
 //
 // PURE. The mission list arrives as an argument, so every decision here is
 // testable without network, DOM or module cache (the moltDay / resumeEligibility
@@ -59,8 +56,8 @@
 
 import { steeredSlotCap, eligibleRows, pickMatchBoards } from './matchRules.js';
 import {
-  resolveMissionForSlot, missionCandidateScore, getTargetGimmickName,
-  getCurrentTarget, getCoverageTargets, getShapeCoverage,
+  resolveMissionForSlot, missionCandidateScore,
+  getCurrentTarget, getCoverageTargets, getShapeCoverage, getDecorrelationMission,
 } from './experimentDesign.js';
 
 // A shape mission's synthetic target key. It exists only to give the shared
@@ -68,15 +65,22 @@ import {
 // anywhere, unlike the daily's missionStamp.
 const SHAPE_TARGET_PREFIX = 'shape:';
 
+// Two boards count as equally good for a mission within this much. Feature
+// counts tie exactly, but a decorrelation residual is a float and two boards
+// the same distance off the line should share the draw rather than have the
+// last bit of arithmetic pick between them.
+const SCORE_EPS = 1e-9;
+
 /**
  * Build the ordered mission list from an experiment spec.
  *
- * Gimmick missions come through resolveMissionForSlot, the single-sourced slot
+ * Feature missions come through resolveMissionForSlot, the single-sourced slot
  * arithmetic, exactly as selectTilingMission does: slot 0 is the primary target
- * at its fixed low weight, slots 1..N are the coverage list one-to-one. A
- * mission whose target maps to no gimmick is dropped, because the index answers
- * only which modifiers are present on a board, and `decorrelation` is passed as
- * null for the same reason (see the header).
+ * at its fixed low weight, slots 1..N are the coverage list one-to-one, and the
+ * slot past them is the decorrelation mission on the nights the refit ships
+ * one. No mission is filtered out by kind: the index carries the whole feature
+ * vector, so a mission the boards cannot advance scores 0 and claims nothing,
+ * which reaches the same outcome by a shorter route.
  *
  * Shape missions come from the refit's shape_coverage list, which is emitted on
  * the SAME 1/(n+1) deficit scale, so the two kinds rank against each other with
@@ -85,13 +89,15 @@ const SHAPE_TARGET_PREFIX = 'shape:';
  * The returned list is NOT sorted; ordering happens in planMatchDeal, where the
  * random tie-break belongs.
  *
- * @param {{target: string|null, coverage: Array, shapes: Array}} spec
+ * @param {{target: string|null, coverage: Array, shapes: Array,
+ *          decorrelation: Object|null}} spec
  * @returns {Array<{kind: string, key: string, weight: number, mission: Object}>}
  */
 export function steerMissions(spec) {
   const target = spec && typeof spec.target === 'string' ? spec.target : null;
   const coverage = Array.isArray(spec && spec.coverage) ? spec.coverage : [];
   const shapes = Array.isArray(spec && spec.shapes) ? spec.shapes : [];
+  const decorrelation = (spec && spec.decorrelation) || null;
 
   const missions = [];
   const seenKeys = new Set();
@@ -106,12 +112,17 @@ export function steerMissions(spec) {
     missions.push({ kind, key, weight, mission });
   };
 
-  for (let slot = 0; slot <= coverage.length; slot++) {
-    const mission = resolveMissionForSlot(slot, target, coverage, null);
+  // One past the coverage list is the decorrelation slot: resolveMissionForSlot
+  // returns that mission for every slot beyond the list, so one extra step
+  // reaches it and the dedupe keeps it to one claim.
+  for (let slot = 0; slot <= coverage.length + 1; slot++) {
+    const mission = resolveMissionForSlot(slot, target, coverage, decorrelation);
     if (!mission || !mission.target) continue;
-    const gimmick = getTargetGimmickName(mission.target);
-    if (!gimmick) continue;
-    add('modifier', gimmick, mission.deficitWeight, mission);
+    // A decorrelation mission is keyed apart from a plain one on the same
+    // feature: they are different studies (the residual against a confounder,
+    // versus the level), and one must not dedupe the other away.
+    const kind = mission.type === 'decorrelation' ? 'decorrelation' : 'feature';
+    add(kind, mission.target, mission.deficitWeight, mission);
   }
 
   for (const entry of shapes) {
@@ -133,25 +144,28 @@ export function currentSteerMissions() {
     target: getCurrentTarget(),
     coverage: getCoverageTargets(),
     shapes: getShapeCoverage(),
+    decorrelation: getDecorrelationMission(),
   });
 }
 
 /**
  * Does this row advance this mission, and by how much?
  *
- * The index answers PRESENCE, never a count, so the row's feature vector is a
- * single 1/0 indicator and the shared scorer's `min(count, COUNT_CAP) x weight`
- * collapses to the mission's own deficit weight. Routing through
- * missionCandidateScore anyway is not ceremony: it keeps the score formula
- * single-sourced (CLAUDE.md's standing rule), and the observational refusal
- * comes with it, so a digit-share target scores 0 here for the same reason it
- * scores 0 on the daily.
+ * The board's own feature vector goes straight into missionCandidateScore, the
+ * daily's scorer, so the formula stays single-sourced (CLAUDE.md's standing
+ * rule) and everything it decides comes along: the count cap, the residual
+ * arithmetic on a decorrelation mission, and the refusal to maximize an
+ * observational target.
+ *
+ * A SHAPE mission has no feature key, so it rides a synthetic one whose value
+ * is the 1/0 indicator "is this board that lattice". The same cap-and-weight
+ * arithmetic then applies to it unchanged.
  */
 function rowMissionScore(entry, row) {
-  const present = entry.kind === 'shape'
-    ? (row.shape === entry.key ? 1 : 0)
-    : ((Array.isArray(row.mods) ? row.mods : []).includes(entry.key) ? 1 : 0);
-  const score = missionCandidateScore(entry.mission, { [entry.mission.target]: present });
+  const features = (row && row.features) || {};
+  const score = entry.kind === 'shape'
+    ? missionCandidateScore(entry.mission, { [entry.mission.target]: row.shape === entry.key ? 1 : 0 })
+    : missionCandidateScore(entry.mission, features);
   return Number.isFinite(score) ? score : 0;
 }
 
@@ -229,16 +243,30 @@ export function planMatchDeal(rows, rules, opts = {}) {
   for (const entry of ranked) {
     if (claimed.length >= cap) break;
     // Only rows still available, and only rows this mission actually advances.
-    const matches = eligible.filter((r) => !taken.has(r.key) && rowMissionScore(entry, r) > 0);
+    const matches = [];
+    for (const r of eligible) {
+      if (taken.has(r.key)) continue;
+      const score = rowMissionScore(entry, r);
+      if (score > 0) matches.push({ row: r, score });
+    }
     if (matches.length === 0) continue;          // nothing eligible advances it
-    const fresh = matches.filter((r) => !seen.has(r.key));
+    const fresh = matches.filter((m) => !seen.has(m.row.key));
     let pool = fresh;
     if (fresh.length === 0) {
       if (seenBudget === 0) continue;            // would break the cycle rule
       pool = matches;
       seenBudget--;
     }
-    const row = pool[Math.min(pool.length - 1, Math.floor(rand() * pool.length))];
+    // The BEST board for this mission, not any board that scores at all. This
+    // is what carrying the feature vector buys: a board with four compass
+    // cells advances the compass study further than one with a single cell,
+    // and under the old presence-only index the two were indistinguishable.
+    // Ties break at random, and the seen-cycle is what stops the same strong
+    // board being dealt to the same player over and over.
+    let best = pool[0].score;
+    for (const m of pool) { if (m.score > best) best = m.score; }
+    const top = pool.filter((m) => m.score >= best - SCORE_EPS);
+    const row = top[Math.min(top.length - 1, Math.floor(rand() * top.length))].row;
     taken.add(row.key);
     claimed.push(row);
     steered.push({ kind: entry.kind, key: entry.key, weight: entry.weight, boardKey: row.key });

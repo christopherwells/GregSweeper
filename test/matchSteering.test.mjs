@@ -33,17 +33,33 @@ function lcg(seed = 1) {
   };
 }
 
+// The feature key a modifier contributes to, so a fixture row's vector looks
+// like a real one: a board carrying compass has compassCellCount > 0.
+const FEATURE_OF = {
+  mystery: 'mysteryCellCount', liar: 'liarCellCount', locked: 'lockedCellCount',
+  wormhole: 'wormholePairCount', mirror: 'mirrorPairCount', sonar: 'sonarCellCount',
+  compass: 'compassCellCount', walls: 'wallEdgeCount', worm: 'wormLoad',
+};
+
 let _nextKey = 0;
 function row(over = {}) {
   const page = over.page ?? 0;
   const idx = over.idx ?? _nextKey++;
+  const cells = over.cells ?? 100;
+  const mines = over.mines ?? 20;
+  const mods = over.mods ?? [];
+  // Every index row carries its board's feature vector now, so a fixture
+  // without one would score every feature mission at zero and quietly make
+  // the assertions around it vacuous.
+  const features = { cellCount: cells, totalMines: mines, density: mines / cells };
+  for (const m of mods) features[FEATURE_OF[m]] = over.modCount ?? 3;
   return {
     page, idx,
     shape: over.shape ?? 'rect',
-    cells: over.cells ?? 100,
-    mines: over.mines ?? 20,
+    cells, mines,
     par: over.par ?? 100,
-    mods: over.mods ?? [],
+    mods,
+    features: { ...features, ...(over.features || {}) },
     key: `${page}:${idx}`,
   };
 }
@@ -213,27 +229,73 @@ test('an unadvanceable target deals normally and says nothing', () => {
     'every eligible board must stay reachable when steering finds nothing');
 });
 
-test('an observational target never steers (digit shares are measured, not maximized)', () => {
-  // clueShare4 is the live primary target as of 2026-08-12, and it must reach
-  // nothing here for two independent reasons: it maps to no gimmick, and
-  // missionCandidateScore refuses observational targets outright.
+test('an observational target never steers, even with the vector in hand', () => {
+  // clueShare4 is the live primary target as of 2026-08-12. Now that the index
+  // carries the digit shares, the ONLY thing refusing it is
+  // missionCandidateScore's observational rule, so this is the test that rule
+  // is still load-bearing rather than incidentally unreachable.
   const missions = steerMissions({ target: 'clueShare4', coverage: [], shapes: [] });
-  assert.deepEqual(missions, []);
+  assert.equal(missions.length, 1, 'the mission must EXIST to be refused on merit');
+  const rows = Array.from({ length: 12 }, () => row({ features: { clueShare4: 0.9 } }));
+  const plan = planMatchDeal(rows, RULES({ count: 10, shapes: ['rect'], mods: [] }),
+    { rand: lcg(3), missions });
+  assert.equal(plan.steered.length, 0, 'a digit share must never be maximized as a level');
 });
 
-test('a decorrelation mission is not reachable from the index', () => {
-  // The residual needs a digit share the index does not carry. The mission
-  // must be absent, never half-scored on a missing column.
+test('a DECORRELATION mission steers toward the residual corner (his sanctioned route)', () => {
+  // The residual needs a digit share AND its confounder, and the vector now
+  // carries both. Two boards at the same 3-share, one dense and one sparse:
+  // the sparse one sits furthest off the fitted line and is the observation
+  // that separates "3s cost time" from "3s ride on dense boards".
+  const onLine = row({ features: { clueShare3: 0.5, density: 0.25 } });
+  const offLine = row({ features: { clueShare3: 0.5, density: 0.05 } });
   const missions = steerMissions({
-    target: 'wormLoad',
-    coverage: [],
+    target: null, coverage: [], shapes: [],
+    decorrelation: {
+      feature: 'clueShare3', confounder: 'density',
+      slope: 2, intercept: 0, residualSd: 0.1, weight: 0.9,
+    },
+  });
+  assert.equal(missions.length, 1);
+  assert.equal(missions[0].kind, 'decorrelation');
+  const plan = planMatchDeal([onLine, offLine, ...Array.from({ length: 10 }, () => row())],
+    RULES({ count: 10, shapes: ['rect'], mods: [] }), { rand: lcg(8), missions });
+  assert.equal(plan.steered.length, 1);
+  assert.equal(plan.steered[0].boardKey, offLine.key,
+    'the board furthest off the fitted line must take the slot');
+});
+
+test('a decorrelation study is keyed apart from a plain one on the same feature', () => {
+  // Different studies: the residual against a confounder, versus the level.
+  // Deduping one away would silently drop whichever the refit ships second.
+  const missions = steerMissions({
+    target: 'clueShare3',
+    coverage: [{ feature: 'clueShare3', deficit_weight: 0.4 }],
     shapes: [],
-    decorrelation_mission: {
+    decorrelation: {
       feature: 'clueShare3', confounder: 'density',
       slope: 1, intercept: 0, residualSd: 1, weight: 0.9,
     },
   });
-  assert.deepEqual(missions.map((m) => m.key), ['worm']);
+  const kinds = missions.map((m) => `${m.kind}:${m.key}`).sort();
+  assert.deepEqual(kinds, ['decorrelation:clueShare3', 'feature:clueShare3']);
+});
+
+test('a real count outranks a bare presence: four compass cells beat one', () => {
+  // The whole point of carrying the vector. Under the old presence-only index
+  // every board with the modifier tied, so the steered pick was a coin flip
+  // among them; now the board that exercises the study hardest wins.
+  const weak = row({ mods: ['compass'], modCount: 1 });
+  const strong = row({ mods: ['compass'], modCount: 4 });
+  const missions = steerMissions({
+    target: null, coverage: [{ feature: 'compassCellCount', deficit_weight: 0.5 }], shapes: [],
+  });
+  const rand = lcg(31);
+  for (let i = 0; i < 100; i++) {
+    const plan = planMatchDeal([weak, strong, ...Array.from({ length: 10 }, () => row())],
+      RULES({ count: 10, shapes: ['rect'], mods: ['compass'] }), { rand, missions });
+    assert.equal(plan.steered[0].boardKey, strong.key);
+  }
 });
 
 // ── The seen-cycle survives ─────────────────────────────────────────────
@@ -411,9 +473,14 @@ test('an empty eligible set deals nothing rather than throwing', () => {
 });
 
 test('currentSteerMissions reads the loaded file without throwing on a cold cache', () => {
-  // No fetch has run in this process, so the module cache is empty: the
-  // default target maps to no gimmick and there is no shape list.
-  assert.deepEqual(currentSteerMissions(), []);
+  // No fetch has run in this process, so the module cache holds only
+  // DEFAULT_TARGET: one mission, no coverage list, no shapes, no
+  // decorrelation. The point is that it returns a usable list rather than
+  // throwing on the absent file.
+  const missions = currentSteerMissions();
+  assert.ok(Array.isArray(missions));
+  assert.deepEqual(missions.map((m) => m.kind), ['feature']);
+  assert.equal(missions.filter((m) => m.kind === 'shape').length, 0);
 });
 
 // ── The R/JS mirror pair ────────────────────────────────────────────────

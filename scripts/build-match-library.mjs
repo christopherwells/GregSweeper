@@ -46,7 +46,7 @@ import { CHALLENGE_POOL } from '../src/logic/challengePool.js';
 import { specFace, CLIMB_MIN_DEDUCTIONS } from '../src/logic/challenge250.js';
 import { TILING_TYPES } from '../src/logic/tilingGeometry.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
-import { matchIndexRow } from '../src/logic/matchRules.js';
+import { matchIndexRow, matchIndexFeatureKeys } from '../src/logic/matchRules.js';
 
 export const OUT_DIR = new URL('./data/match-library/', import.meta.url);
 const INDEX_FILE = new URL('match-index.json', OUT_DIR);
@@ -121,15 +121,19 @@ export function emitMatchLibrary(boards, { dry = false } = {}) {
     }
   }
   const fp = modelFingerprint();
+  // The feature header is derived from the boards themselves, so a new
+  // feature key reaches the index with no edit here (matchRules.js).
+  const featureKeys = matchIndexFeatureKeys(pages.flat());
   const rows = [];
   pages.forEach((page, p) => {
-    page.forEach((b, i) => rows.push(matchIndexRow(p, i, b)));
+    page.forEach((b, i) => rows.push(matchIndexRow(p, i, b, featureKeys)));
   });
   const index = {
     parModel: fp,
     boards: rows.length,
     pages: pages.length,
     counts: pages.map((p) => p.length),
+    featureKeys,
     rows,
   };
   if (!dry) {

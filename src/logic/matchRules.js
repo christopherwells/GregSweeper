@@ -216,21 +216,76 @@ export function unmetMatchRules(rules, unlocks) {
 // the seen-cycle key, stable across the nightly reprice, which rewrites
 // numbers in place and never moves a board between pages.
 
-export function matchIndexRow(page, idx, entry) {
-  return [page, idx, entry.spec.shape, entry.spec.cells, entry.spec.mines,
-    entry.par, (entry.spec.gimmicks || []).slice().sort()];
+// ── The feature vector rides the index (2026-08-12, his call) ───────────
+//
+// Element 8 of a row is the board's FEATURE VECTOR, so mission steering can
+// score a board on the same numbers the par model reads instead of on whether
+// a modifier is merely present. That is what puts the feature-level targets in
+// reach: a primary target like advancedLogicMoves, and the DECORRELATION
+// mission, whose residual needs a digit share and its confounder.
+//
+// POSITIONAL, against a `featureKeys` header on the index object, because the
+// key names are most of the bytes. Measured over the 920-board library: a full
+// object per row is 633 KB (+1581%), the positional form is 119 KB (+217%),
+// and on the wire, which is what a phone pays, gzip takes it from 7.7 KB to
+// 28 KB. The header is written FROM the data rather than from a constant, so a
+// new feature key needs no edit here and cannot silently fall out of the file.
+//
+// Values round to MATCH_INDEX_FEATURE_DP. These numbers steer a choice among
+// boards; par is re-priced from the PAGE's full-precision features, so the
+// rounding cannot reach a number a player sees.
+export const MATCH_INDEX_FEATURE_DP = 4;
+
+const _round = (v) => {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  if (Number.isInteger(n)) return n;
+  const f = 10 ** MATCH_INDEX_FEATURE_DP;
+  return Math.round(n * f) / f;
+};
+
+/** The union of every entry's feature keys, sorted: the index's own header. */
+export function matchIndexFeatureKeys(entries) {
+  const keys = new Set();
+  for (const e of entries || []) {
+    for (const k of Object.keys((e && e.features) || {})) keys.add(k);
+  }
+  return [...keys].sort();
 }
 
+export function matchIndexRow(page, idx, entry, featureKeys = []) {
+  const f = (entry && entry.features) || {};
+  return [page, idx, entry.spec.shape, entry.spec.cells, entry.spec.mines,
+    entry.par, (entry.spec.gimmicks || []).slice().sort(),
+    featureKeys.map((k) => _round(f[k]))];
+}
+
+/**
+ * Read the index back.
+ *
+ * A row WITHOUT its feature array parses fine and yields `features: {}`: an
+ * index written before the vector shipped still deals boards, it just cannot
+ * steer on features. Rejecting it would turn a stale cached file into an
+ * unplayable Challenge, which is a far worse trade than a quiet study.
+ */
 export function parseMatchIndex(index) {
   if (!index || !Array.isArray(index.rows)) return null;
+  const featureKeys = Array.isArray(index.featureKeys) ? index.featureKeys : [];
   const rows = [];
   for (const r of index.rows) {
     if (!Array.isArray(r) || r.length < 7) return null;
-    const [page, idx, shape, cells, mines, par, mods] = r;
+    const [page, idx, shape, cells, mines, par, mods, vec] = r;
     if (!Number.isInteger(page) || !Number.isInteger(idx)) return null;
     if (typeof shape !== 'string' || !Array.isArray(mods)) return null;
     if (!Number.isFinite(cells) || !Number.isFinite(mines) || !Number.isFinite(par)) return null;
-    rows.push({ page, idx, shape, cells, mines, par, mods, key: `${page}:${idx}` });
+    const features = {};
+    if (Array.isArray(vec)) {
+      for (let i = 0; i < featureKeys.length && i < vec.length; i++) {
+        const n = Number(vec[i]);
+        if (Number.isFinite(n)) features[featureKeys[i]] = n;
+      }
+    }
+    rows.push({ page, idx, shape, cells, mines, par, mods, features, key: `${page}:${idx}` });
   }
   return rows;
 }

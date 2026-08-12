@@ -12,7 +12,7 @@ import {
   MATCH_TIME_BANDS, MATCH_DENSITY_BANDS, timeBandOf, densityBandOf,
   densityPhrase, matchUnlocks, matchUnlockLevel,
   defaultMatchRules, sanitizeMatchRules,
-  matchIndexRow, parseMatchIndex, boardMatchesRules, eligibleRows,
+  matchIndexRow, matchIndexFeatureKeys, parseMatchIndex, boardMatchesRules, eligibleRows,
   pickMatchBoards, matchAdvance, matchTotals, resolveMatchPicks,
   matchRulesForLaunch, unmetMatchRules,
 } from '../src/logic/matchRules.js';
@@ -129,15 +129,44 @@ test('REGRESSION: an empty modifier list survives sanitation (plain-boards-only 
 
 // ── The index row contract ──────────────────────────────────────────────
 
-test('matchIndexRow and parseMatchIndex round-trip', () => {
-  const entry = { par: 73.2, spec: { shape: 'hex', cells: 72, mines: 12, gimmicks: ['sonar', 'liar'] } };
-  const row = matchIndexRow(3, 7, entry);
-  const rows = parseMatchIndex({ rows: [row] });
+test('matchIndexRow and parseMatchIndex round-trip, feature vector included', () => {
+  const entry = {
+    par: 73.2,
+    spec: { shape: 'hex', cells: 72, mines: 12, gimmicks: ['sonar', 'liar'] },
+    features: { cellCount: 72, sonarCellCount: 3, clueShare3: 0.123456789 },
+  };
+  const keys = matchIndexFeatureKeys([entry]);
+  assert.deepEqual(keys, ['cellCount', 'clueShare3', 'sonarCellCount'], 'sorted union');
+  const row = matchIndexRow(3, 7, entry, keys);
+  const rows = parseMatchIndex({ featureKeys: keys, rows: [row] });
   assert.equal(rows.length, 1);
   assert.deepEqual(rows[0], {
     page: 3, idx: 7, shape: 'hex', cells: 72, mines: 12, par: 73.2,
     mods: ['liar', 'sonar'], key: '3:7',
+    // Rounded to MATCH_INDEX_FEATURE_DP: these numbers steer a choice among
+    // boards, and par is re-priced from the page's full-precision copy.
+    features: { cellCount: 72, clueShare3: 0.1235, sonarCellCount: 3 },
   });
+});
+
+test('a row with NO feature vector still parses, and steers on nothing', () => {
+  // An index cached from before the vector shipped must keep dealing boards.
+  // Refusing it would turn a stale file into an unplayable Challenge, which is
+  // a far worse trade than a quiet study.
+  const legacy = [3, 7, 'hex', 72, 12, 73.2, ['liar', 'sonar']];
+  const rows = parseMatchIndex({ rows: [legacy] });
+  assert.equal(rows.length, 1);
+  assert.deepEqual(rows[0].features, {});
+  assert.equal(rows[0].par, 73.2, 'everything the deal needs still reads');
+});
+
+test('a missing feature value reads as 0, never as NaN', () => {
+  // A board without one of the union's keys must not poison a comparison:
+  // NaN > 0 is false, but NaN would spread through any arithmetic on it.
+  const keys = ['a', 'b'];
+  const entry = { par: 1, spec: { shape: 'rect', cells: 9, mines: 1, gimmicks: [] }, features: { a: 5 } };
+  const rows = parseMatchIndex({ featureKeys: keys, rows: [matchIndexRow(0, 0, entry, keys)] });
+  assert.deepEqual(rows[0].features, { a: 5, b: 0 });
 });
 
 test('parseMatchIndex refuses malformed rows outright', () => {
