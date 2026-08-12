@@ -2396,37 +2396,6 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   display: none;
 }
 
-.mode-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.mode-btn {
-  padding: 10px 16px;
-  min-height: 44px;
-  border: 2px solid var(--color-border);
-  background: var(--color-btn-bg);
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text);
-  transition: all var(--transition-fast);
-}
-
-.mode-btn.active {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: #fff;
-  box-shadow: 0 2px 8px var(--color-accent-glow);
-}
-
-.mode-btn:hover:not(.active) {
-  background: var(--color-btn-hover);
-  transform: translateY(-1px);
-}
-
 /* ── Reset Profile ─────────────────────────── */
 
 .reset-group {
@@ -5125,12 +5094,19 @@ details[open] > .journal-ledger-summary::after { transform: rotate(225deg); }
   margin-bottom: 16px;
 }
 
+/* Shared by the Climb's checkpoint modal and the Challenge sheet's resume
+   row. The foreground is the theme's own text token over the hidden-cell
+   fill, NOT white on the accent: that pairing measured 1.30:1 on chalkboard,
+   far under the 4.5:1 floor, because a themed accent can land at any
+   lightness and a fixed foreground cannot follow it. This is the same
+   selected-chip idiom .match-start-btn uses, an accent BORDER plus the glow,
+   which keeps the accent as the emphasis without ever carrying text. */
 .checkpoint-resume-btn {
   width: 100%;
   padding: 14px 18px;
   border: 2px solid var(--color-accent);
-  background: var(--color-accent);
-  color: #fff;
+  background: var(--color-cell-hidden);
+  color: var(--color-text);
   border-radius: 12px;
   font-size: 15px;
   font-weight: 700;
@@ -5139,7 +5115,7 @@ details[open] > .journal-ledger-summary::after { transform: rotate(225deg); }
   align-items: center;
   gap: 10px;
   transition: all 0.2s;
-  box-shadow: 0 2px 8px var(--color-accent-glow);
+  box-shadow: 0 0 10px var(--color-accent-glow);
 }
 .checkpoint-resume-btn:hover {
   transform: translateY(-1px);

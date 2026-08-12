@@ -186,10 +186,6 @@
   border: 1px solid rgba(255, 200, 48, 0.2);
 }
 
-[data-theme="legendary"] .mode-btn {
-  border: 1px solid rgba(255, 200, 48, 0.15);
-}
-
 /* Rainbow cycling board border */
 [data-theme="legendary"] #board {
   animation: legendaryBorder 8s linear infinite;
