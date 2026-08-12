@@ -341,10 +341,10 @@
         <div class="mode-card-name">The Climb</div>
         <div class="mode-card-progress" id="title-challenge-progress">Level 1</div>
       </button>
-      <button class="mode-card" data-mode="timed" type="button">
+      <button class="mode-card" data-mode="match" type="button">
         <div class="mode-card-icon"><img class="mode-card-img" src="assets/sprites/mode-quickplay.svg" alt="" draggable="false" onerror="this.replaceWith('⏱️')"></div>
-        <div class="mode-card-name">Quick Play</div>
-        <div class="mode-card-progress" id="title-timed-progress">Race the clock</div>
+        <div class="mode-card-name">Challenge</div>
+        <div class="mode-card-progress" id="title-match-progress">Build a run of boards</div>
       </button>
       <button class="mode-card mode-card-chaos" data-mode="chaos" type="button">
         <div class="mode-card-icon"><img class="mode-card-img" src="assets/sprites/mode-chaos.svg" alt="" draggable="false" onerror="this.replaceWith('🌀')"></div>
@@ -467,13 +467,6 @@
         </button>
       </div>
 
-      <div id="timed-size-tabs" class="timed-size-tabs hidden" role="tablist" aria-label="Quick Play difficulty">
-        <button class="timed-tab active" data-level="1" role="tab" aria-selected="true">Beginner</button>
-        <button class="timed-tab" data-level="2" role="tab" aria-selected="false">Intermediate</button>
-        <button class="timed-tab" data-level="3" role="tab" aria-selected="false">Expert</button>
-        <button class="timed-tab" data-level="4" role="tab" aria-selected="false">Extreme</button>
-      </div>
-
       <div id="chaos-modifier-bar" class="chaos-modifier-bar hidden">
         <span class="chaos-round-label" id="chaos-round-label">Round 1</span>
         <span class="chaos-modifier-icons" id="chaos-modifier-icons"></span>
@@ -519,7 +512,7 @@
       <!-- Zoom rides the nav row instead of owning one under the board.
            display:contents makes the pair direct flex items; the
            wrapper only exists so updateZoom can show/hide both at once
-           (visible only on Expert/Extreme Quick Play boards). The %
+           (visible only on oversized Challenge boards). The %
            readout is gone — the board itself shows the zoom level. -->
       <span id="zoom-controls" class="hidden">
         <button id="zoom-out" class="nav-btn zoom-btn" title="Zoom Out">−</button>
@@ -589,10 +582,12 @@
           <div class="chaos-summary-stat"><span class="chaos-stat-label">Total Time</span><span id="chaos-total-time" class="chaos-stat-value">0s</span></div>
           <div class="chaos-summary-stat"><span class="chaos-stat-label">Best Run</span><span id="chaos-best-run" class="chaos-stat-value">0</span></div>
         </div>
+        <div id="match-summary" class="match-summary hidden"></div>
         <div class="gameover-actions">
           <button id="gameover-retry" class="action-btn">Play Again</button>
           <button id="gameover-explore" class="action-btn hidden">Explore Board</button>
           <button id="gameover-nextlevel" class="action-btn primary hidden">Next Level</button>
+          <button id="gameover-match-next" class="action-btn primary hidden">Next board</button>
           <button id="gameover-chaos-next" class="action-btn primary hidden">Next Board →</button>
           <!-- Daily-win opt-in CTA: shown on daily/weekly wins ONLY when
                push notifications are currently disabled. The single
@@ -698,7 +693,7 @@
           </ul>
           <p>So bombing a "throwaway" mine is a cheap shortcut; bombing a critical mine is real time. The popup on each hit shows the breakdown.</p>
           <p id="bombhit-verdict" class="bombhit-verdict hidden"></p>
-          <p>Other modes still end on a mine, so flag carefully.</p>
+          <p>The Climb still ends on a mine, so flag carefully.</p>
         </div>
         <button id="bombhit-explainer-ok" class="action-btn primary">Got it</button>
       </div>
@@ -732,7 +727,7 @@
         <div id="help-panel-basics" class="help-panel">
           <div class="help-section">
             <h3>The Guarantee</h3>
-            <p>Every standard board is checked by a solver before you play it. From the marked start square (or your first click in Quick Play) there is always a next square you can prove safe, all the way to the end. You never have to gamble.</p>
+            <p>Every standard board is checked by a solver before you play it. From the marked start square there is always a next square you can prove safe, all the way to the end. You never have to gamble.</p>
             <p>The ✓ Certified chip above the board opens that board&rsquo;s own check, and after a loss every square you could have proved safe is outlined. Chaos is the one exception to the guarantee, and it says so.</p>
           </div>
           <div class="help-section">
@@ -752,7 +747,7 @@
           </div>
           <div class="help-section">
             <h3>Mines in Daily and Weekly</h3>
-            <p>Hitting a mine in Daily or Weekly is not the end. The mine is marked where it blew, a time penalty is added (sized by how much that mine was hiding), and you keep playing. In The Climb and Quick Play, a mine ends the run.</p>
+            <p>Hitting a mine in Daily, Weekly or Challenge is not the end. The mine is marked where it blew, a time penalty is added (sized by how much that mine was hiding), and you keep playing. In The Climb, a mine ends the run.</p>
           </div>
           <div class="help-section">
             <h3>Par</h3>
@@ -770,7 +765,7 @@
             <p><strong>Daily:</strong> one puzzle a day, the same board for everyone, online leaderboard and streaks. The board shape varies day to day.</p>
             <p><strong>Weekly:</strong> one puzzle for the whole week, one try a day, your best time counts</p>
             <p><strong>The Climb:</strong> 250 levels in blocks of five, working through all seven board shapes and introducing the modifiers one at a time, with power-ups and a checkpoint every five levels</p>
-            <p><strong>Quick Play:</strong> race the clock for a speed rating (<img class="inline-medal" src="assets/sprites/medal-diamond.svg" alt="" draggable="false" onerror="this.replaceWith('💎')"> best, then <img class="inline-medal" src="assets/sprites/medal-gold.svg" alt="" draggable="false" onerror="this.replaceWith('🥇')"> <img class="inline-medal" src="assets/sprites/medal-silver.svg" alt="" draggable="false" onerror="this.replaceWith('🥈')"> <img class="inline-medal" src="assets/sprites/medal-bronze.svg" alt="" draggable="false" onerror="this.replaceWith('🥉')">)</p>
+            <p><strong>Challenge:</strong> build a run of one to ten boards, choosing the shapes, modifiers, length and mine count yourself, then race your own clock through them</p>
             <p><strong>Greg&rsquo;s Gym:</strong> short practice boards that teach one deduction pattern at a time. A square only opens when the clues prove it is safe, so you cannot luck through.</p>
             <p><strong>Chaos:</strong> fast rounds of random modifiers (unlocks at Climb Level 100). The one mode OUTSIDE the no-guess guarantee: boards are not verified solvable, and mines can move.</p>
           </div>
@@ -795,7 +790,7 @@
             <p><img class="powerup-img" src="assets/sprites/pow-magnet.svg" alt="" draggable="false" onerror="this.replaceWith('🧲')"> <strong>Magnet</strong>: extracts every mine in a 3&times;3 area off the board</p>
             <p><img class="powerup-img" src="assets/sprites/pow-xray.svg" alt="" draggable="false" onerror="this.replaceWith('🔬')"> <strong>X-Ray</strong>: reveals mines in a 5&times;5 area</p>
             <p><img class="powerup-img" src="assets/sprites/pow-lifeline.svg" alt="" draggable="false" onerror="this.replaceWith('❤️')"> <strong>Lifeline</strong>: auto-saves you from one mine</p>
-            <p class="help-note">Earned by winning Climb levels, and spent there too. Daily, Weekly, and Quick Play are played clean.</p>
+            <p class="help-note">Earned by winning Climb levels, and spent there too. Daily, Weekly and Challenge are played clean.</p>
           </div>
         </div>
       </div>
@@ -1044,6 +1039,56 @@
       <div class="modal-body">
         <div id="checkpoint-resume" class="checkpoint-resume hidden"></div>
         <div id="checkpoint-list" class="checkpoint-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Challenge: the match setup sheet. Its controls are BUILT here as
+       static shells and filled by src/ui/matchSetup.js from the player's
+       unlocks and the live library index, so the sheet can never offer a
+       shape the Climb has not introduced or a corner the library cannot
+       fill. -->
+  <div id="match-setup-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content match-setup-content">
+      <div class="modal-header">
+        <h2><img class="modal-title-icon" src="assets/sprites/mode-quickplay.svg" alt="" draggable="false" onerror="this.replaceWith('⏱️')"> Challenge setup</h2>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
+      </div>
+      <div class="modal-body">
+        <div id="match-resume" class="checkpoint-resume hidden"></div>
+
+        <div class="setting-group">
+          <h3>Boards</h3>
+          <div id="match-count" class="match-stepper">
+            <button type="button" class="match-step-btn" data-step="-1" aria-label="One fewer board">−</button>
+            <span class="match-step-value" id="match-count-value" aria-live="polite">3</span>
+            <button type="button" class="match-step-btn" data-step="1" aria-label="One more board">+</button>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <h3>Shapes</h3>
+          <div id="match-shapes" class="match-chips"></div>
+        </div>
+
+        <div class="setting-group">
+          <h3>Modifiers</h3>
+          <div id="match-mods" class="match-chips match-chips-mods"></div>
+          <div id="match-mod-readout" class="match-readout" aria-live="polite"></div>
+        </div>
+
+        <div class="setting-group">
+          <h3>Length</h3>
+          <div id="match-time" class="match-chips match-chips-band"></div>
+        </div>
+
+        <div class="setting-group">
+          <h3>Mines</h3>
+          <div id="match-density" class="match-chips match-chips-band"></div>
+        </div>
+
+        <div id="match-supply" class="match-supply" aria-live="polite"></div>
+        <button id="match-start" class="match-start-btn" type="button">Start Challenge</button>
       </div>
     </div>
   </div>
@@ -1321,7 +1366,7 @@
           <!-- data-tab stays "challenge": it is the stored mode key the
                panel ids and STATS_TABS are wired to, not a label. -->
           <button class="stats-tab" data-tab="challenge" role="tab" aria-selected="false">The Climb</button>
-          <button class="stats-tab" data-tab="timed" role="tab" aria-selected="false">Quick Play</button>
+          <button class="stats-tab" data-tab="match" role="tab" aria-selected="false">Challenge</button>
           <!-- Model tab: hidden at boot. main.js unhides only when the
                signed-in uid matches OWNER_UID (Christopher's). Other
                players never see the tab even if they inspect the DOM. -->
@@ -1476,21 +1521,21 @@
           </div>
         </div>
 
-        <!-- QUICK PLAY TAB -->
-        <div id="stats-panel-timed" class="stats-panel hidden">
+        <!-- CHALLENGE TAB -->
+        <div id="stats-panel-match" class="stats-panel hidden">
           <div class="stats-section" style="margin-top: 0; padding-top: 0; border-top: none;">
-            <h3>Streak</h3>
-            <div class="stat-headline" id="stat-timed-best-streak">0</div>
-            <p class="stats-blurb">Best win streak. Keep the clock honest.</p>
+            <h3>Boards cleared</h3>
+            <div class="stat-headline" id="stat-match-wins">0</div>
+            <p class="stats-blurb">Every board you have finished in a Challenge run.</p>
             <div class="stat-row">
-              <div class="stat-mini"><div class="stat-mini-label">Played</div><div class="stat-mini-value" id="stat-timed-played">0</div></div>
-              <div class="stat-mini"><div class="stat-mini-label">Win Rate</div><div class="stat-mini-value" id="stat-timed-win-rate">0%</div></div>
-              <div class="stat-mini"><div class="stat-mini-label">Streak</div><div class="stat-mini-value" id="stat-timed-streak">0</div></div>
+              <div class="stat-mini"><div class="stat-mini-label">Played</div><div class="stat-mini-value" id="stat-match-played">0</div></div>
+              <div class="stat-mini"><div class="stat-mini-label">Win Rate</div><div class="stat-mini-value" id="stat-match-win-rate">0%</div></div>
+              <div class="stat-mini"><div class="stat-mini-label">Streak</div><div class="stat-mini-value" id="stat-match-streak">0</div></div>
             </div>
           </div>
           <div class="stats-section">
-            <h3>Best times per difficulty</h3>
-            <div class="stat-row" id="stat-timed-best-times"></div>
+            <h3>Recent boards</h3>
+            <div id="stat-match-recent" class="recent-games-inline"></div>
           </div>
         </div>
 

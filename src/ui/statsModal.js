@@ -36,7 +36,7 @@ const MODEL_HISTORY_PATH = './src/logic/modelHistory.json';
 // The tab ids ARE the modeStats key space (the panel is `stats-panel-${tab}`),
 // so this asks getModeKey rather than restating the normal -> challenge
 // mapping a third time.
-const STATS_TABS = new Set(['challenge', 'timed', 'weekly', 'daily']);
+const STATS_TABS = new Set(['challenge', 'match', 'weekly', 'daily']);
 function pickDefaultStatsTab() {
   const key = getModeKey(state.gameMode);
   return STATS_TABS.has(key) ? key : 'daily';
@@ -56,7 +56,7 @@ function setActiveStatsTab(tab) {
 export async function updateStatsDisplay() {
   setActiveStatsTab(pickDefaultStatsTab());
   populateChallengePanel();
-  populateQuickPlayPanel();
+  populateMatchPanel();
   populateWeeklyPanel();
 
   // Resolve uid + populate Model tab in parallel with the daily panel,
@@ -380,7 +380,7 @@ function populateChallengePanel() {
   // statsForMode owns the gameMode → modeStats key mapping ('normal' lives
   // under 'challenge'). The old literal `modeStats?.normal` was always
   // undefined, so this panel silently showed the ALL-MODES aggregate,
-  // every daily/weekly/timed/chaos game inflated "Played" and the win rate
+  // every daily/weekly/match/chaos game inflated "Played" and the win rate
   // (2026-07-10 audit). The `|| stats` fallback survives only for a
   // pre-modeStats legacy save.
   const cm = statsForMode(stats, 'normal') || stats;
@@ -420,32 +420,46 @@ function populateChallengePanel() {
   }
 }
 
-function populateQuickPlayPanel() {
+function populateMatchPanel() {
   const stats = loadStats();
-  const tm = stats.modeStats?.timed;
-  if (!tm) {
-    $('#stat-timed-played').textContent = '0';
-    $('#stat-timed-win-rate').textContent = '0%';
-    $('#stat-timed-streak').textContent = '0';
-    $('#stat-timed-best-streak').textContent = '0';
-    $('#stat-timed-best-times').innerHTML = '<span class="chart-empty">Play some Quick Play games!</span>';
+  const mm = stats.modeStats?.match;
+  const chart = $('#stat-match-recent');
+  if (!mm) {
+    $('#stat-match-played').textContent = '0';
+    $('#stat-match-win-rate').textContent = '0%';
+    $('#stat-match-streak').textContent = '0';
+    $('#stat-match-wins').textContent = '0';
+    if (chart) chart.innerHTML = '<span class="chart-empty">Build a Challenge run to see your history!</span>';
     return;
   }
-  $('#stat-timed-played').textContent = tm.totalGames || 0;
-  const rate = tm.totalGames > 0 ? Math.round((tm.wins / tm.totalGames) * 100) : 0;
-  $('#stat-timed-win-rate').textContent = `${rate}%`;
-  $('#stat-timed-streak').textContent = tm.currentStreak || 0;
-  $('#stat-timed-best-streak').textContent = tm.bestStreak || 0;
+  $('#stat-match-played').textContent = mm.totalGames || 0;
+  const rate = mm.totalGames > 0 ? Math.round((mm.wins / mm.totalGames) * 100) : 0;
+  $('#stat-match-win-rate').textContent = `${rate}%`;
+  $('#stat-match-streak').textContent = mm.currentStreak || 0;
+  $('#stat-match-wins').textContent = mm.wins || 0;
 
-  const labels = ['Beginner', 'Intermediate', 'Expert', 'Extreme'];
-  const cont = $('#stat-timed-best-times');
-  cont.innerHTML = '';
-  for (let i = 0; i < 4; i++) {
-    const t = (tm.bestTimes || {})[`level${i + 1}`];
-    const mini = document.createElement('div');
-    mini.className = 'stat-mini';
-    mini.innerHTML = `<div class="stat-mini-label">${labels[i]}</div><div class="stat-mini-value">${t != null ? t + 's' : '--'}</div>`;
-    cont.appendChild(mini);
+  // Per-board history, the Climb panel's own bar chart: a match's unit is
+  // the board, and the mode has no level table to key best times on.
+  if (!chart) return;
+  chart.innerHTML = '';
+  const recent = (mm.recentGames || []).slice(-20);
+  if (recent.length === 0) {
+    chart.innerHTML = '<span class="chart-empty">Build a Challenge run to see your history!</span>';
+    return;
+  }
+  const winTimes = recent.filter(g => g.won).map(g => g.time);
+  const maxTime = winTimes.length > 0 ? Math.max(...winTimes, 30) : 30;
+  for (const game of recent) {
+    const bar = document.createElement('div');
+    bar.className = `game-bar ${game.won ? 'win' : 'loss'}`;
+    if (game.won) {
+      bar.style.height = `${Math.max(15, 100 - (game.time / maxTime) * 70)}%`;
+      bar.title = `Win: ${game.time}s`;
+    } else {
+      bar.style.height = '30%';
+      bar.title = 'Loss';
+    }
+    chart.appendChild(bar);
   }
 }
 

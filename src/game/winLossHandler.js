@@ -1,7 +1,7 @@
 import { state, ENCOURAGEMENT_LINES, getActiveBombPenaltyTotal, ownsSaveSlot } from '../state/gameState.js';
 import { $, $$, boardEl, resetBtn, scanToast, escapeHtml } from '../ui/domHelpers.js';
 import { getThemeEmoji, updateAllCells, announceGame } from '../ui/boardRenderer.js';
-import { applyIcon, spriteImgHTML, medalImgForEmoji, achievementSpriteImgHTML, uiSpriteImgHTML } from '../ui/spriteLoader.js';
+import { applyIcon, spriteImgHTML, achievementSpriteImgHTML, uiSpriteImgHTML } from '../ui/spriteLoader.js';
 import { updateHeader, updateStreakBorder, updateCheckpointDisplay, getCheckpointForLevel } from '../ui/headerRenderer.js';
 import { updatePowerUpBar } from '../ui/powerUpBar.js';
 import { showModal, hideModal } from '../ui/modalManager.js';
@@ -21,7 +21,8 @@ import { buildTiling } from '../logic/tilingGeometry.js';
 import { extractCrux } from '../logic/cruxExtract.js';
 import { prepareLossReceipt, bombStrikeVerdict } from '../ui/receiptRenderer.js';
 import { computeBombInfoValue } from '../logic/bombInfoValue.js';
-import { getSpeedRating, MAX_TIMED_LEVEL, getChaosDifficulty, BOMB_PENALTY_BASE, BOMB_PENALTY_RAMP } from '../logic/difficulty.js';
+import { getChaosDifficulty, BOMB_PENALTY_BASE, BOMB_PENALTY_RAMP } from '../logic/difficulty.js';
+import { matchAdvance, matchTotals } from '../logic/matchRules.js';
 import { powerUpAwardCount, LIFELINE_BONUS_CHANCE } from '../logic/challenge250.js';
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
@@ -30,14 +31,14 @@ import {
 } from '../storage/statsStorage.js';
 import { safeSetJSON } from '../storage/storageAdapter.js';
 import {
-  playExplosion, playWin, playTimeRecord,
+  playExplosion, playWin,
 } from '../audio/sounds.js';
 import {
   checkNewUnlocks, getHighestTier, getTotalScore,
   getAchievementState, getAllTierNames, getTierIcon, getTierColor,
 } from '../logic/achievements.js';
 import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js';
-import { submitOnlineScore, submitArchiveScore, submitTimedScore, submitWeeklyScore, fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
+import { submitOnlineScore, submitArchiveScore, submitWeeklyScore, fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
 
 // (HTML escaping for the weekly leaderboard rows now comes from
 // ui/domHelpers.js's escapeHtml, single source of truth.)
@@ -199,7 +200,7 @@ function _renderWinModalHistoryDots(todayDate) {
 // receipt would confess a breather on a board with a real crux, and every
 // strike's info-value, which rides into the SUBMITTED time, would come
 // off the failed solve. A RECTANGULAR board with no matching canonical
-// (local-gen fallback, practice ?seed=, challenge/timed) was generated
+// (local-gen fallback, practice ?seed=, Climb or match deals) was generated
 // around the container center, which stays its opener, and a rectangular
 // canonical stores no firstClick, so deserializeBoard returns the center
 // there too: byte-identical on every rectangular board either way. A
@@ -402,6 +403,35 @@ function _applyGameoverPlan(plan) {
   }
 }
 
+// Render the end-of-match summary into #match-summary: one row per board
+// (final clock + strikes), the raw total, and the adjusted total (time / k,
+// rankAdjusted's own convention) when this player carries a rating. His
+// adjusted-only ruling is about COMPARISON, which is the next PR's
+// head-to-head breakdown; a solo summary still shows the literal clock,
+// with the adjusted line beneath it wherever a rating exists.
+function _renderMatchSummary() {
+  const el = document.getElementById('match-summary');
+  if (!el || !state.match) return;
+  const results = (state.match.results || []).filter(Boolean);
+  const uid = getUid();
+  const totals = matchTotals(results, isRatedHandicap(uid) ? getHandicapRatio(uid) : null);
+  const rows = results.map((r, i) => {
+    const strikes = r.strikes > 0
+      ? ` ${spriteImgHTML('strike', 'inline-strike')} ${r.strikes}`
+      : '';
+    return `<div class="match-summary-row"><span>Board ${i + 1}</span>`
+      + `<span>${r.time.toFixed(1)}s${strikes}</span></div>`;
+  }).join('');
+  const totalRow = `<div class="match-summary-row match-summary-total">`
+    + `<span>Total</span><span>${totals.raw.toFixed(1)}s</span></div>`;
+  const adjRow = totals.adjusted != null
+    ? `<div class="match-summary-row match-summary-adjusted">`
+      + `<span>Adjusted</span><span>${totals.adjusted.toFixed(1)}s</span></div>`
+    : '';
+  el.innerHTML = rows + totalRow + adjRow;
+  el.classList.remove('hidden');
+}
+
 // ── Handle Win ─────────────────────────────────────────
 
 export async function handleWin() {
@@ -416,10 +446,12 @@ export async function handleWin() {
   resetBtn.classList.add('smiley-win-bounce');
   setTimeout(() => resetBtn.classList.remove('smiley-win-bounce'), 800);
 
-  // Name gate: daily / weekly / timed wins submit to public leaderboards, so
+  // Name gate: daily / weekly wins submit to public leaderboards, so
   // require a handle BEFORE anything submits or the end card renders (weekly
-  // used to drop a nameless win silently, timed posted "Anonymous", and the
-  // daily's inline form was dismissible). Resolves immediately when a name is
+  // used to drop a nameless win silently, the old Quick Play posted
+  // "Anonymous", and the daily's inline form was dismissible). A solo match
+  // submits nothing yet, so it is deliberately ungated until the match node
+  // gives it a public surface. Resolves immediately when a name is
   // already saved or the mode isn't gated; awaited so every submission below
   // sees the name. Fire-and-forget callers don't await handleWin, and
   // state.status/stopTimer already ran synchronously above, so awaiting here is
@@ -681,12 +713,15 @@ export async function handleWin() {
   gameoverTitle.classList.add('win-title-bounce');
   setTimeout(() => gameoverTitle.classList.remove('win-title-bounce'), 700);
 
+  // Match strikes ride the daily event fields (handleDailyBombHit's own
+  // else branch), so the daily read covers both modes.
+  const _dailyLike = state.gameMode === 'daily' || state.gameMode === 'match';
   const _strikes = state.gameMode === 'weekly'
     ? (state.weeklyBombHits || 0)
-    : state.gameMode === 'daily' ? (state.dailyBombHits || 0) : 0;
+    : _dailyLike ? (state.dailyBombHits || 0) : 0;
   const _bombEvents = state.gameMode === 'weekly'
     ? (state.weeklyBombHitEvents || [])
-    : state.gameMode === 'daily' ? (state.dailyBombHitEvents || []) : [];
+    : _dailyLike ? (state.dailyBombHitEvents || []) : [];
   const _totalPenalty = _bombEvents.reduce(
     (s, e) => s + (e && typeof e.penalty === 'number' ? e.penalty : 0), 0);
   const strikesInfo = _strikes > 0
@@ -696,31 +731,45 @@ export async function handleWin() {
   // (par / par-breakdown / history-dots start hidden via the plan above.)
   const parEl = $('#gameover-par');
 
-  // Timed mode: show speed rating + par-relative delta, and feed the run
-  // into the fit pipeline (timed/{pushId}, the modeTimed effect
-  // activates in the R refit once >= 20 rows exist).
-  if (state.gameMode === 'timed') {
+  // Challenge match: bank this board's result, show its par delta, and
+  // route the flow, another board or the match summary. Nothing submits
+  // anywhere yet: the async match node (and his open call on whether solo
+  // rows carry a matchPlay-style offset into the daily fit) is the next
+  // PR's contract, so a solo match records only local stats.
+  if (state.gameMode === 'match' && state.match) {
     const precise = state.preciseTime || state.elapsedTime;
-    const rating = getSpeedRating(state.currentLevel, precise);
-    gameoverTime.innerHTML = `Time: ${precise.toFixed(1)}s · ${medalImgForEmoji(rating.icon, 'sprite-rank', rating.name) || rating.icon} ${rating.name}!`;
-    if (parEl && state.timedPar > 0) {
-      const tDelta = precise - state.timedPar;
+    // Index-aligned assignment, not push: a board replayed out of a
+    // restored mid-board save overwrites its own slot instead of banking
+    // twice. `current` advances in the Next-board handler, never here.
+    state.match.results[state.match.current] = {
+      seed: state.challengeBoardSeed || null,
+      time: Math.round(precise * 10) / 10,
+      penalty: getActiveBombPenaltyTotal(),
+      strikes: state.dailyBombHits || 0,
+      par: state.matchPar || 0,
+    };
+    const n = state.match.entries.length;
+    gameoverTime.innerHTML = `Board ${state.match.current + 1} of ${n} · ${precise.toFixed(1)}s${strikesInfo}`;
+    if (parEl && state.matchPar > 0) {
+      const tDelta = precise - state.matchPar;
       const tAbs = Math.abs(tDelta).toFixed(1);
       const tClass = tDelta < -0.5 ? 'par-under' : tDelta > 0.5 ? 'par-over' : 'par-even';
       const tText = tDelta < -0.5 ? `${tAbs}s under par` : tDelta > 0.5 ? `${tAbs}s over par` : 'Even par!';
-      parEl.innerHTML = `${spriteImgHTML('smiley', 'sprite-greg-par', 'Greg')}Greg's Time: ${state.timedPar.toFixed(1)}s · <span class="${tClass}">${tText}</span>`;
+      parEl.innerHTML = `${spriteImgHTML('smiley', 'sprite-greg-par', 'Greg')}Greg's Time: ${state.matchPar.toFixed(1)}s · <span class="${tClass}">${tText}</span>`;
       parEl.classList.remove('hidden');
     }
-    if (state.timedFeatures && state.timedPar > 0) {
-      // The name gate at the top of handleWin guarantees a handle before we
-      // get here, so no "Anonymous" fallback: submitTimedScore no-ops on an
-      // empty name rather than posting a nameless row.
-      const timedName = getPlayerName();
-      submitTimedScore(timedName, Math.round(precise * 10) / 10, state.currentLevel, {
-        uid: getUid(),
-        par: state.timedPar,
-        features: state.timedFeatures,
-      }).catch(err => reportCaughtError('timed-score-submit', err));
+    if (matchAdvance(state.match) === 'next') {
+      gameoverTitle.textContent = 'Board cleared!';
+      const nextBtn = document.getElementById('gameover-match-next');
+      if (nextBtn) {
+        nextBtn.textContent = `Next board (${state.match.current + 2} of ${n})`;
+        nextBtn.classList.remove('hidden');
+      }
+    } else {
+      gameoverTitle.textContent = 'Match complete!';
+      _renderMatchSummary();
+      const doneBtn = document.getElementById('gameover-done');
+      if (doneBtn) doneBtn.classList.remove('hidden');
     }
   } else if (state.gameMode === 'daily') {
     // Daily: show precise time + par comparison
@@ -922,23 +971,14 @@ export async function handleWin() {
   setTimeout(() => gameoverTime.classList.remove('stats-cascade'), 500);
 
   const bestKey = `level${state.currentLevel}`;
-  const isNewRecord = state.gameMode !== 'chaos' && stats.bestTimes[bestKey] === state.elapsedTime;
+  // Match wins never write global bestTimes (a board index is not a
+  // level), so the banner excludes the mode outright rather than trusting
+  // a coincidence of equal times against a Climb level's record.
+  const isNewRecord = state.gameMode !== 'chaos' && state.gameMode !== 'match'
+    && stats.bestTimes[bestKey] === state.elapsedTime;
   if (isNewRecord) {
-    if (state.gameMode === 'timed') {
-      const rating = getSpeedRating(state.currentLevel, state.elapsedTime);
-      gameoverRecord.innerHTML = `${uiSpriteImgHTML('uiCelebrate', 'record-icon')} New Record: ${state.elapsedTime}s ${medalImgForEmoji(rating.icon, 'sprite-rank', rating.name) || rating.icon}`;
-    } else {
-      gameoverRecord.innerHTML = `${uiSpriteImgHTML('uiCelebrate', 'record-icon')} New Record!`;
-    }
+    gameoverRecord.innerHTML = `${uiSpriteImgHTML('uiCelebrate', 'record-icon')} New Record!`;
     gameoverRecord.classList.remove('hidden');
-
-    // Extra celebration for timed mode records
-    if (state.gameMode === 'timed') {
-      playTimeRecord();
-      setTimeout(() => showConfettiBurst(0.5, 0.3, 40), 200);
-      setTimeout(() => showConfettiBurst(0.3, 0.5, 30), 500);
-      setTimeout(() => showConfettiBurst(0.7, 0.5, 30), 800);
-    }
   } else {
     gameoverRecord.classList.add('hidden');
   }
@@ -988,14 +1028,10 @@ export async function handleWin() {
     gameoverTitle.textContent = 'Board Cleared!';
     gameoverTime.textContent = 'Round ' + (state.chaosRound || 1) + ' · ' + precise.toFixed(1) + 's';
   } else {
-    // Next Level is data-dependent (level cap), so it unhides here rather
-    // than in the static plan.
-    // Challenge has no top: past the L250 crown the endless zone takes over
-    // (his ruling), so only Quick Play caps here. Capping challenge at
-    // the ladder length would hide Next Level on the crown itself and make
-    // the endless zone unreachable by play.
-    const capped = state.gameMode === 'timed' && state.currentLevel >= MAX_TIMED_LEVEL;
-    if (!capped && state.gameMode !== 'daily' && state.gameMode !== 'weekly' && state.gameMode !== 'timed') {
+    // Next Level is the Climb's alone: the ladder has no top (past the
+    // L250 crown the endless zone takes over, his ruling), a match routes
+    // through its own Next-board button, and daily/weekly end their day.
+    if (state.gameMode === 'normal') {
       nextLevelBtn.classList.remove('hidden');
     }
   }
@@ -1341,58 +1377,6 @@ export function handleLoss(mineRow, mineCol) {
   updateCheckpointDisplay();
 }
 
-// ── Handle Timed Loss ──────────────────────────────────
-
-export function handleTimedLoss() {
-  state.status = 'lost';
-  stopTimer();
-  // Baseline visibility for every optional modal section. Before this, a
-  // timed loss right after a daily/weekly win rendered with NO Play Again
-  // button (only handleWin ever touched #gameover-retry) and could carry a
-  // stale par line or post-loss analysis from the previous render.
-  _applyGameoverPlan(gameoverModalPlan('timeout', state.gameMode));
-  applyIcon(resetBtn, 'smileyLoss', getThemeEmoji('smileyLoss'), { sizeClass: 'sprite-smiley' });
-  resetBtn.classList.add('smiley-loss-shake');
-  setTimeout(() => resetBtn.classList.remove('smiley-loss-shake'), 500);
-  playExplosion();
-  triggerHeavyShake();
-  showRedFlash();
-  haptic([100, 40, 100, 40, 200]);
-  saveGameResult(false, state.elapsedTime, state.currentLevel, { gameMode: state.gameMode, isLevelPractice: !!state.isLevelPractice });
-  saveModePowerUps(state.gameMode, state.powerUps);
-  saveProgress({ powerUps: loadPowerUps() });
-
-  // Death penalty: reset to the checkpoint for the CURRENT level range
-  const lostLevel = state.currentLevel;
-  if (state.gameMode === 'normal' && state.currentLevel > 1) {
-    state.currentLevel = getCheckpointForLevel(state.currentLevel);
-  }
-
-  const gameoverTitle = $('#gameover-title');
-  const gameoverTime = $('#gameover-time');
-  gameoverTitle.textContent = 'Time\'s Up!';
-  if (lostLevel > state.currentLevel && state.gameMode === 'normal') {
-    gameoverTime.textContent = `You ran out of time! Back to Level ${state.currentLevel}`;
-  } else {
-    gameoverTime.textContent = `You ran out of time!`;
-  }
-  // (All win- and loss-specific sections are settled by the plan above.)
-
-  // Encouragement line
-  const encouragement2 = $('#gameover-encouragement');
-  if (encouragement2) {
-    encouragement2.textContent = ENCOURAGEMENT_LINES[Math.floor(Math.random() * ENCOURAGEMENT_LINES.length)];
-    encouragement2.classList.remove('hidden');
-  }
-
-  // Clear saved game state
-  _clearOwnSave();
-
-  setTimeout(() => showModal('gameover-overlay'), 400);
-  updatePowerUpBar();
-  updateStreakBorder();
-}
-
 // ── Daily / Weekly Mode: Info-Value Bomb Penalty ────────
 // New (post-2026-05-31) mechanic: NO re-fog, NO flat +10s. Hitting a
 // mine instead costs a deterministic info-value penalty + a small base.
@@ -1475,10 +1459,12 @@ export function handleDailyBombHit(mineRow, mineCol, extraMines = []) {
   const fr = Math.floor(opener / state.cols);
   const fc = opener % state.cols;
   const priorStrikes = priorEvents.map(e => ({ row: e.row, col: e.col }));
-  // Daily, weekly, and Par Lab strikes all route here; the board's feature
-  // vector sets the par baseline the info-value is priced against under the
-  // log-scale model, a lab board's own features live in coastlineFeatures.
-  const boardFeatures = state.weeklyFeatures || state.dailyFeatures || state.coastlineFeatures || null;
+  // Daily, weekly, match, and Par Lab strikes all route here; the board's
+  // feature vector sets the par baseline the info-value is priced against
+  // under the log-scale model, a lab board's own features live in
+  // coastlineFeatures.
+  const boardFeatures = state.weeklyFeatures || state.dailyFeatures
+    || state.matchFeatures || state.coastlineFeatures || null;
   let totalPenalty = 0;
   let firstInfoValueRounded = 0;
   for (let i = 0; i < mines.length; i++) {

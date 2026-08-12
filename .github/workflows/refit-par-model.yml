@@ -171,6 +171,19 @@ jobs:
         continue-on-error: true
         run: node scripts/topup-climb-library.mjs --fill --minutes 20
 
+      # The Challenge match library re-prices the same night, and for a
+      # sharper reason than the Climb's: its stored par is what the config
+      # sheet's TIME BANDS filter on, so a library left at yesterday's
+      # prices quietly starts selling two-minute boards as "Quick". Nothing
+      # moves and nothing generates: pars rewrite in place (a board must
+      # keep its page, because page:idx is the seen-cycle key on every
+      # player's device), so this is one predictPar per board and finishes
+      # in seconds. test/matchLibrary.test.mjs holds the lockstep.
+      - name: Re-price the Challenge match library
+        id: matchreprice
+        continue-on-error: true
+        run: node scripts/reprice-match-library.mjs
+
       # ── Greg's Journal, the nightly rewrite (his ask, 2026-08-11) ──
       # composeEntry's pooled beats are honest but read stitched; once a
       # night the active study's entry is rewritten into ONE coherent
@@ -220,14 +233,14 @@ jobs:
       - name: Commit and push if anything changed
         id: commit
         run: |
-          if git diff --quiet src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json src/logic/journalRewrite.json src/logic/challengePool.js scripts/data/climb-library; then
+          if git diff --quiet src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json src/logic/journalRewrite.json src/logic/challengePool.js scripts/data/climb-library scripts/data/match-library; then
             echo "No model, handicap, experiment-target, history, journal-rewrite, ladder-price, or library changes — nothing to commit."
             echo "pushed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git config user.name  "Christopher Wells"
           git config user.email "c.wells@bowdoin.edu"
-          git add src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json src/logic/journalRewrite.json src/logic/challengePool.js scripts/data/climb-library
+          git add src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json src/logic/journalRewrite.json src/logic/challengePool.js scripts/data/climb-library scripts/data/match-library
           git commit -m "refit PAR_MODEL, handicaps, experiment target, ladder prices, and the journal rewrite — $(date -u +%Y-%m-%d)"
           # A plain push LOSES THE WHOLE NIGHT'S FIT if a human pushed to main
           # while Stan was sampling. That is not hypothetical: the 2026-08-03
@@ -274,6 +287,15 @@ jobs:
           echo "will name it on the next PR."
           echo "Remedy: node scripts/reprice-climb-library.mjs"
           echo "        node scripts/topup-climb-library.mjs --fill"
+          exit 1
+
+      - name: Fail the run if the match library could not be re-priced
+        if: steps.matchreprice.outcome == 'failure'
+        run: |
+          echo "::error::The Challenge match library was NOT re-priced. The model committed"
+          echo "normally; the setup sheet's time bands now filter on stale par, and"
+          echo "test/matchLibrary.test.mjs will name it on the next PR."
+          echo "Remedy: node scripts/reprice-match-library.mjs"
           exit 1
 
       # A quality miss (draft failed validation, entry too short) exits 0

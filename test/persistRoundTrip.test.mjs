@@ -6,8 +6,11 @@
 //
 //   - usedPowerUps: a resumed challenge game that had already used a
 //     power-up counted as a purist win on completion.
-//   - timedPar / timedFeatures: a resumed timed win lost its par line and
-//     its timed/{pushId} fit row.
+//   - the mode's own par + features: a resumed win rendered no par line and
+//     priced its strikes against no baseline. (These were timedPar /
+//     timedFeatures until Quick Play was absorbed into the dealt Challenge
+//     match mode; the match pair carries the same contract, plus the match
+//     STRUCTURE, whose loss would re-deal different boards mid-match.)
 //
 // Drives the REAL persist → resume path (not just the payload shape), with
 // a rich DOM proxy shim so tryResumeGame's render calls no-op in node.
@@ -101,11 +104,23 @@ function makeBoard(rows, cols) {
   return b;
 }
 
-function setupTimedGame() {
-  state.gameMode = 'timed';
+// A mid-match save: board 2 of 3, one board already banked. The entries
+// carry real payloads because they ARE the match; isSaveResumable refuses a
+// match save whose entries are missing, so a stub list would test nothing.
+function matchEntries() {
+  return [
+    { seed: 'match:a', payload: { rows: 3, cols: 3, totalMines: 1 }, par: 40, spec: { shape: 'rect' } },
+    { seed: 'match:b', payload: { rows: 3, cols: 3, totalMines: 1 }, par: 55, spec: { shape: 'rect' } },
+    { seed: 'match:c', payload: { rows: 3, cols: 3, totalMines: 1 }, par: 70, spec: { shape: 'rect' } },
+  ];
+}
+
+function setupMatchGame() {
+  state.gameMode = 'match';
   state.status = 'playing';
   state.isArchivePlay = false;
   state.isDailyPractice = false;
+  state.isLevelPractice = false;
   state.board = makeBoard(3, 3);
   state.rows = 3; state.cols = 3; state.totalMines = 1;
   state.board[2][2].isMine = true;
@@ -114,59 +129,96 @@ function setupTimedGame() {
   state.powerUps = { revealSafe: 1, shield: 0, lifeline: 0, scanRowCol: 0, magnet: 0, xray: 0 };
   state.activeGimmicks = [];
   state.usedPowerUps = true;
-  state.timedPar = 41.7;
-  state.timedFeatures = { cellCount: 9, totalMines: 1, modeTimed: 1 };
+  state.matchPar = 41.7;
+  state.matchFeatures = { cellCount: 9, totalMines: 1 };
+  state.match = {
+    rules: { count: 3, shapes: ['rect'], mods: [], time: 'any', density: 'any' },
+    entries: matchEntries(),
+    current: 1,
+    results: [{ seed: 'match:a', time: 30.5, penalty: 0, strikes: 0, par: 40 }],
+  };
 }
 
-test('REGRESSION: usedPowerUps / timedPar / timedFeatures survive the save snapshot', () => {
+test('REGRESSION: usedPowerUps / matchPar / matchFeatures survive the save snapshot', () => {
   localStorage.clear();
-  setupTimedGame();
+  setupMatchGame();
   persistGameState();
-  const saved = loadGameState('timed');
-  assert.ok(saved, 'the timed slot must persist');
+  const saved = loadGameState('match');
+  assert.ok(saved, 'the match slot must persist');
   assert.equal(saved.usedPowerUps, true, 'the purist flag must ride the save');
-  assert.equal(saved.timedPar, 41.7);
-  assert.deepEqual(saved.timedFeatures, { cellCount: 9, totalMines: 1, modeTimed: 1 });
+  assert.equal(saved.matchPar, 41.7);
+  assert.deepEqual(saved.matchFeatures, { cellCount: 9, totalMines: 1 });
 });
 
-test('REGRESSION: the resume path restores all three fields onto live state', () => {
+test('REGRESSION: the dealt entries ride the save, so a resume plays the SAME boards', () => {
+  // The entries are the match. A save that dropped them would re-deal on
+  // resume, handing the player different boards mid-match (and, once the
+  // match node ships, different boards from the opponent's).
   localStorage.clear();
-  setupTimedGame();
+  setupMatchGame();
+  persistGameState();
+  const saved = loadGameState('match');
+  assert.deepEqual(saved.match.entries.map((e) => e.seed), ['match:a', 'match:b', 'match:c']);
+  assert.equal(saved.match.current, 1, 'the board index rides too');
+  assert.deepEqual(saved.match.results[0], { seed: 'match:a', time: 30.5, penalty: 0, strikes: 0, par: 40 });
+  assert.deepEqual(saved.match.rules.shapes, ['rect']);
+});
+
+test('REGRESSION: a resume brings all three fields back onto live state', () => {
+  localStorage.clear();
+  setupMatchGame();
   persistGameState();
 
   // Wipe the live fields the way a fresh boot would.
   state.usedPowerUps = false;
-  state.timedPar = 0;
-  state.timedFeatures = null;
+  state.matchPar = 0;
+  state.matchFeatures = null;
+  state.match = null;
   state.status = 'idle';
 
-  const resumed = tryResumeGame('timed');
-  // The resume starts a real interval timer — stop it so the test process exits.
+  const resumed = tryResumeGame('match');
+  // The resume starts a real interval timer, so stop it or the test process hangs.
   if (state.timerId) { clearInterval(state.timerId); state.timerId = null; }
 
-  assert.equal(resumed, true, 'the timed save must be resumable');
+  assert.equal(resumed, true, 'the match save must be resumable');
   assert.equal(state.usedPowerUps, true);
-  assert.equal(state.timedPar, 41.7);
-  assert.deepEqual(state.timedFeatures, { cellCount: 9, totalMines: 1, modeTimed: 1 });
+  assert.equal(state.matchPar, 41.7);
+  assert.deepEqual(state.matchFeatures, { cellCount: 9, totalMines: 1 });
+  assert.equal(state.match.current, 1);
+  assert.deepEqual(state.match.entries.map((e) => e.seed), ['match:a', 'match:b', 'match:c']);
+});
+
+test('REGRESSION: a match save without its entries is REFUSED, not half-restored', () => {
+  // Half-restoring would leave the mode with a rules object and no boards,
+  // which newGame would then fill by dealing a different match.
+  localStorage.clear();
+  setupMatchGame();
+  persistGameState();
+  const saved = loadGameState('match');
+  saved.match = { ...saved.match, entries: [] };
+  localStorage.setItem('minesweeper_game_state_match', JSON.stringify(saved));
+  state.match = null;
+  assert.equal(tryResumeGame('match'), false);
+  if (state.timerId) { clearInterval(state.timerId); state.timerId = null; }
 });
 
 test('a pre-fix save (fields absent) resumes with safe defaults', () => {
   localStorage.clear();
-  setupTimedGame();
+  setupMatchGame();
   persistGameState();
-  const saved = loadGameState('timed');
+  const saved = loadGameState('match');
   delete saved.usedPowerUps;
-  delete saved.timedPar;
-  delete saved.timedFeatures;
-  localStorage.setItem('minesweeper_game_state_timed', JSON.stringify(saved));
+  delete saved.matchPar;
+  delete saved.matchFeatures;
+  localStorage.setItem('minesweeper_game_state_match', JSON.stringify(saved));
 
-  const resumed = tryResumeGame('timed');
+  const resumed = tryResumeGame('match');
   if (state.timerId) { clearInterval(state.timerId); state.timerId = null; }
 
   assert.equal(resumed, true);
   assert.equal(state.usedPowerUps, false);
-  assert.equal(state.timedPar, 0);
-  assert.equal(state.timedFeatures, null);
+  assert.equal(state.matchPar, 0);
+  assert.equal(state.matchFeatures, null);
 });
 
 // ── Explicit topology (Coastline tiling boards) ────────────────────────
@@ -189,7 +241,7 @@ function setupTilingGame() {
   // board ever has, and isSaveResumable now refuses a topology without its
   // geometry (issue #189).
   const T = buildTiling488(3, 3);
-  state.gameMode = 'timed';
+  state.gameMode = 'normal';
   state.status = 'playing';
   state.isArchivePlay = false;
   state.isDailyPractice = false;
@@ -210,8 +262,9 @@ function setupTilingGame() {
   state.powerUps = { revealSafe: 0, shield: 0, lifeline: 0, scanRowCol: 0, magnet: 0, xray: 0 };
   state.activeGimmicks = [];
   state.usedPowerUps = false;
-  state.timedPar = 0;
-  state.timedFeatures = null;
+  state.matchPar = 0;
+  state.matchFeatures = null;
+  state.match = null;
   return T;
 }
 
@@ -220,7 +273,7 @@ test('REGRESSION: an explicit topology survives the save snapshot', () => {
   const T = setupTilingGame();
   persistGameState();
 
-  const saved = loadGameState('timed');
+  const saved = loadGameState('challenge');
   assert.ok(saved, 'the slot must persist');
   assert.ok(saved.cellNeighbors, 'the topology must ride the save as its own field');
   assert.equal(saved.cellNeighbors.length, T.total);
@@ -247,7 +300,7 @@ test('REGRESSION: a resumed tiling board keeps its topology, not a rectangle', (
   state.board = null;
   state.status = 'idle';
 
-  const resumed = tryResumeGame('timed');
+  const resumed = tryResumeGame('normal');
   if (state.timerId) { clearInterval(state.timerId); state.timerId = null; }
 
   assert.equal(resumed, true, 'the tiling save must be resumable');
@@ -275,13 +328,13 @@ test('REGRESSION: a resumed tiling board keeps its topology, not a rectangle', (
 
 test('an ordinary rectangular save carries no topology and resumes unchanged', () => {
   localStorage.clear();
-  setupTimedGame();
+  setupMatchGame();
   persistGameState();
 
-  const saved = loadGameState('timed');
+  const saved = loadGameState('match');
   assert.equal(saved.cellNeighbors, null, 'no topology field on an ordinary board');
 
-  const resumed = tryResumeGame('timed');
+  const resumed = tryResumeGame('match');
   if (state.timerId) { clearInterval(state.timerId); state.timerId = null; }
   assert.equal(resumed, true);
   assert.equal(state.board._cellNeighbors, undefined, 'rectangular boards stay implicit');

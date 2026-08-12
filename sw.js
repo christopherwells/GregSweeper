@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.10.38';
+const CACHE_NAME = 'gregsweeper-v1.10.39';
 const ASSETS = [
   './',
   './index.html',
@@ -16,6 +16,7 @@ const ASSETS = [
   './src/ui/themeManager.js',
   './src/ui/themeEffects.js',
   './src/game/climbDeal.js',
+  './src/game/matchDeal.js',
   './src/game/gameActions.js',
   './src/game/winLossHandler.js',
   './src/game/powerUpActions.js',
@@ -112,6 +113,7 @@ const ASSETS = [
   './src/logic/canonicalSignature.js',
   './src/logic/challenge250.js',
   './src/logic/climbLibrary.js',
+  './src/logic/matchRules.js',
   './src/logic/challengeRules.js',
   './src/logic/challengePool.js',
   './src/logic/challenge250Builder.js',
@@ -150,6 +152,7 @@ const ASSETS = [
   './src/ui/parLabUI.js',
   './src/ui/shareActions.js',
   './src/ui/shareCardImage.js',
+  './src/ui/matchSetup.js',
   './src/ui/statsModal.js',
   './src/ui/titleScreen.js',
   './src/ui/wormRenderer.js',

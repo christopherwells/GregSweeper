@@ -9,14 +9,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { shouldPromptForName } from '../src/logic/shouldPromptForName.js';
 
-test('prompts for the three leaderboard modes when no name is saved', () => {
-  for (const mode of ['daily', 'weekly', 'timed']) {
+test('prompts for the leaderboard modes when no name is saved', () => {
+  for (const mode of ['daily', 'weekly']) {
     assert.equal(shouldPromptForName({ mode, savedName: '' }), true, `${mode} with no name should prompt`);
   }
 });
 
 test('does not prompt once a usable name is saved', () => {
-  for (const mode of ['daily', 'weekly', 'timed']) {
+  for (const mode of ['daily', 'weekly']) {
     assert.equal(shouldPromptForName({ mode, savedName: 'Greg' }), false, `${mode} with a name should not prompt`);
   }
 });
@@ -26,7 +26,10 @@ test('a whitespace-only saved name is treated as unset', () => {
 });
 
 test('never prompts for non-leaderboard modes', () => {
-  for (const mode of ['normal', 'chaos', undefined, null, 'gym']) {
+  // 'match' is here deliberately: a solo Challenge match submits nothing,
+  // so demanding a handle for one would gate a private game. The
+  // head-to-head build gives matches a public surface and moves it.
+  for (const mode of ['normal', 'match', 'chaos', undefined, null, 'gym']) {
     assert.equal(shouldPromptForName({ mode, savedName: '' }), false, `${mode} should never prompt`);
   }
 });

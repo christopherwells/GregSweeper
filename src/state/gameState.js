@@ -12,10 +12,9 @@ export const state = {
   elapsedTime: 0,
   preciseTime: 0,    // precise time in seconds with tenths (e.g., 45.3)
   timerId: null,
-  timeLimit: 0,         // countdown seconds for timed mode (0 = no limit)
 
   currentLevel: 1,
-  gameMode: 'normal',   // normal | timed | daily | weekly | chaos
+  gameMode: 'normal',   // normal | match | daily | weekly | chaos
   dailySeed: null,
   // The effective RNG seed for the day's board generation. On normal
   // days this equals dailySeed (the YYYY-MM-DD date). On adaptive-
@@ -55,12 +54,19 @@ export const state = {
   // Null in chaos and on any board the solver did not certify, the
   // Certified chip just doesn't render rather than overclaim.
   boardCertificate: null,
-  // Timed mode: par + feature vector for the CURRENT board, computed at
-  // generation from the same PAR_MODEL as daily (timed boards are
-  // gimmick-free, so gimmick terms are zero). Powers the par-relative
-  // rating on the timed win modal and the timed/{pushId} submission.
-  timedPar: 0,
-  timedFeatures: null,
+  // Challenge (mode 'match', the player-facing "Challenge"): the match in
+  // progress. rules = the sanitized config-sheet filter; entries = the
+  // dealt library entries in play order (verbatim payloads, the same shape
+  // the async match node will ship, so a mid-match resume re-certifies
+  // exactly what was dealt); current = index of the board in play;
+  // results = per-finished-board {seed, time, penalty, strikes, par}.
+  // Null outside the mode. matchPar/matchFeatures describe the CURRENT
+  // board (stored features re-priced through this client's own model, the
+  // climb deal's rule), for the pre-board card, strike pricing, and skill
+  // feats. Persisted with the save; PR 4's match node lifts `entries`.
+  match: null,
+  matchPar: 0,
+  matchFeatures: null,
   dailyPar: 0,       // predicted time in seconds, predictPar(dailyFeatures)
   dailyMoves: 0,     // solver totalClicks for pace calculation
   dailyFeatures: null, // full feature vector from computeDailyFeatures, used for par breakdown, Firebase meta upload, and the R refit training set
@@ -262,14 +268,15 @@ export function clearCoastlinePractice() {
 }
 
 // True when a board's modifiers were resolved during PRE-generation
-// (daily/weekly canonical boards, coastline tiling boards, and, since the
-// Challenge 250 engine, challenge ladder boards, whose specs author their
-// modifiers and whose layouts are drawn frozen at newGame) rather than on
-// the first click (timed / chaos). newGame's per-game reset must NOT wipe
-// activeGimmicks for these, or the active-modifier bar renders empty on a
-// board that plainly has modifiers.
+// (daily/weekly canonical boards, coastline tiling boards, Climb ladder
+// boards, and dealt match boards, whose layouts are frozen at newGame)
+// rather than on the first click (chaos, the one remaining first-click
+// generator). newGame's per-game reset must NOT wipe activeGimmicks for
+// these, or the active-modifier bar renders empty on a board that plainly
+// has modifiers.
 export function modifiersPreResolved(gameMode, coastlinePractice) {
-  return gameMode === 'daily' || gameMode === 'weekly' || gameMode === 'normal' || !!coastlinePractice;
+  return gameMode === 'daily' || gameMode === 'weekly' || gameMode === 'normal'
+    || gameMode === 'match' || !!coastlinePractice;
 }
 
 // Does the CURRENT run own the save slot its mode writes to?

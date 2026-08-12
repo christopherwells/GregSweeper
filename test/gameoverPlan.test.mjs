@@ -21,8 +21,8 @@ import assert from 'node:assert/strict';
 
 const { gameoverModalPlan, GAMEOVER_ELEMENT_IDS } = await import('../src/logic/gameoverPlan.js');
 
-const OUTCOMES = ['win', 'loss', 'timeout'];
-const MODES = ['normal', 'timed', 'daily', 'weekly', 'chaos'];
+const OUTCOMES = ['win', 'loss'];
+const MODES = ['normal', 'match', 'daily', 'weekly', 'chaos'];
 
 test('completeness: every plan decides every registered element, booleans only', () => {
   for (const outcome of OUTCOMES) {
@@ -46,24 +46,12 @@ test('an unknown outcome degrades to everything-hidden plus the retry escape hat
   }
 });
 
-test('REGRESSION: a timed loss shows Play Again (it vanished after a daily/weekly win)', () => {
-  assert.equal(gameoverModalPlan('timeout', 'timed')['gameover-retry'], true);
-});
-
-test('REGRESSION: loss and timeout hide the par section (the weekly leaderboard lived there)', () => {
+test('REGRESSION: loss hides the par section (the weekly leaderboard lived there)', () => {
   for (const mode of MODES) {
     assert.equal(gameoverModalPlan('loss', mode)['gameover-par'], false, `loss/${mode}`);
-    assert.equal(gameoverModalPlan('timeout', mode)['gameover-par'], false, `timeout/${mode}`);
     assert.equal(gameoverModalPlan('loss', mode)['gameover-history-dots'], false, `loss/${mode} dots`);
     assert.equal(gameoverModalPlan('loss', mode)['gameover-remind-tomorrow'], false, `loss/${mode} remind CTA`);
   }
-});
-
-test('REGRESSION: a timeout carries no stale loss-analysis or Explore button', () => {
-  const plan = gameoverModalPlan('timeout', 'timed');
-  assert.equal(plan['gameover-analysis'], false);
-  assert.equal(plan['gameover-explore'], false);
-  assert.equal(plan['gameover-encouragement'], true);
 });
 
 test('win statics: share always; retry/done/crux split on the canonical single-puzzle modes', () => {
@@ -71,10 +59,15 @@ test('win statics: share always; retry/done/crux split on the canonical single-p
     const plan = gameoverModalPlan('win', mode);
     const dailyLike = mode === 'daily' || mode === 'weekly';
     assert.equal(plan['gameover-share'], true, `win/${mode} share`);
-    assert.equal(plan['gameover-retry'], !dailyLike, `win/${mode} retry`);
+    // A won match board is banked, so Play Again hides there too: replaying
+    // it would reset the clock on a layout already cleared, exactly the
+    // daily/weekly cheat.
+    assert.equal(plan['gameover-retry'], !dailyLike && mode !== 'match', `win/${mode} retry`);
     assert.equal(plan['gameover-done'], dailyLike, `win/${mode} done`);
     assert.equal(plan['gameover-crux-challenge'], dailyLike, `win/${mode} crux`);
     assert.equal(plan['gameover-chaos-next'], mode === 'chaos', `win/${mode} chaos-next`);
+    assert.equal(plan['gameover-match-next'], false, `win/${mode} match-next starts hidden`);
+    assert.equal(plan['match-summary'], false, `win/${mode} match summary starts hidden`);
   }
 });
 
@@ -95,6 +88,7 @@ test('data-dependent sections always start hidden (the handler unhides after con
     'gameover-receipt', 'gameover-record', 'gameover-nextlevel',
     'gameover-powerup-earned', 'gameover-achievements',
     'gameover-remind-tomorrow', 'share-card-preview',
+    'gameover-match-next', 'match-summary',
   ];
   for (const outcome of OUTCOMES) {
     for (const mode of MODES) {

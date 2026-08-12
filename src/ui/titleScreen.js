@@ -72,7 +72,7 @@ let _titleWeeklyPar = { week: null, secs: 0 };
 export function updateTitleProgress() {
   const stats = loadStats();
   const challengeEl = $('#title-challenge-progress');
-  const timedEl = $('#title-timed-progress');
+  const matchEl = $('#title-match-progress');
   const dailyEl = $('#title-daily-progress');
 
   if (challengeEl) {
@@ -84,9 +84,13 @@ export function updateTitleProgress() {
       ? `Level ${cLevel} · endless`
       : `Level ${cLevel} · ${Math.round(cLevel / CHALLENGE_MAX_LEVEL * 100)}%`;
   }
-  if (timedEl) {
-    const tWins = stats.modeStats?.timed?.wins || 0;
-    timedEl.textContent = tWins > 0 ? `${tWins} wins` : 'Race the clock';
+  if (matchEl) {
+    // A match's unit is the BOARD, so that is what the card counts; the
+    // mode has no level to name and no streak worth a front-door line.
+    const mWins = stats.modeStats?.match?.wins || 0;
+    matchEl.textContent = mWins > 0
+      ? `${mWins} board${mWins === 1 ? '' : 's'} cleared`
+      : 'Build a run of boards';
   }
   if (dailyEl) {
     const today = getLocalDateString();

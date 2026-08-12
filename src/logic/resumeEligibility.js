@@ -140,6 +140,18 @@ export function isSaveResumable(gs, ctx) {
     return false;
   }
 
+  // A Challenge match resumes only with its whole match structure intact:
+  // the dealt entries ARE the match (a resume that re-dealt would hand the
+  // player different boards mid-match, and next PR different boards from
+  // the opponent's), and the board index has to point inside them. A save
+  // missing any of that is refused rather than half-restored, the same
+  // shape the daily's seed-identity rule takes.
+  if (gs.gameMode === 'match') {
+    const m = gs.match;
+    if (!m || !m.rules || !Array.isArray(m.entries) || m.entries.length === 0) return false;
+    if (!Number.isInteger(m.current) || m.current < 0 || m.current >= m.entries.length) return false;
+  }
+
   // Cells corrupted by the v1.5.19 canonical-board deserializer bug
   // (cells without row/col) make an unplayable board where reveal
   // cascades never visually update, reject so newGame() refetches

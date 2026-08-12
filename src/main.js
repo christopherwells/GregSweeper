@@ -22,11 +22,11 @@ import { applyThemeEffects, applyTitleSceneEffects } from './ui/themeEffects.js'
 import { newGame, revealCell, toggleFlag, handleChordReveal, rearmPlateTimers } from './game/gameActions.js';
 import './game/winLossHandler.js'; // side-effect: registers handleWin with powerUpActions
 import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js';
-import { switchMode, isChaosUnlocked, updateModeUI } from './game/modeManager.js';
+import { switchMode, isChaosUnlocked, updateModeUI, launchMatch } from './game/modeManager.js';
 import { resolveCruxDate, streakBearingDates } from './logic/archiveEligibility.js';
 import { challengeSaveIsCurrent } from './logic/resumeEligibility.js';
 import { persistGameState, tryResumeGame, canResumeMode } from './game/gamePersistence.js';
-import { MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL } from './logic/difficulty.js';
+import { CHAOS_UNLOCK_LEVEL } from './logic/difficulty.js';
 import { CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE } from './logic/challenge250.js';
 import { LIB_MOD_INTROS, LIB_SHAPE_INTROS } from './logic/climbLibrary.js';
 import { loadHandicaps } from './logic/handicaps.js';
@@ -798,19 +798,6 @@ for (const modal of $$('.modal')) {
 
 // Mode selection handled by title screen mode cards (see below)
 
-// Quick Play size tabs (above board)
-for (const tab of $$('.timed-tab')) {
-  tab.addEventListener('click', () => {
-    const level = parseInt(tab.dataset.level, 10);
-    state.currentLevel = level;
-    for (const t of $$('.timed-tab')) t.classList.remove('active');
-    tab.classList.add('active');
-    // Sync settings modal buttons
-    for (const d of $$('.timed-diff-btn')) d.classList.toggle('active', parseInt(d.dataset.level, 10) === level);
-    newGame();
-  });
-}
-
 // ── Checkpoint Selector (Challenge mode) ────────────────
 // Row labels come from the Challenge 250 map's own intro blocks: modifier
 // debuts keep their GIMMICK_DEFS icon/name, shape debuts use the
@@ -946,6 +933,13 @@ for (const card of $$('.mode-card')) {
     if (!mode) return;
     if (mode === 'normal') {
       showCheckpointSelector();
+      return;
+    }
+    if (mode === 'match') {
+      // Challenge opens its setup sheet, never a board: the rules ARE the
+      // mode's entry (the Climb's checkpoint selector is the same shape).
+      import('./ui/matchSetup.js').then(m => m.openMatchSetup())
+        .catch(err => reportCaughtError('match-setup-import', err));
       return;
     }
     if (mode === 'chaos') {
@@ -1600,6 +1594,19 @@ $('#gameover-retry').addEventListener('click', () => {
   newGame();
 });
 
+// Challenge match: "Next board" banks the finished board and deals the
+// next entry. The index advances HERE, not in handleWin, so a win card
+// re-rendered from a restored save cannot skip a board.
+const matchNextBtn = $('#gameover-match-next');
+if (matchNextBtn) {
+  matchNextBtn.addEventListener('click', async () => {
+    if (!state.match) return;
+    state.match.current++;
+    hideModal('gameover-overlay');
+    await newGame();
+  });
+}
+
 // Chaos mode: "Next Board" advances to the next round
 const chaosNextBtn = $('#gameover-chaos-next');
 if (chaosNextBtn) {
@@ -1635,12 +1642,10 @@ $('#post-death-replay').addEventListener('click', () => {
 });
 
 $('#gameover-nextlevel').addEventListener('click', async () => {
-  // Challenge has no top (the endless zone), so only Quick Play caps here.
-  // The same rule the Next Level BUTTON follows in winLossHandler; the two
-  // used to share a cap, and capping only one of them would either show a
-  // dead button or advance past a hidden one.
-  const cappedAtTop = state.gameMode === 'timed' && state.currentLevel >= MAX_TIMED_LEVEL;
-  if (!cappedAtTop) state.currentLevel++;
+  // The Climb's button, and the Climb has no top (past the crown the
+  // endless zone takes over). winLossHandler decides whether it SHOWS
+  // under the same rule, so neither a dead button nor a hidden advance.
+  state.currentLevel++;
   const isLevelMode = state.gameMode === 'normal';
 
   // Dismiss our own card rather than relying on newGame's hideAllModals
@@ -1670,8 +1675,8 @@ $('#gameover-nextlevel').addEventListener('click', async () => {
   }
 });
 
-// The daily win card's inline name form was removed: a nameless daily/weekly/
-// timed win is now gated by #name-capture-modal (src/ui/nameCapture.js) BEFORE
+// The daily win card's inline name form was removed: a nameless daily or
+// weekly win is now gated by #name-capture-modal (src/ui/nameCapture.js) BEFORE
 // the card renders, so by the time the card shows, the auto-submit path in
 // winLossHandler always has a saved name. (No #gameover-submit-daily handler.)
 
@@ -2190,6 +2195,15 @@ async function init() {
   const _boardParam = parseInt(urlParams.get('board') || '', 10);
   const deepLinkBoard = (deepLinkLevel > 0 && Number.isInteger(_boardParam) && _boardParam >= 0)
     ? _boardParam : null;
+  // ?matchboard=P:I deals exactly one stored match board (page P, index I)
+  // as a one-board practice match: the deterministic venue an e2e spec
+  // needs, since a real deal rolls the seen-cycle. Same test-env gate and
+  // same practice lane as ?level= (nothing records, no seen-cycle write).
+  const _matchBoard = String(urlParams.get('matchboard') || '').split(':').map(Number);
+  const deepLinkMatchBoard = (isTestEnvironment() && _matchBoard.length === 2
+    && Number.isInteger(_matchBoard[0]) && _matchBoard[0] >= 0
+    && Number.isInteger(_matchBoard[1]) && _matchBoard[1] >= 0)
+    ? { page: _matchBoard[0], idx: _matchBoard[1] } : null;
   // ?coastline=, test-environment-only tiling board (Project Coastline
   // Phase 2). Gated exactly like ?level=, so it is UNREACHABLE in production
   // no matter which of the six lattices the link names; the player-facing
@@ -2356,6 +2370,21 @@ async function init() {
     showToast(_cg.length
       ? `Coastline test board, ${_shape} + ${_cg.join(', ')}. Nothing records.`
       : `Coastline test board, ${_shape}. Nothing records.`, 6000);
+  } else if (deepLinkMatchBoard) {
+    // ?matchboard=P:I playtest deep link (test builds only): one pinned
+    // match board, practice-gated end to end for the same reason ?level=
+    // is, /test/ shares this origin's localStorage with production.
+    const { dealPinnedMatchEntry } = await import('./game/matchDeal.js');
+    const entry = await dealPinnedMatchEntry(deepLinkMatchBoard.page, deepLinkMatchBoard.idx);
+    if (!entry) {
+      showTitleScreen();
+      showToast('No match board at that address.', 5000, 'uiWarning');
+    } else {
+      state.isLevelPractice = true;
+      hideTitleScreen();
+      launchMatch(null, [entry]);
+      showToast('Practice match board. Nothing records.', 5000);
+    }
   } else if (deepLinkLevel > 0) {
     // ?level=N playtest deep link (test builds only, the gate is in
     // deepLinkLevel's derivation): start a PRACTICE challenge run at any

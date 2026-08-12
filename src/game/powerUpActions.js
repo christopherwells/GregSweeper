@@ -377,7 +377,7 @@ export function performXRay(row, col) {
 // which replaced both the old flat two-per-win and the separate 30%
 // lifeline roll (lifeline is one of the six types).
 export function awardPowerUps(stats, count = 2) {
-  if (state.gameMode === 'timed' || state.gameMode === 'daily') return '';
+  if (state.gameMode === 'match' || state.gameMode === 'daily') return '';
 
   const types = ['revealSafe', 'shield', 'scanRowCol', 'lifeline', 'magnet', 'xray'];
   const pu = (k, name) => `${uiSpriteImgHTML(k, 'inline-pu')} ${name}`;

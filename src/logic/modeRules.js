@@ -10,8 +10,12 @@
 
 /**
  * True when the mode forbids manually restarting the current board.
+ * A Challenge match joins the canonical modes here: its boards are dealt
+ * frozen and its per-board clocks feed the match total (and, once the
+ * match node ships, an opponent's comparison), so a mid-board restart is
+ * the same fresh-clock-on-a-seen-board cheat the daily rule exists for.
  * @param {string} gameMode state.gameMode
  */
 export function blocksManualRestart(gameMode) {
-  return gameMode === 'daily' || gameMode === 'weekly';
+  return gameMode === 'daily' || gameMode === 'weekly' || gameMode === 'match';
 }

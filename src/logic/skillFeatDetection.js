@@ -19,7 +19,7 @@
 
 /**
  * @param {object} state live game state, reads gameMode, clickTimeline, and
- *   the per-mode feature vector (dailyFeatures / weeklyFeatures / timedFeatures)
+ *   the per-mode feature vector (dailyFeatures / weeklyFeatures / matchFeatures)
  * @returns {{flagless: boolean, efficient: boolean, search: boolean, liar: boolean} | {}}
  *   the feats to credit (an empty object for chaos)
  */
@@ -28,7 +28,7 @@ export function detectSkillFeats(state) {
 
   const winFeatures = state.gameMode === 'daily' ? state.dailyFeatures
     : state.gameMode === 'weekly' ? state.weeklyFeatures
-    : state.gameMode === 'timed' ? state.timedFeatures
+    : state.gameMode === 'match' ? state.matchFeatures
     : null;
   const timeline = Array.isArray(state.clickTimeline) ? state.clickTimeline : [];
   const certifiedClicks = winFeatures

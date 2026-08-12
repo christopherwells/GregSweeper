@@ -17,8 +17,11 @@ test('REGRESSION: daily and weekly block manual restart (the R-shortcut cheat)',
   assert.equal(blocksManualRestart('weekly'), true);
 });
 
+test('a match board blocks manual restart too (its clock feeds the match total)', () => {
+  assert.equal(blocksManualRestart('match'), true);
+});
+
 test('replayable modes allow manual restart', () => {
   assert.equal(blocksManualRestart('normal'), false);
-  assert.equal(blocksManualRestart('timed'), false);
   assert.equal(blocksManualRestart('chaos'), false);
 });

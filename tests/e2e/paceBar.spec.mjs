@@ -103,11 +103,10 @@ test('the pace bar shows the expected time on a ladder board and fills as the cl
 test('the pace bar stays absent outside the challenge ladder', async ({ page }) => {
   await prepareInteractionSpec(page);
 
-  // Quick Play: has its own end-of-run par line; no pace cue mid-board.
-  await page.goto('?isTest=1');
+  // A Challenge match: it reports each board against par at the END, where
+  // the comparison belongs, and shows no pace cue mid-board.
+  await page.goto('/?isTest=1&matchboard=0:0');
   await page.waitForSelector('#boot-overlay', { state: 'detached', timeout: 20_000 });
-  await page.waitForSelector('#title-screen:not(.hidden)', { timeout: 20_000 });
-  await page.click('.mode-card[data-mode="timed"]');
   await page.waitForSelector('#board .cell', { timeout: 20_000 });
   await expect(page.locator('#pace-bar')).toBeHidden();
 

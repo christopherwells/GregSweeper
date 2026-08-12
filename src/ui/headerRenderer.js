@@ -1,4 +1,5 @@
 import { state, getDisplayTime } from '../state/gameState.js';
+import { blocksManualRestart } from '../logic/modeRules.js';
 import {
   $, $$, mineCounterEl, levelDisplay, checkpointDisplay,
   streakDisplayEl, cellsRemainingEl, progressBarContainer,
@@ -8,7 +9,6 @@ import {
 } from './domHelpers.js';
 import { getThemeEmoji } from './boardRenderer.js';
 import { applyIcon, gimmickSpriteImgHTML, spriteImgHTML, uiSpriteImgHTML } from './spriteLoader.js';
-import { getTimedDifficulty, getSpeedRating } from '../logic/difficulty.js';
 import { CHALLENGE_MAX_LEVEL } from '../logic/challenge250.js';
 import { loadStats, getDailyStreak } from '../storage/statsStorage.js';
 import { getGimmickDef } from '../logic/gimmicks.js';
@@ -283,9 +283,12 @@ export function updateHeader() {
     } else {
       levelDisplay.innerHTML = dayLbl ? `${flagIcon} Weekly · ${dayLbl}` : `${flagIcon} Weekly`;
     }
-  } else if (state.gameMode === 'timed') {
-    const tdiff = getTimedDifficulty(state.currentLevel);
-    levelDisplay.textContent = tdiff.label || `Level ${state.currentLevel}`;
+  } else if (state.gameMode === 'match') {
+    const n = state.match && Array.isArray(state.match.entries)
+      ? state.match.entries.length : 0;
+    levelDisplay.textContent = n > 1
+      ? `Board ${Math.min(state.currentLevel, n)}/${n}`
+      : 'Board 1';
   } else if (state.gameMode === 'chaos') {
     levelDisplay.innerHTML = `${uiSpriteImgHTML('uiChaos', 'lcd-icon')} Chaos`;
   } else {
@@ -297,18 +300,14 @@ export function updateHeader() {
   updateCellsRemaining();
   updateStreakDisplay();
 
-  // Show best time for timed/normal mode (with speed rating for timed)
+  // Show best time on the Climb (global bestTimes is keyed by ladder
+  // level; a match board's index is not a level, so the mode shows none)
   const stats = loadStats();
   if (bestTimeDisplay) {
     const bestKey = `level${state.currentLevel}`;
     const best = stats.bestTimes[bestKey];
-    if (best != null && (state.gameMode === 'timed' || state.gameMode === 'normal')) {
-      if (state.gameMode === 'timed') {
-        const rating = getSpeedRating(state.currentLevel, best);
-        bestTimeDisplay.textContent = `Best: ${best}s ${rating.icon}`;
-      } else {
-        bestTimeDisplay.textContent = `Best: ${best}s`;
-      }
+    if (best != null && state.gameMode === 'normal') {
+      bestTimeDisplay.textContent = `Best: ${best}s`;
       bestTimeDisplay.classList.remove('hidden');
     } else {
       bestTimeDisplay.classList.add('hidden');
@@ -331,9 +330,11 @@ export function updateHeader() {
     : 'smiley';
   applyIcon(resetBtn, smileyKey, getThemeEmoji(smileyKey), { sizeClass: 'sprite-smiley' });
 
-  // Daily/Weekly are canonical single-puzzle modes, no board reset. Keep
-  // the smiley as a status face but strip its interactivity.
-  resetBtn.disabled = state.gameMode === 'daily' || state.gameMode === 'weekly';
+  // Canonical single-puzzle modes and match boards get no board reset.
+  // Keep the smiley as a status face but strip its interactivity. ONE rule
+  // (modeRules.js) with the R-shortcut and smiley-click guards, this line
+  // was a hand-rolled copy of it before the match mode landed.
+  resetBtn.disabled = blocksManualRestart(state.gameMode);
 }
 
 // ── Streak Fire Effect ─────────────────────────────────

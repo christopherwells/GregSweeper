@@ -41,5 +41,8 @@ scripts/data/spec-search-cache.json
 # are the artifact that ships.
 scripts/data/endless-build-cache*.json
 scripts/data/endless-build*.log
+# The match library's resume state, same reasoning again: the PAGES it
+# emits (scripts/data/match-library/) are the artifact that ships.
+scripts/data/match-build-cache.json
 scripts/intercept-sensitivity.html
 scripts/intercept-sensitivity_files/
