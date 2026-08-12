@@ -13,7 +13,7 @@ import {
   densityPhrase, matchUnlocks, matchUnlockLevel,
   defaultMatchRules, sanitizeMatchRules,
   matchIndexRow, parseMatchIndex, boardMatchesRules, eligibleRows,
-  pickMatchBoards, matchAdvance, matchTotals,
+  pickMatchBoards, matchAdvance, matchTotals, resolveMatchPicks,
   matchRulesForLaunch, unmetMatchRules,
 } from '../src/logic/matchRules.js';
 import { LIB_SHAPE_INTROS, LIB_MOD_INTROS } from '../src/logic/climbLibrary.js';
@@ -282,4 +282,43 @@ test('unmetMatchRules is empty when the guest has met everything, and never thro
     { shapes: [], mods: [] });
   assert.deepStrictEqual(unmetMatchRules(null, null), { shapes: [], mods: [] });
   assert.deepStrictEqual(unmetMatchRules({}, { shapes: [], mods: [] }), { shapes: [], mods: [] });
+});
+
+// ── Resolving picks against fetched pages ───────────────────────────────
+
+test('REGRESSION: a page that fails MID-deal marks the boards actually dealt', () => {
+  // The defect: the caller collected entries and then took the first
+  // `entries.length` picks as the seen keys, which is only right when the
+  // failures land at the end. Here the FIRST pick is the broken one, so a
+  // slice would mark 0:0 and 0:1 seen while 0:1 and 0:2 were the boards
+  // dealt: one board marked that nobody played, one played that nobody
+  // marked, quietly corrupting his cycle rule.
+  const picks = [
+    { page: 0, idx: 0, key: '0:0' },
+    { page: 0, idx: 1, key: '0:1' },
+    { page: 0, idx: 2, key: '0:2' },
+  ];
+  const byPage = new Map([[0, [
+    { seed: 'a' },                        // no payload: malformed
+    { seed: 'b', payload: {} },
+    { seed: 'c', payload: {} },
+  ]]]);
+  const { entries, keys, missing } = resolveMatchPicks(picks, byPage);
+  assert.deepEqual(keys, ['0:1', '0:2']);
+  assert.deepEqual(entries.map((e) => e.seed), ['b', 'c']);
+  assert.deepEqual(missing.map((p) => p.key), ['0:0']);
+  // The invariant the slice broke: one key per entry, in the same order.
+  assert.equal(keys.length, entries.length);
+});
+
+test('resolveMatchPicks survives a page that never arrived', () => {
+  const picks = [{ page: 0, idx: 0, key: '0:0' }, { page: 9, idx: 0, key: '9:0' }];
+  const byPage = new Map([[0, [{ seed: 'a', payload: {} }]], [9, null]]);
+  const { entries, keys, missing } = resolveMatchPicks(picks, byPage);
+  assert.deepEqual(keys, ['0:0']);
+  assert.equal(entries.length, 1);
+  assert.deepEqual(missing.map((p) => p.key), ['9:0']);
+  // And an empty deal is a no-op rather than a throw.
+  assert.deepEqual(resolveMatchPicks([], new Map()), { entries: [], keys: [], missing: [] });
+  assert.deepEqual(resolveMatchPicks(null, null), { entries: [], keys: [], missing: [] });
 });

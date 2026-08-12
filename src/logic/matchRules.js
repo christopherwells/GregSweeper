@@ -274,6 +274,40 @@ export function pickMatchBoards(rows, count, rand = Math.random, seenKeys = []) 
   return { picks, cycled };
 }
 
+/**
+ * Resolve a deal's picks against the fetched page contents.
+ *
+ * Pure so the pairing can be tested without the fetches around it, and pure
+ * BECAUSE the pairing is where a defect hid: the caller used to collect the
+ * entries and then take the first `entries.length` picks for the seen list,
+ * which is only right when every failure lands at the END. A page that fails
+ * in the middle of a deal marked a board seen that nobody was dealt and left a
+ * dealt one unmarked, quietly corrupting his cycle rule on exactly the
+ * degraded path where the player can least afford a repeat.
+ *
+ * @param {Array} picks   the planned picks, in play order
+ * @param {Map}   byPage  page number -> that page's boards array (or null)
+ * @returns {{entries: Array, keys: string[], missing: Array}} entries and
+ *   their seen keys in lockstep, plus the picks that resolved to nothing so
+ *   the caller can report them.
+ */
+export function resolveMatchPicks(picks, byPage) {
+  const entries = [];
+  const keys = [];
+  const missing = [];
+  for (const pick of picks || []) {
+    const boards = byPage && byPage.get ? byPage.get(pick.page) : null;
+    const entry = Array.isArray(boards) ? boards[pick.idx] : null;
+    if (!entry || !entry.payload || !entry.seed) {
+      missing.push(pick);
+      continue;
+    }
+    entries.push(entry);
+    keys.push(pick.key);
+  }
+  return { entries, keys, missing };
+}
+
 // ── Match progression + totals ──────────────────────────────────────────
 
 /** After a board is banked: another board, or the match summary? */
