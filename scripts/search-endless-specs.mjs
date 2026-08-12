@@ -51,6 +51,14 @@
 // Entries measured before this change carry no features; they keep their old
 // price, `--reprice-cache` reports how many, and the number falls to zero as
 // the sweep revisits them.
+//
+// THE ACCEPTANCE CARRIES THE CLIMB'S DEDUCTION FLOOR (2026-08-12, issue
+// #286): every measured spec is built with minDeductions stamped, exactly as
+// the braid stamps it at play, so a face that cannot reliably hold five
+// decisions never earns an ok verdict. Entries measured before the floor
+// record no `floor` field; the emitters exclude the ones whose own stored
+// median draw is short and leave the rest to the sweep (see
+// clearsDeductionFloor).
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -60,6 +68,7 @@ import { buildChallenge250Board, challengeBoardSeed } from '../src/logic/challen
 import {
   endlessParCeiling, endlessGenCap, endlessGenBudget, endlessPpcFloor,
   PAR_CEILING_SECONDS, GEN_CAP_MS, ENDLESS_GEN_HEADROOM, specFace,
+  CLIMB_MIN_DEDUCTIONS,
 } from '../src/logic/challengeRules.js';
 import { buildTiling, containerIsStorable, TILING_TYPES } from '../src/logic/tilingGeometry.js';
 import { boardFitsPhone } from '../src/logic/boardFit.js';
@@ -233,6 +242,23 @@ function makeSpec(shape, a, b, cells, mines, gimmicks, gl) {
   }
   // Re-derived from the SHIPPED mine count, per the standing rule.
   if (shape !== 'rect' && mines / cells < CONSTRUCTIVE_BELOW) base.constructive = true;
+  // THE CLIMB'S DEDUCTION FLOOR RIDES EVERY MEASUREMENT (issue #286). The
+  // braid stamps minDeductions on every level it assigns, so a pool measured
+  // without it is measured under a different acceptance than the ladder
+  // applies — which is how four faces too small to hold five decisions
+  // shipped, and the validator then refused 10-60% of their draws. A draw
+  // under the floor is a failed draw here, exactly as it is at play.
+  //
+  // Deliberately the play path's OWN retry shape (three salts on a tiling),
+  // not a single-salt read: healthy sub-threshold tiling specs miss a salt
+  // now and then on the certification search alone, and the three salts exist
+  // to absorb exactly that. Measured on the shipped pool, a single-salt
+  // acceptance flags ~50 healthy faces (one or two misses in sixteen, achieved
+  // deductions all comfortably above the floor) that the real contract never
+  // fails. Endless draws never stamp the floor, but a certified board at
+  // endless density cannot come in under five deductions, so one acceptance
+  // serves every consumer.
+  base.minDeductions = CLIMB_MIN_DEDUCTIONS;
   return base;
 }
 
@@ -252,10 +278,11 @@ function measure(spec, budgetMs) {
     if (worstMs > budgetMs) return { ok: false, why: 'gen', worstMs };
     if (!built) return { ok: false, why: 'draw', worstMs };
     if (!built.par) return { ok: false, why: 'par', worstMs };
-    draws.push({ par: built.par, features: built.features });
+    draws.push({ par: built.par, features: built.features, ded: built.check.totalClicks - 1 });
   }
   draws.sort((x, y) => x.par - y.par);
   const pars = draws.map((d) => d.par);
+  const deds = draws.map((d) => d.ded).sort((x, y) => x - y);
   // The MEDIAN DRAW's vector, not an average of the draws'. Par is exp() of
   // the linear predictor and so monotone in it, which makes the median-par
   // draw the median-linear-predictor draw — re-pricing that one board
@@ -271,6 +298,7 @@ function measure(spec, budgetMs) {
   return {
     ok: true, medPar, ppc: medPar / spec.cells, worstMs, medFeatures,
     minPar: pars[0], maxPar: pars[pars.length - 1],
+    minDed: deds[0], medDed: deds[Math.floor(deds.length / 2)],
   };
 }
 
@@ -293,10 +321,15 @@ function record(cache, spec, r) {
     wallSegments: spec.wallSegments || null,
     constructive: spec.constructive || false,
     seeds: SEEDS,
+    // WHICH acceptance the verdict was measured under. Entries without this
+    // field predate the deduction floor (issue #286) and their ok verdicts say
+    // nothing about it; the emit filter below treats them accordingly.
+    floor: CLIMB_MIN_DEDUCTIONS,
     ok: r.ok,
     ...(r.ok
       ? {
         ppc: Number(r.ppc.toFixed(3)), medPar: Math.round(r.medPar), worstMs: r.worstMs,
+        minDed: r.minDed, medDed: r.medDed,
         // The two halves of a re-priceable measurement: WHAT was measured, and
         // WHICH equations turned it into a price.
         features: r.medFeatures,
@@ -494,6 +527,23 @@ function report(cache) {
 
 // ── Emission ───────────────────────────────────────────────────────────
 
+/**
+ * The stale-cache half of the deduction floor (issue #286). The cache
+ * outlives an acceptance change exactly as it outlives a rule change, so an
+ * entry measured before the floor carries an ok verdict that never asked the
+ * question. Where the entry stored features, the median draw's own click
+ * count answers it: a face whose MEDIAN draw is short cannot reliably clear
+ * the floor, and it is exactly how the four shipped offenders read (median
+ * 0-4 deductions). An entry with no features and no floor-aware measurement
+ * stays eligible — nothing can be read off it — and the sweep re-measures it
+ * under the new acceptance in time.
+ */
+function clearsDeductionFloor(e) {
+  if (e.floor >= CLIMB_MIN_DEDUCTIONS) return true;   // measured under the floor
+  if (!e.features) return true;                        // unknowable, converges via the sweep
+  return e.features.totalClicks - 1 >= CLIMB_MIN_DEDUCTIONS;
+}
+
 function emitLine(e) {
   const dims = e.shape === 'rect' ? `${e.a}, ${e.b}` : `'${e.shape}', ${e.a}, ${e.b}, ${e.cells}`;
   const opts = [];
@@ -520,8 +570,13 @@ function emitPool(cache, { floorFn, ceilFn, perSlice, slices, maxPerShape = Infi
   // this filter would have caught them.
   const legal = new Map();
   for (const shape of SHAPES) legal.set(shape, new Set(legalDims(shape).map((d) => `${d.a}x${d.b}`)));
+  const preFloor = Object.values(cache).filter((e) => e.ok && !clearsDeductionFloor(e)).length;
+  if (preFloor) {
+    console.error(`// NOTE: ${preFloor} cached entries fail the deduction floor on their stored median draw and are excluded.`);
+  }
   const ok = Object.values(cache)
     .filter((e) => e.ok && legal.get(e.shape)?.has(`${e.a}x${e.b}`))
+    .filter(clearsDeductionFloor)
     // Population seconds in, ladder seconds out. Every threshold below — the
     // admission floor, the par ceiling, and the ppc that ships — is on the
     // cohort's yardstick from this line on.
@@ -632,6 +687,7 @@ function admissible(cache) {
   for (const shape of SHAPES) legal.set(shape, new Set(legalDims(shape).map((d) => `${d.a}x${d.b}`)));
   return Object.values(cache)
     .filter((e) => e.ok && legal.get(e.shape)?.has(`${e.a}x${e.b}`))
+    .filter(clearsDeductionFloor)
     .map((e) => ({ ...e, ppc: e.ppc * SCALE, medPar: e.medPar * SCALE }))
     .filter((e) => e.medPar <= PAR_CEILING_SECONDS * PAR_CEILING_MARGIN)
     .filter((e) => e.worstMs <= GEN_CAP_MS * ENDLESS_GEN_HEADROOM);
