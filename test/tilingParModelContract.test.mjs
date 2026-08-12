@@ -395,7 +395,7 @@ test('two-path priors: the flat path keeps the class-wide lb blanket; the nl pat
 });
 
 test('path selection is ONE boolean at formula construction; the nl split has the right shapes', () => {
-  const i = R_SRC.indexOf('use_nl_split <- length(active_shape_cols) > 0');
+  const i = R_SRC.indexOf('use_nl_split <- length(dev_cols) > 0');
   assert.ok(i > 0, 'the one path-selection boolean is missing');
   const block = R_SRC.slice(i, R_SRC.indexOf('message("Fitting brms model'));
   assert.ok(block.length > 100 && block.length < 4000, 'path-selection region not found');
@@ -414,8 +414,45 @@ test('path selection is ONE boolean at formula construction; the nl split has th
     'the flat path formula must survive verbatim');
   // Both paths hand build_priors the same base names; only deviation_names
   // differs (empty selects the flat prior construction — same boolean fact).
-  assert.ok(block.includes('deviation_names = active_shape_cols'),
+  assert.ok(block.includes('deviation_names = dev_cols'),
     'the prior construction must key off the same condition as the formula');
+  // The dev nlpar's occupants are the shape deviations PLUS matchPlay, which
+  // is what makes the two sides of the split one decision rather than two.
+  assert.ok(/dev_cols <- c\(active_shape_cols, if \(add_match_term\) "matchPlay"/.test(R_SRC),
+    'dev_cols must be built from the shape deviations plus the match offset');
+});
+
+test('REGRESSION: matchPlay is a SIGNED deviation, never a bounded slope', () => {
+  // The class-wide lb = 0 on the base block is a real claim about BOARD
+  // FEATURES: par is monotonic non-decreasing in every one, so a negative
+  // slope would be nonsense. matchPlay is not a board feature, it is a group
+  // indicator whose sign nobody knows, and a Challenge run is plausibly
+  // FASTER than a daily. Under the bound the posterior would pile up at zero
+  // and the speed-up would leak into the board coefficients, because the
+  // (1|uid) intercept cannot absorb a WITHIN-player difference between a
+  // player's daily rows and their match rows.
+  // Scoped to the PRIOR blocks: the mutate() that derives the matchPlay
+  // COLUMN is legitimate and must survive, so a whole-file scan would be
+  // asserting the wrong thing.
+  for (const blockName of ['PRIOR_MEANS', 'PRIOR_SIGMAS']) {
+    const start = R_SRC.indexOf(`${blockName} <- list(`);
+    assert.ok(start > 0, `${blockName} not found — this check is inert`);
+    const block = R_SRC.slice(start, R_SRC.indexOf('\n)', start));
+    assert.ok(!/^\s*matchPlay\s*=/m.test(block),
+      `matchPlay must have NO ${blockName} entry — that list feeds the bounded lognormal block`);
+    // Non-vacuity: the block must contain the sibling nuisance term, or the
+    // slice missed its target and the check proves nothing.
+    assert.ok(/^\s*archivePlay\s*=/m.test(block),
+      `the ${blockName} slice did not find archivePlay — it is not reading the block`);
+  }
+  assert.ok(!/update\(fit_formula_fixed_active, ~ \. \+ matchPlay\)/.test(R_SRC),
+    'matchPlay must NOT join the bounded fixed formula');
+  assert.ok(/if \(add_match_term\) "matchPlay"/.test(R_SRC),
+    'matchPlay must enter through dev_cols, the signed nlpar');
+  // And it is still never shipped: new_coefs is built from COEF_TO_PREDICTOR
+  // alone, so a fit-only nuisance term cannot reach predictPar.
+  assert.ok(!/COEF_TO_PREDICTOR\[\["matchPlay"\]\]/.test(R_SRC),
+    'matchPlay must never be a shipped predictor');
 });
 
 test('make_positive_init is GONE and no fit passes a custom init', () => {

@@ -1062,6 +1062,10 @@
       </div>
       <div class="modal-body">
         <div id="match-resume" class="checkpoint-resume hidden"></div>
+        <!-- Invites in every state (waiting, snoozed, turned down) and the
+             matches you are already in. The only way back into a match you
+             joined but are not currently saved into. -->
+        <div id="match-review" class="match-review hidden"></div>
 
         <div class="setting-group">
           <h3>Boards</h3>
@@ -1139,10 +1143,15 @@
   <!-- Challenge: a friend's invite, offered live or on the next open. Sits
        outside #app so it can show over the title screen, which is a sibling. -->
   <div id="match-invite-toast" class="match-invite-toast hidden" role="status">
-    <span id="match-invite-toast-text" class="match-invite-toast-text"></span>
+    <div class="match-invite-toast-body">
+      <span id="match-invite-toast-text" class="match-invite-toast-text"></span>
+      <!-- What you are actually answering about: board count and shapes. -->
+      <span id="match-invite-toast-detail" class="match-invite-toast-detail hidden"></span>
+    </div>
     <div class="match-invite-toast-actions">
       <button id="match-invite-accept" class="friends-btn" type="button">Join</button>
       <button id="match-invite-later" class="friends-btn" type="button">Later</button>
+      <button id="match-invite-decline" class="friends-btn" type="button">No thanks</button>
     </div>
   </div>
 

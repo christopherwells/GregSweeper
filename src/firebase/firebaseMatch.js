@@ -44,6 +44,7 @@ import { isTestEnvironment } from './env.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
 import {
   generateCode, normalizeCode, MATCH_TTL_MS, planMatchJoin,
+  snoozeUntilFrom, inviteShouldPopUp,
 } from '../logic/matchCodes.js';
 
 function db() {
@@ -138,6 +139,9 @@ export async function createMatch(rules, entries) {
       code = candidate;
     } catch { /* clash or transient, try another code */ }
   }
+  // Remember it as one of mine, so the review list can offer a way back into
+  // it later. Best-effort: a lost record costs the listing, never the match.
+  recordMyMatch(matchId, code, true).catch(() => {});
   return { matchId, code };
 }
 
@@ -192,13 +196,18 @@ export async function fetchMatchByCode(input) {
  * @returns {Promise<'joined'|'resume'>}
  * @throws Error with .reason in {'offline','expired','full','missing','failed'}
  */
-export async function joinMatch(matchId, match) {
+export async function joinMatch(matchId, match, code = null) {
   const ready = await _readyOrNull();
   const uid = getUid();
   if (!ready || !uid) throw _fail('offline');
 
   const verdict = planMatchJoin({ match, uid, now: Date.now() });
-  if (verdict === 'resume') return 'resume';
+  if (verdict === 'resume') {
+    // Already in it, so nothing to write except the listing, which a player
+    // who joined before this shipped will not have.
+    recordMyMatch(matchId, code, match.host === uid).catch(() => {});
+    return 'resume';
+  }
   if (verdict !== 'join') throw _fail(verdict);
 
   const name = (getPlayerName() || 'Player').slice(0, 20);
@@ -216,6 +225,7 @@ export async function joinMatch(matchId, match) {
     reportCaughtError('match-join', err);
     throw _fail('failed');
   }
+  recordMyMatch(matchId, code, false).catch(() => {});
   return 'joined';
 }
 
@@ -332,9 +342,14 @@ export function subscribeMatchInvites(callback) {
     handler = ref.on('child_added', (snap) => {
       const v = snap.val();
       if (!v || !v.code) return;
-      if (typeof v.sentAt === 'number' && Date.now() >= v.sentAt + MATCH_TTL_MS) return;
+      // Only a PENDING invite interrupts. Declined ones never pop up again,
+      // and a snoozed one stays quiet until its 24 hours are up, at which
+      // point inviteState reports it pending again and this listener offers
+      // it on the next open. Both remain visible in the review list.
+      const invite = { matchId: snap.key, ...v };
+      if (!inviteShouldPopUp(invite, Date.now())) return;
       try {
-        callback({ matchId: snap.key, from: v.from, code: v.code, sentAt: v.sentAt });
+        callback(invite);
       } catch (err) { reportCaughtError('match-invite-cb', err); }
     }, () => { /* offline: invites arrive on the next open instead */ });
   } catch (err) {
@@ -344,7 +359,14 @@ export function subscribeMatchInvites(callback) {
   return () => { try { ref.off('child_added', handler); } catch { /* already gone */ } };
 }
 
-/** Clear an invite once it has been accepted or waved off. */
+/**
+ * Clear an invite. Used on ACCEPT only: the match graduates into
+ * users/{uid}/matches and would otherwise appear in two lists at once.
+ *
+ * Declining does NOT come through here (see declineMatchInvite): his ruling
+ * makes "I don't want to play that" a state you can change your mind about,
+ * and a deleted invite is not reviewable.
+ */
 export async function dismissMatchInvite(matchId) {
   const ready = await _readyOrNull();
   const uid = getUid();
@@ -355,4 +377,103 @@ export async function dismissMatchInvite(matchId) {
   } catch {
     return false;
   }
+}
+
+/**
+ * Record the player's answer to an invite, short of accepting it.
+ *
+ * `update` rather than `set`, so `sentAt` is not rewritten: it validates as
+ * the server sentinel, and re-stamping it would both move the invite's own
+ * seven-day horizon and put the write at the mercy of a rule it has no reason
+ * to touch.
+ *
+ * @param {'snoozed'|'declined'|'pending'} state
+ * @param {number|null} [snoozedUntil] required for 'snoozed'
+ */
+export async function setMatchInviteState(matchId, state, snoozedUntil = null) {
+  const ready = await _readyOrNull();
+  const uid = getUid();
+  if (!ready || !uid || !matchId) return false;
+  const patch = { state };
+  if (state === 'snoozed') patch.snoozedUntil = snoozedUntil;
+  try {
+    await db().ref(`users/${uid}/matchInvites/${matchId}`).update(patch);
+    return true;
+  } catch (err) {
+    reportCaughtError('match-invite-state', err);
+    return false;
+  }
+}
+
+/** "Later": come back in 24 hours (his ruling). */
+export function snoozeMatchInvite(matchId, now = Date.now()) {
+  return setMatchInviteState(matchId, 'snoozed', snoozeUntilFrom(now));
+}
+
+/** "No thanks": listed, never popped up again, reversible. */
+export function declineMatchInvite(matchId) {
+  return setMatchInviteState(matchId, 'declined');
+}
+
+/** Change your mind about a declined or snoozed invite. */
+export function reopenMatchInvite(matchId) {
+  return setMatchInviteState(matchId, 'pending');
+}
+
+/** Every invite sent to this player, whatever state it rests in. */
+export async function fetchMatchInvites() {
+  const ready = await _readyOrNull();
+  const uid = getUid();
+  if (!ready || !uid) return null;
+  try {
+    const snap = await db().ref(`users/${uid}/matchInvites`).once('value');
+    const val = snap.val() || {};
+    return Object.entries(val).map(([matchId, v]) => ({ matchId, ...(v || {}) }));
+  } catch {
+    return null;
+  }
+}
+
+// ── The matches this player is in ───────────────────────────────────────
+//
+// The match node is readable by anyone holding its id, but nothing else
+// records WHICH matches are yours, so without this list a player who joined
+// two matches could only ever get back to the one sitting in the single save
+// slot. Owner-written and owner-read, keyed by matchId.
+
+/** Record that this player created or joined a match. */
+export async function recordMyMatch(matchId, code, isHost) {
+  const ready = await _readyOrNull();
+  const uid = getUid();
+  if (!ready || !uid || !matchId) return false;
+  const payload = { joinedAt: firebase.database.ServerValue.TIMESTAMP, host: !!isHost };
+  if (code) payload.code = code;
+  try {
+    await db().ref(`users/${uid}/matches/${matchId}`).set(payload);
+    return true;
+  } catch (err) {
+    reportCaughtError('match-record-mine', err);
+    return false;
+  }
+}
+
+/** The player's matches, newest first, each with its live node attached. */
+export async function fetchMyMatches(limit = 10) {
+  const ready = await _readyOrNull();
+  const uid = getUid();
+  if (!ready || !uid) return null;
+  let rows = [];
+  try {
+    const snap = await db().ref(`users/${uid}/matches`).once('value');
+    rows = Object.entries(snap.val() || {})
+      .map(([matchId, v]) => ({ matchId, ...(v || {}) }))
+      .sort((a, b) => (Number(b.joinedAt) || 0) - (Number(a.joinedAt) || 0))
+      .slice(0, limit);
+  } catch {
+    return null;
+  }
+  // Each node is fetched separately rather than denormalized into the list,
+  // so a standing row can never disagree with the match it names.
+  const nodes = await Promise.all(rows.map((r) => fetchMatch(r.matchId)));
+  return rows.map((r, i) => ({ ...r, node: nodes[i] })).filter((r) => r.node);
 }

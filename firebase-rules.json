@@ -515,6 +515,29 @@
             "sentAt": {
               ".validate": "newData.val() === now"
             },
+            "state": {
+              ".validate": "newData.isString() && newData.val().matches(/^(pending|snoozed|declined)$/)"
+            },
+            "snoozedUntil": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now + 604800000"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "matches": {
+          "$matchId": {
+            ".validate": "$matchId.matches(/^[A-Za-z0-9_-]{20}$/) && newData.hasChildren(['joinedAt'])",
+            "code": {
+              ".validate": "newData.isString() && newData.val().matches(/^[A-Z2-9]{6}$/)"
+            },
+            "host": {
+              ".validate": "newData.isBoolean()"
+            },
+            "joinedAt": {
+              ".validate": "newData.val() === now"
+            },
             "$other": {
               ".validate": false
             }

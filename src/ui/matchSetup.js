@@ -342,6 +342,11 @@ export function openMatchSetup() {
   renderResume();
   renderAll();
   showModalFromTitle('match-setup-modal');
+  // Invites and matches you are already in, fetched after the sheet paints so
+  // a slow network never delays the controls. Stays hidden when empty.
+  import('./matchLobby.js')
+    .then((m) => m.renderMatchReview())
+    .catch((err) => reportCaughtError('match-review-open', err));
   // The index arrives after the sheet paints; the supply line says so
   // while it is in flight and never shows a zero it has not measured.
   fetchMatchIndexRows().then((rows) => {

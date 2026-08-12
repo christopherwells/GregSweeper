@@ -100,9 +100,19 @@ test('users/{uid}: all written progress fields are whitelisted', () => {
     'powerUps', 'moltDay', 'challenge250',
     // matchInvites is written by a FRIEND, not the owner, but it lives under
     // the same strict $other:false, so an un-whitelisted entry would drop the
-    // whole progress write for everyone (the 866683d class).
-    'matchInvites',
+    // whole progress write for everyone (the 866683d class). `matches` is the
+    // owner's own list of matches they created or joined.
+    'matchInvites', 'matches',
   ]);
+});
+
+test('users/{uid}/matches: the list that is the only way back into a match', () => {
+  // The save slot holds ONE match, so without this list a player in two of
+  // them could never return to the other.
+  assertWhitelist(rules.users.$uid.matches.$matchId, 'users/$uid/matches/$matchId',
+    ['code', 'host', 'joinedAt']);
+  assert.match(rules.users.$uid.matches.$matchId['.validate'], /\$matchId\.matches/,
+    'the key must be a real match id');
 });
 
 test('matches/{matchId}: the node the host writes is fully whitelisted', () => {
@@ -161,7 +171,7 @@ test('users/{uid}/matchInvites: a friend may write one, a stranger may not', () 
   assert.match(w, /auth\.uid === newData\.child\('from'\)\.val\(\)/,
     'and must name themselves as the sender');
   assertWhitelist(rules.users.$uid.matchInvites.$matchId, 'matchInvites/$matchId',
-    ['from', 'code', 'sentAt']);
+    ['from', 'code', 'sentAt', 'state', 'snoozedUntil']);
   // The sender's NAME is deliberately absent: it resolves from playerNames at
   // render time, so there is no unswept name-bearing field here.
   assert.ok(!('fromName' in rules.users.$uid.matchInvites.$matchId),

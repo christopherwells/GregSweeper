@@ -26,7 +26,7 @@ import { getUid } from '../firebase/firebaseProgress.js';
 import { getHandicapRatioMap } from '../logic/handicaps.js';
 import { matchUnlocks, unmetMatchRules } from '../logic/matchRules.js';
 import { matchStandings } from '../logic/matchStandings.js';
-import { normalizeCode, planMatchJoin, matchDaysRemaining } from '../logic/matchCodes.js';
+import { normalizeCode, planMatchJoin, matchDaysRemaining, partitionInvites } from '../logic/matchCodes.js';
 import { tilingLabel, CLASSIC_SHAPE_LABEL } from '../logic/coastlineLink.js';
 import { getGimmickDefs } from '../logic/gimmicks.js';
 import { PROD_SITE_BASE } from '../config.js';
@@ -292,7 +292,7 @@ async function _acceptJoin() {
   if (go) go.disabled = true;
   try {
     const { joinMatch } = await import('../firebase/firebaseMatch.js');
-    await joinMatch(found.matchId, found.match);
+    await joinMatch(found.matchId, found.match, found.code);
   } catch (err) {
     if (go) go.disabled = false;
     _status('#match-join-status', JOIN_MESSAGES[err.reason] || JOIN_MESSAGES.failed, true);
@@ -386,6 +386,30 @@ export function initMatchInvites() {
   }).catch((err) => reportCaughtError('match-invite-init', err));
 }
 
+/**
+ * The sender's name, resolved at READ time from playerNames rather than
+ * stored on the invite, so a renamed friend always reads correctly and there
+ * is one fewer name-bearing path for the hate-speech sweep to cover.
+ */
+async function _senderName(uid) {
+  try {
+    const { fetchPlayerNames, resolveDisplayName } = await import('../firebase/firebaseLeaderboard.js');
+    const name = resolveDisplayName(uid, null, await fetchPlayerNames());
+    return (name && name !== 'Anonymous') ? name : 'A friend';
+  } catch {
+    return 'A friend';
+  }
+}
+
+/** One line describing what a match actually is: how many boards, what shapes. */
+function _matchSummaryLine(node) {
+  if (!node) return '';
+  const n = Array.isArray(node.boards) ? node.boards.length : 0;
+  const shapes = ((node.rules && node.rules.shapes) || []).map(shapeLabelOf).join(', ');
+  const boards = `${n} board${n === 1 ? '' : 's'}`;
+  return shapes ? `${boards} · ${shapes}` : boards;
+}
+
 async function _offerInvite(invite) {
   if (!invite || _seenInvites.has(invite.matchId)) return;
   _seenInvites.add(invite.matchId);
@@ -393,20 +417,25 @@ async function _offerInvite(invite) {
   // for, and it will still be here when the run ends.
   if (state.status === 'playing') return;
 
-  // Join-at-read, the app's own convention: the sender's NAME is not stored on
-  // the invite, so a renamed friend always reads correctly and there is one
-  // fewer name-bearing path for the hate-speech sweep to have to cover.
-  let who = 'A friend';
-  try {
-    const { fetchPlayerNames, resolveDisplayName } = await import('../firebase/firebaseLeaderboard.js');
-    who = resolveDisplayName(invite.from, null, await fetchPlayerNames()) || who;
-  } catch { /* the name is a courtesy; the invite still works without it */ }
-  if (who === 'Anonymous') who = 'A friend';
-
   const card = $('#match-invite-toast');
   const text = $('#match-invite-toast-text');
+  const detail = $('#match-invite-toast-detail');
   if (!card || !text) return;
+
+  // Fetch the match BEFORE offering it: a player answering "join", "later" or
+  // "no thanks" needs to know what they are answering about (his rule). If the
+  // fetch fails the card still appears without the detail line, because Join
+  // opens the join card, which previews the match in full before committing.
+  const [who, node] = await Promise.all([
+    _senderName(invite.from),
+    import('../firebase/firebaseMatch.js').then((m) => m.fetchMatch(invite.matchId)).catch(() => null),
+  ]);
+
   text.textContent = `${who} invited you to a Challenge.`;
+  if (detail) {
+    detail.textContent = _matchSummaryLine(node);
+    detail.classList.toggle('hidden', !detail.textContent);
+  }
   card.dataset.code = invite.code;
   card.dataset.matchId = invite.matchId;
   card.classList.remove('hidden');
@@ -418,6 +447,8 @@ function wire() {
   if (_wired) return;
   _wired = true;
 
+  // His three answers. All of them are reversible from the review list, which
+  // is why "no thanks" records a STATE instead of deleting the invite.
   const card = $('#match-invite-toast');
   if (card) {
     card.querySelector('#match-invite-accept')?.addEventListener('click', () => {
@@ -425,10 +456,24 @@ function wire() {
       card.classList.add('hidden');
       openMatchJoin(code);
     });
-    card.querySelector('#match-invite-later')?.addEventListener('click', () => {
+    card.querySelector('#match-invite-later')?.addEventListener('click', async () => {
+      const id = card.dataset.matchId;
       card.classList.add('hidden');
+      const m = await import('../firebase/firebaseMatch.js');
+      await m.snoozeMatchInvite(id);
+      showToast('We will ask again tomorrow.');
+    });
+    card.querySelector('#match-invite-decline')?.addEventListener('click', async () => {
+      const id = card.dataset.matchId;
+      card.classList.add('hidden');
+      const m = await import('../firebase/firebaseMatch.js');
+      await m.declineMatchInvite(id);
+      showToast('Turned down. You can still find it under Challenges.');
     });
   }
+
+  const review = $('#match-review');
+  if (review) review.addEventListener('click', _onReviewClick);
 
   const joinBtn = $('#match-join-lookup');
   if (joinBtn) joinBtn.addEventListener('click', _lookupJoinCode);
@@ -447,6 +492,124 @@ function wire() {
   }
 }
 wire();
+
+// ── The review list ─────────────────────────────────────────────────────
+//
+// His requirement: somewhere to review invites that were sent and
+// accepted, snoozed or turned down, change your mind, and start playing.
+//
+// Two sections, because they answer different questions. INVITES are
+// decisions still open to you, in all three states, each reversible. YOUR
+// CHALLENGES are matches you are already in, and this is the only way back
+// into one: the save slot holds a single match, so a player in two of them
+// could otherwise never return to the other.
+
+/** Render the review list into the setup sheet. Hidden when there is nothing. */
+export async function renderMatchReview() {
+  const el = $('#match-review');
+  if (!el) return;
+  el.innerHTML = '';
+  el.classList.add('hidden');
+
+  let invites = null;
+  let mine = null;
+  try {
+    const m = await import('../firebase/firebaseMatch.js');
+    [invites, mine] = await Promise.all([m.fetchMatchInvites(), m.fetchMyMatches()]);
+  } catch (err) {
+    reportCaughtError('match-review-fetch', err);
+    return;
+  }
+  const parts = partitionInvites(invites || [], Date.now());
+  const anyInvite = parts.pending.length + parts.snoozed.length + parts.declined.length;
+  if (!anyInvite && !(mine && mine.length)) return;
+
+  const names = await _reviewNames([...(invites || [])].map((i) => i.from));
+  const chunks = [];
+
+  if (anyInvite) {
+    chunks.push('<h3>Invites</h3>');
+    for (const [state, label] of [['pending', ''], ['snoozed', 'Asked to be reminded'], ['declined', 'Turned down']]) {
+      for (const inv of parts[state]) {
+        chunks.push(_inviteRowHTML(inv, names, label));
+      }
+    }
+  }
+  if (mine && mine.length) {
+    chunks.push('<h3>Your Challenges</h3>');
+    for (const row of mine) chunks.push(_myMatchRowHTML(row));
+  }
+  el.innerHTML = chunks.join('');
+  el.classList.remove('hidden');
+}
+
+async function _reviewNames(uids) {
+  try {
+    const { fetchPlayerNames } = await import('../firebase/firebaseLeaderboard.js');
+    return await fetchPlayerNames();
+  } catch {
+    return {};
+  }
+}
+
+function _inviteRowHTML(inv, names, stateLabel) {
+  const who = (names && names[inv.from]) || 'A friend';
+  // Every state offers Join, which is the point of a review list: a turned-down
+  // invite you changed your mind about must be playable without a fresh one.
+  const note = stateLabel ? `<span class="match-review-note">${escapeHtml(stateLabel)}</span>` : '';
+  return `<div class="match-review-row" data-invite="${escapeHtml(inv.matchId)}" data-code="${escapeHtml(inv.code || '')}">
+      <span class="match-review-name">${escapeHtml(who)}${note}</span>
+      <span class="match-review-actions">
+        <button type="button" class="friends-btn match-review-join">Play</button>
+        ${stateLabel ? '' : '<button type="button" class="friends-btn match-review-decline">No thanks</button>'}
+      </span>
+    </div>`;
+}
+
+function _myMatchRowHTML(row) {
+  const node = row.node;
+  const players = node.players && typeof node.players === 'object' ? node.players : {};
+  const rows = matchStandings(node, { myUid: getUid() });
+  const me = rows.find((r) => r.isMe);
+  const of = Array.isArray(node.boards) ? node.boards.length : 0;
+  const done = me ? me.done : 0;
+  const others = Math.max(0, Object.keys(players).length - 1);
+  const progress = done >= of && of > 0
+    ? 'Finished'
+    : `Board ${Math.min(done + 1, of)} of ${of}`;
+  const company = others === 0
+    ? 'Nobody else yet'
+    : `${others} other${others === 1 ? '' : 's'} playing`;
+  return `<div class="match-review-row" data-match="${escapeHtml(row.matchId)}" data-code="${escapeHtml(row.code || '')}">
+      <span class="match-review-name">${escapeHtml(_matchSummaryLine(node))}
+        <span class="match-review-note">${progress} · ${company}</span></span>
+      <span class="match-review-actions">
+        <button type="button" class="friends-btn match-review-open">Open</button>
+      </span>
+    </div>`;
+}
+
+// One delegated listener, bound with the rest of the wiring: the rows
+// re-render on every open, so per-button listeners would leak.
+async function _onReviewClick(e) {
+  const joinBtn = e.target.closest('.match-review-join, .match-review-open');
+  const declineBtn = e.target.closest('.match-review-decline');
+  const row = e.target.closest('.match-review-row');
+  if (!row) return;
+  const m = await import('../firebase/firebaseMatch.js');
+
+  if (declineBtn) {
+    await m.declineMatchInvite(row.dataset.invite);
+    renderMatchReview();
+    return;
+  }
+  if (!joinBtn) return;
+  // Playing a snoozed or turned-down invite is a change of mind, so clear the
+  // state first: the invite becomes live again, and accepting removes it.
+  if (row.dataset.invite) await m.reopenMatchInvite(row.dataset.invite);
+  hideModal('match-setup-modal');
+  openMatchJoin(row.dataset.code);
+}
 
 // ── Rematch ─────────────────────────────────────────────────────────────
 

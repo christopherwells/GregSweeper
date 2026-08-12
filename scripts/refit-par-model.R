@@ -370,22 +370,9 @@ PRIOR_MEANS <- list(
   # (Non-negativity also rides the class bound — the flat path's class-wide
   # lb = 0 blanket, or the base nlpar's bound on the nl path; see build_priors.)
   archivePlay          = 2.0,
-  # matchPlay: per-row offset for Challenge match boards (the head-to-head
-  # mode's runs, keyed `match_<hash>` in the same daily/ node). A match board
-  # is a first encounter like a daily, so the BOARD coefficients apply
-  # unchanged; what differs is the frame around it, a run of boards played back
-  # to back with no once-a-day ritual, which is what this absorbs. Seeded small
-  # on the log scale: 0.10 is about a 10% offset, and the wide sigma below lets
-  # the data move it by an order of magnitude either way. Fit-only, NEVER
-  # shipped to predictPar.
-  #
-  # SAME CAVEAT AS archivePlay, and here it bites harder: the lognormal has
-  # support only above zero, so this asserts a non-negative offset, while a
-  # match run being FASTER than a daily (warmed up, one board straight into the
-  # next) is at least as plausible as it being slower. If the fitted value
-  # settles hard against the bound, that is the finding, and the prior family
-  # is what to revisit, not the seed.
-  matchPlay            = 0.10,
+  # matchPlay has NO entry here on purpose: it is a SIGNED deviation, fitted in
+  # the `dev` nlpar alongside the shape deviations rather than in this bounded
+  # block. See the dev_cols construction in the fit section for why.
   zeroClusterCount     = 1.0
   # The old per-shape intercept offsets (shape488..shapeDeltoidal, seeded 0.05
   # each) are GONE (2026-08-01): board shape is now a full per-shape equation,
@@ -427,8 +414,7 @@ PRIOR_SIGMAS <- list(
   # clean ~15s estimate, with little need for the wide spread the others get.
   legacy_bombs         = 0.4,
   archivePlay          = 1.0,   # wide: little prior knowledge of the offset size
-  matchPlay            = 1.0,   # wider still in effect: seeded at 0.10, so +-2SD
-                                # spans roughly a 1% to a 100% offset
+  # No matchPlay entry: it is fitted as a signed deviation, not a bounded slope.
   zeroClusterCount     = 1.0,
   # No shape entries here: shape terms are DEVIATIONS (normal(0,
   # INTERACTION_PRIOR_SD), signed) routed around the lognormal machinery by
@@ -1482,11 +1468,9 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
   # Challenge match frame offset, on the same two conditions archivePlay has:
   # the rows were pooled by the gate above, AND at least one survived the
   # eligible-user filter, since an all-one-value column is a zero-variance
-  # predictor brms rejects.
+  # predictor brms rejects. It does NOT join fit_formula_fixed_active: it is a
+  # SIGNED term and belongs in the dev nlpar (see dev_cols below).
   add_match_term <- pool_match && length(unique(df_fit$matchPlay)) > 1
-  if (add_match_term) {
-    fit_formula_fixed_active <- update(fit_formula_fixed_active, ~ . + matchPlay)
-  }
   # Worm Tiles (2026-07): enter the term only once real worm boards exist in
   # the fit data — same zero-variance gate as archivePlay. The shipped
   # coefficient additionally sits behind the NEW_FEATURE_DATA_THRESHOLD
@@ -1536,18 +1520,46 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
   # again — the retired make_positive_init only patched initialization, never
   # the boundary geometry, which is why the 2026-08-01 run initialized fine
   # and then diverged.
-  use_nl_split <- length(active_shape_cols) > 0
+  # The dev nlpar carries every SIGNED term. Shape deviations were its only
+  # occupants; matchPlay joins them, and the reason is the same reason the
+  # bound exists at all.
+  #
+  # The class-wide lb = 0 on the base block is a real modeling claim about
+  # BOARD FEATURES: par is monotonic non-decreasing in every one of them, so
+  # more mines cannot make a board faster and a negative slope would be
+  # nonsense. matchPlay is not a board feature. It is a group indicator (1 on a
+  # Challenge run's rows, 0 on a daily's), and its coefficient answers "how
+  # much slower is a match board than a daily board of identical difficulty".
+  # Nobody knows that sign. A match run is plausibly FASTER: the player is
+  # warmed up and goes straight from one board into the next with no
+  # once-a-day ritual around it.
+  #
+  # Under the bound it could not say so. The posterior would pile up just above
+  # zero and the real speed-up would have to be absorbed elsewhere, and it
+  # cannot be absorbed by the (1 | uid) intercept, because the same players
+  # supply both kinds of row and a player-level intercept cannot represent a
+  # WITHIN-player difference between them. It would leak into the board
+  # coefficients and the residual instead, growing exactly as the mode
+  # succeeds. In the dev nlpar it is unbounded and centered at zero, so the
+  # data pick the sign.
+  #
+  # INTERACTION_PRIOR_SD is reused rather than given its own constant: at 0.5
+  # on the log scale, +-1 SD spans roughly a 40% speed-up to a 65% slowdown,
+  # which is wide enough for a frame offset nobody has measured and, as the
+  # constant's own note says, far too wide to bind.
+  dev_cols <- c(active_shape_cols, if (add_match_term) "matchPlay" else NULL)
+  use_nl_split <- length(dev_cols) > 0
   base_terms <- all.vars(fit_formula_fixed_active)[-1]
   # OLS seeds cover the BASE terms only: a deviation's prior center is fixed
   # at zero (build_priors routes deviation_names around the means lookup).
   ols_seeds <- compute_log_ols_seeds(df_fit, base_terms)
   priors <- build_priors(ols_seeds, c("Intercept", base_terms),
-                         deviation_names = active_shape_cols)
+                         deviation_names = dev_cols)
   fit_formula <- if (use_nl_split) {
     bf(log(pure_time) ~ base + dev,
        as.formula(paste("base ~", paste(c("1", base_terms, "(1 | uid)"),
                                         collapse = " + "))),
-       as.formula(paste("dev ~ 0 +", paste(active_shape_cols, collapse = " + "))),
+       as.formula(paste("dev ~ 0 +", paste(dev_cols, collapse = " + "))),
        nl = TRUE)
   } else {
     update(fit_formula_fixed_active, ~ . + (1 | uid))
@@ -2234,11 +2246,12 @@ if (fit_method == "brms-ranef") {
                     archive_coef))
   }
   if (match_coef != 0) {
-    # A value pinned near zero is the signal that the lognormal's lower bound
-    # is binding, i.e. match runs are FASTER than dailies and the prior family
-    # cannot say so. See the matchPlay note in PRIOR_MEANS.
-    message(sprintf("  matchPlay coef: %+.3f log-multiplier (Challenge-run offset, fit-only, not shipped)",
-                    match_coef))
+    # SIGNED, so the sign is a reading rather than an artifact of a bound:
+    # negative means a Challenge run is faster than a daily of the same board
+    # difficulty, positive means slower.
+    message(sprintf("  matchPlay coef: %+.3f log-multiplier (%.0f%% %s than a daily; Challenge-run offset, fit-only, not shipped)",
+                    match_coef, abs(exp(match_coef) - 1) * 100,
+                    if (match_coef < 0) "faster" else "slower"))
   }
 
   # Bombs are part of your HANDICAP, not par. predictPar stays clean board

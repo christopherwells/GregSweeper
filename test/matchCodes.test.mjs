@@ -16,6 +16,8 @@ import {
   MATCH_TTL_MS, MATCH_PLAYER_MAX, MATCH_ROW_KEY_REGEX, CODE_REGEX,
   matchRowKey, isMatchRowKey, matchIsExpired, matchDaysRemaining, planMatchJoin,
   generateCode, normalizeCode,
+  INVITE_SNOOZE_MS, INVITE_STATES, snoozeUntilFrom,
+  inviteState, inviteShouldPopUp, partitionInvites,
 } from '../src/logic/matchCodes.js';
 import { CODE_TTL_MS } from '../src/logic/friendCodes.js';
 
@@ -229,6 +231,101 @@ for (const [label, node] of [['daily', rules.daily.$date], ['dailyMeta', rules.d
     }
   });
 }
+
+// ── Invites: three answers, all reversible ──────────────────────────────
+
+const NOW = 1750000000000;
+const inv = (over = {}) => ({ matchId: 'm1', from: 'friend', code: 'K7XPQ4', sentAt: NOW, ...over });
+
+test('an unanswered invite is pending and pops up', () => {
+  assert.equal(inviteState(inv(), NOW), 'pending');
+  assert.equal(inviteShouldPopUp(inv(), NOW), true);
+});
+
+test('"Later" means 24 hours, then it asks again (his ruling)', () => {
+  assert.equal(INVITE_SNOOZE_MS, 86400000);
+  const snoozed = inv({ state: 'snoozed', snoozedUntil: snoozeUntilFrom(NOW) });
+  // Quiet for the whole day...
+  assert.equal(inviteState(snoozed, NOW), 'snoozed');
+  assert.equal(inviteShouldPopUp(snoozed, NOW + INVITE_SNOOZE_MS - 1), false);
+  // ...and then it is a live question again, which is what makes it a
+  // REMINDER rather than a dismissal.
+  assert.equal(inviteState(snoozed, NOW + INVITE_SNOOZE_MS), 'pending');
+  assert.equal(inviteShouldPopUp(snoozed, NOW + INVITE_SNOOZE_MS), true);
+});
+
+test('REGRESSION: declining is a STATE, never a deletion', () => {
+  // His ruling makes "I don't want to play that" reviewable and reversible.
+  // A deleted invite could not appear in the list at all, so the whole
+  // change-your-mind surface would be impossible to honor.
+  const declined = inv({ state: 'declined' });
+  assert.equal(inviteState(declined, NOW), 'declined');
+  assert.equal(inviteShouldPopUp(declined, NOW), false,
+    'a turned-down invite must never interrupt again');
+  // Still listed, so it can be reopened.
+  assert.equal(partitionInvites([declined], NOW).declined.length, 1);
+});
+
+test('declining outlasts the snooze window: it never comes back on a timer', () => {
+  // A previously-snoozed invite that was then declined must stay declined once
+  // its old deadline passes, rather than the stale snoozedUntil resurrecting
+  // it. Checked well past the snooze but still inside the match's own life,
+  // since beyond that everything is expired for a different reason.
+  const declined = inv({ state: 'declined', snoozedUntil: NOW + 1000 });
+  assert.equal(inviteState(declined, NOW + INVITE_SNOOZE_MS * 5), 'declined');
+  assert.equal(inviteShouldPopUp(declined, NOW + INVITE_SNOOZE_MS * 5), false);
+});
+
+test('an invite past its match\'s seven days is expired, whatever its state', () => {
+  for (const state of [undefined, 'pending', 'snoozed', 'declined']) {
+    assert.equal(inviteState(inv({ state }), NOW + MATCH_TTL_MS), 'expired');
+  }
+  assert.equal(inviteState(null, NOW), 'expired');
+});
+
+test('an unknown or missing state reads as PENDING, never as answered', () => {
+  // Absence of an answer is not an answer. Reading a corrupt state as
+  // "declined" would silently swallow a real invite.
+  for (const state of [undefined, null, '', 'garbage', 42]) {
+    assert.equal(inviteState(inv({ state }), NOW), 'pending', `${String(state)} must read pending`);
+  }
+  // A 'snoozed' marker with no usable deadline is pending too, rather than
+  // quiet forever.
+  assert.equal(inviteState(inv({ state: 'snoozed' }), NOW), 'pending');
+  assert.equal(inviteState(inv({ state: 'snoozed', snoozedUntil: 'soon' }), NOW), 'pending');
+});
+
+test('partitionInvites sorts newest first and drops only the expired', () => {
+  const list = [
+    inv({ matchId: 'old', sentAt: NOW - 5000 }),
+    inv({ matchId: 'new', sentAt: NOW }),
+    inv({ matchId: 'later', sentAt: NOW, state: 'snoozed', snoozedUntil: NOW + 10 }),
+    inv({ matchId: 'no', sentAt: NOW, state: 'declined' }),
+    inv({ matchId: 'gone', sentAt: NOW - MATCH_TTL_MS }),
+  ];
+  const parts = partitionInvites(list, NOW);
+  assert.deepEqual(parts.pending.map((i) => i.matchId), ['new', 'old']);
+  assert.deepEqual(parts.snoozed.map((i) => i.matchId), ['later']);
+  assert.deepEqual(parts.declined.map((i) => i.matchId), ['no']);
+  assert.equal(JSON.stringify(parts).includes('gone'), false, 'expired invites are dropped');
+});
+
+test('partitionInvites survives garbage rather than throwing', () => {
+  assert.deepEqual(partitionInvites(null, NOW), { pending: [], snoozed: [], declined: [] });
+  assert.deepEqual(partitionInvites([null, undefined], NOW), { pending: [], snoozed: [], declined: [] });
+});
+
+test('rules parity: the invite states the client writes are the states the rules allow', () => {
+  const v = rules.users?.$uid?.matchInvites?.$matchId?.state?.['.validate'];
+  assert.ok(v, 'matchInvites.state has no rule, so every state write would be rejected');
+  for (const s of INVITE_STATES) {
+    assert.ok(v.includes(s), `the rules must allow the "${s}" state the client writes`);
+  }
+  // And the snooze deadline cannot outlive the match it belongs to.
+  const su = rules.users?.$uid?.matchInvites?.$matchId?.snoozedUntil?.['.validate'];
+  assert.ok(su.includes(String(MATCH_TTL_MS)),
+    'a snooze must be bounded by the match\'s own seven days');
+});
 
 // ── The code generator, inherited rather than re-declared ───────────────
 

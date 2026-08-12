@@ -151,3 +151,69 @@ export const MATCH_ROW_KEY_REGEX = /^match_[0-9a-f]{16}$/;
 export function isMatchRowKey(key) {
   return typeof key === 'string' && MATCH_ROW_KEY_REGEX.test(key);
 }
+
+// ── Invites: three answers, all reversible ──────────────────────────────
+//
+// His ruling: "Later is remind me in 24 h, reject is I don't want to play
+// that". So DECLINING IS A STATE, NOT A DELETION. An invite you turned down
+// stays in your list where you can change your mind, which is the whole point
+// of having a list; deleting it would make "review invites you rejected"
+// impossible to honor.
+//
+// Accepting is the one answer that removes the invite, because it graduates
+// into a match under users/{uid}/matches and would otherwise be listed twice.
+
+/** "Later" means exactly this long. */
+export const INVITE_SNOOZE_MS = 86400000; // 24 hours
+
+/** The three states an unanswered or turned-down invite can rest in. */
+export const INVITE_STATES = ['pending', 'snoozed', 'declined'];
+
+export function snoozeUntilFrom(now) {
+  return now + INVITE_SNOOZE_MS;
+}
+
+/**
+ * How an invite should be treated right now.
+ *
+ *   'expired'  its match is past its seven days, so there is nothing to join
+ *   'declined' turned down, listed but never popped up again unasked
+ *   'snoozed'  answered "later" and the 24 hours have not passed
+ *   'pending'  waiting for an answer (a lapsed snooze lands back here, which
+ *              is what makes "remind me" a reminder rather than a dismissal)
+ *
+ * An unknown or absent state reads as 'pending': an invite whose state cannot
+ * be established is one the player has not answered.
+ */
+export function inviteState(invite, now) {
+  if (!invite) return 'expired';
+  const sentAt = Number(invite.sentAt);
+  if (Number.isFinite(sentAt) && now >= sentAt + MATCH_TTL_MS) return 'expired';
+  if (invite.state === 'declined') return 'declined';
+  const until = Number(invite.snoozedUntil);
+  if (invite.state === 'snoozed' && Number.isFinite(until) && now < until) return 'snoozed';
+  return 'pending';
+}
+
+/** Should this invite interrupt the player with a card right now? */
+export function inviteShouldPopUp(invite, now) {
+  return inviteState(invite, now) === 'pending';
+}
+
+/**
+ * Split a list of invites into the sections the review surface shows, each
+ * ordered newest first. Expired ones are dropped: a match nobody can join is
+ * not a decision anyone still has to make.
+ */
+export function partitionInvites(invites, now) {
+  const out = { pending: [], snoozed: [], declined: [] };
+  for (const inv of invites || []) {
+    const state = inviteState(inv, now);
+    if (state === 'expired') continue;
+    out[state].push(inv);
+  }
+  for (const key of Object.keys(out)) {
+    out[key].sort((a, b) => (Number(b.sentAt) || 0) - (Number(a.sentAt) || 0));
+  }
+  return out;
+}

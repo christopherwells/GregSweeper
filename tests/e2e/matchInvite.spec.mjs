@@ -103,6 +103,26 @@ test('a junk ?match= value is ignored entirely and the title screen loads', asyn
   expect(errors, `console errors: ${errors.join(' | ')}`).toHaveLength(0);
 });
 
+test('the invite card offers all three answers', async ({ page }) => {
+  // His ruling: Join, "Later" meaning remind me in 24 hours, and a reject
+  // meaning "I don't want to play that". All three must exist, and the card
+  // carries a detail line so the player knows what they are answering about.
+  await boot(page);
+  for (const id of ['#match-invite-accept', '#match-invite-later', '#match-invite-decline']) {
+    await expect(page.locator(id)).toHaveCount(1);
+  }
+  await expect(page.locator('#match-invite-toast-detail')).toHaveCount(1);
+});
+
+test('the review list exists and stays hidden with nothing to review', async ({ page }) => {
+  // A signed-out test session has no invites and no matches, so the section
+  // must not render an empty heading above the sheet's controls.
+  await boot(page);
+  await page.locator('.mode-card[data-mode="match"]').click();
+  await expect(page.locator('#match-setup-modal')).toBeVisible();
+  await expect(page.locator('#match-review')).toBeHidden();
+});
+
 test('the standings and rematch surfaces start hidden, so no run can leak the last one', async ({ page }) => {
   // The gameover overlay is ONE shared surface across every mode and end
   // state; its optional sections persist in the DOM between games. Both new
