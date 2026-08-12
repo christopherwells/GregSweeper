@@ -1,52 +1,28 @@
 {
   "format": "journal-rewrite-v2",
-  "date": "2026-08-10",
+  "date": "2026-08-12",
   "entries": {
-    "wormLoad": {
-      "sourceHash": 3401122638,
-      "paragraph": "The worm tiles file reads the same almost every night I open it, and my current estimate is about 2% per hundred worm moves, likely between 0.6% and 3%. I noted a question mark on this one, but the data have now provided a real cost. My range has narrowed 47% since July 17, and while a steady no is still information, my estimate is settling into a more defined range."
+    "clueShare4": {
+      "sourceHash": 2897749837,
+      "paragraph": "The fours file reads the same almost every night I open it. My note asked how big the four costs, not whether it exists. The range of the four's impact on time has settled on a real number, and each extra four in ten numbers adds about 5%, likely between 0.9% and 9%. This range has narrowed by 16% since July 18, and the same answer came back again, which I am listening to."
     },
     "patternMoves": {
-      "sourceHash": 451156911,
-      "paragraph": "Back into the pattern reasoning file, the number I left there isn’t the number I found. The parked estimate moved: about 11% per ten pattern reads on Jul 13, and now it reads about 24%. The band runs from 16% to 32%. I wrote that a practiced read should cost seconds, not tens of seconds, and the data agree: the effect is real but small. Closed is supposed to be a state, not a mood."
-    },
-    "wormholePairCount": {
-      "sourceHash": 154051014,
-      "paragraph": "The wormholes numbers moved the wrong way, and I want that on the record. Since July 2, the spread has widened by 767%, and I wrote it down anyway. Ten wormhole pairs add about 29% to your time, likely between 10% and 51%. I predicted that splitting one number across two places would slow the reading down, and it does. Backwards results get front-page space in this notebook."
+      "sourceHash": 3130644935,
+      "paragraph": "Back into the pattern reasoning file, I noticed that the number I left there isn't the same as the one I found. The parked estimate moved from about 11% per ten pattern reads on Jul 13 to about 24% now. The cost comes to about 24% per ten pattern reads, with a band running from 17% to 33%. I wrote that a practiced read should cost seconds, not tens of seconds, and the data agree: the effect is real but small. A number that moves while nobody feeds it has my full attention."
     },
     "mirrorPairCount": {
-      "sourceHash": 3864222297,
-      "paragraph": "The mirrors file is doing the thing measurement is not supposed to do. I wrote that a player who spots the pair should lose almost no time, but the top of the range does not read as almost no time. More plays came in, and my uncertainty widened by about 48%, which is backwards from how measurement is supposed to go. Ten mirror pairs add about 33% to your time, likely between 13% and 56%. Instruments drift, and so do estimates. The notebook is the record."
+      "sourceHash": 1496494607,
+      "paragraph": "The mirrors band is widening when it should be narrowing, according to the hypothesis I wrote that a player who spots the pair should lose almost no time. The top of the range does not read as almost no time, and the data show that the range is now 47% wider than it was on Jul 2. Ten mirror pairs add about 34% to your time, likely between 14% and 57%. Wider is still an answer, but it’s not the one I ordered."
     },
     "liarCellCount": {
-      "sourceHash": 2809222508,
-      "paragraph": "I closed the liar cells file on June 28, after noting the data had two possible doors: poison, or a rounding error. The books show ten study days, from April 22 to June 28, with the cost lying between 0% and about 2% per ten liar cells, which is a thin margin either way. The best files are the ones I can stop writing in, and this one is resting comfortably."
-    },
-    "clueShare4": {
-      "sourceHash": 100054555,
-      "paragraph": "Six study days on fours, and the answer is the same every time. The band has barely moved since July 18. Each extra four in ten numbers adds about 6%, likely between 1% and 10%, to your time. My note asked how big the four costs, not whether it exists. The reading stayed put, and I wrote it down again. Telling the fours apart from the boards around them is the next job."
-    },
-    "compassCellCount": {
-      "sourceHash": 3322811560,
-      "paragraph": "The compass file remains open, with my current estimate reading about 30% per ten compass cells, likely between 12% and 52%, a range that has not moved. I wrote that I couldn’t tell whether players read the arrow quickly or paused to puzzle over it, and so far, neither can the model. I can wait, as more boards arrive every night."
-    },
-    "lockedCellCount": {
-      "sourceHash": 2015665962,
-      "paragraph": "The locked cells numbers have stopped surprising me, even though I keep checking anyway. I wrote that waiting should cost time, and the ledger now quantifies this cost: uncertainty is down 18% since July 2, settling at about 38% per ten locked cells, with a range between 19% and 61%. A result this steady still gets re-checked here, just to ensure the estimate holds firm."
-    },
-    "wallEdgeCount": {
-      "sourceHash": 3677985061,
-      "paragraph": "The walls numbers moved the wrong way, and I want that on the record. The spread has widened by 44% since July 2, and I wrote it down anyway. My note asked whether the wall discount is small or large, and the answer came back small, nearly 0% in fact. Ten walls add somewhere between 0% and about 4% to your time. When the data surprise me, I take better notes."
-    },
-    "sonarCellCount": {
-      "sourceHash": 382462996,
-      "paragraph": "Every fresh look at sonar gives the same reading, with the model putting it at about 74% per ten sonar cells, inside a band from 41% to 114%. There’s no drama in the band; its width has not moved. I suspected from the start that a sonar reading helps less than it looks, and the data keep agreeing with me. The estimate has settled, but the reason behind it remains elusive."
+      "sourceHash": 2912361718,
+      "paragraph": "The liar cells question got its answer. The data provided two options: poison, or a rounding error. The study covered ten study days from April 22 to June 28. The cost of liar cells was between 0% and about 3% per ten cells, which is a narrow range. I'll take a clean answer over a flattering one any day."
     },
     "mysteryCellCount": {
-      "sourceHash": 2118114662,
-      "paragraph": "I had a hunch about mystery cells, but the boards had other plans. The charge per ten mystery cells reads between 0% and about 3%. This file contains only one aimed study day, June 8, and most of the data came from ordinary boards. I wrote that missing information has a price, and I measured it; the price is close to free. A hunch that dies cleanly teaches more than one that limps along."
+      "sourceHash": 2354321526,
+      "paragraph": "The mystery cells file closes with my prediction face-down. On study day Jun 8, the charge per ten mystery cells reads between 0% and about 3%. Most of the data arrived on ordinary boards, and I wrote that missing information has a price. I measured this price, and it turns out to be close to free. I wanted an effect, but the answer outranks the wanting."
     }
   },
   "model": "qwen2.5-7b-instruct-q4km-local",
-  "generatedAt": "2026-08-11T23:28:40.671Z"
+  "generatedAt": "2026-08-12T00:10:03.111Z"
 }
