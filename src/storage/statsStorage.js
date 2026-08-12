@@ -53,6 +53,23 @@ export function getEndlessSeen() {
 export function setEndlessSeen(map) {
   safeSetJSON(ENDLESS_SEEN_KEY, map && typeof map === 'object' ? map : {});
 }
+
+// The MATCH library's seen-cycle (Challenge mode): one flat list of
+// `page:idx` keys across the whole library, his cycle rule applied per
+// eligible space by matchRules.pickMatchBoards. Keys are stable across the
+// nightly reprice (boards never move between pages); a full library rebuild
+// resets the cycle, which is self-healing and worth no bookkeeping. Same
+// practice gate as the ladder's (matchDeal checks isLevelPractice).
+const MATCH_SEEN_KEY = 'minesweeper_match_seen';
+
+export function getMatchSeen() {
+  const arr = safeGetJSON(MATCH_SEEN_KEY, []);
+  return Array.isArray(arr) ? arr : [];
+}
+
+export function setMatchSeen(keys) {
+  safeSetJSON(MATCH_SEEN_KEY, Array.isArray(keys) ? keys : []);
+}
 const THEME_KEY = 'minesweeper_theme';
 
 // ── Local daily residuals (provisional handicap source) ──────────
@@ -218,6 +235,10 @@ function createModeStats() {
 function createDefaultModeStats() {
   return {
     challenge: createModeStats(),
+    // 'match' is the head-to-head Challenge mode; 'timed' is the Quick Play
+    // it absorbed, kept here because its stored rows are a player's history
+    // and dropping the key would orphan them.
+    match: createModeStats(),
     timed: createModeStats(),
     skillTrainer: createModeStats(),
     daily: { ...createModeStats(), dailyStreak: 0, bestDailyStreak: 0, dailiesCompleted: 0, bombHits: 0, lastDailyCompletedDate: null, moltBanked: 0, moltLastUse: null },
@@ -456,14 +477,14 @@ export function savePowerUps(powerUps) {
 export function loadModePowerUps(gameMode) {
   const modeKey = getModeKey(gameMode);
   const all = loadPowerUps();
-  if (modeKey === 'timed') return {};       // Timed: no power-ups
+  if (modeKey === 'match') return {};       // Match: no power-ups
   if (modeKey === 'daily') return {};        // Daily: not persisted
   return all[modeKey] ? { ...all[modeKey] } : {};
 }
 
 export function saveModePowerUps(gameMode, powerUps) {
   const modeKey = getModeKey(gameMode);
-  if (modeKey === 'timed' || modeKey === 'daily') return; // Don't persist
+  if (modeKey === 'match' || modeKey === 'daily') return; // Don't persist
   const all = loadPowerUps();
   all[modeKey] = { ...powerUps };
   savePowerUps(all);
@@ -579,7 +600,7 @@ export function clearGameState(mode) {
     safeRemove(gameStateKey(mode));
   } else {
     // Clear all mode states (used by reset)
-    for (const m of ['challenge', 'timed', 'daily', 'weekly', 'skillTrainer', 'chaos']) {
+    for (const m of ['challenge', 'match', 'timed', 'daily', 'weekly', 'skillTrainer', 'chaos']) {
       safeRemove(gameStateKey(m));
     }
     safeRemove(LEGACY_GAME_STATE_KEY);

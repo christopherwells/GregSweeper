@@ -1,7 +1,8 @@
 // Game-over modal visibility plan (pure, node-tested).
 //
 // The #gameover-overlay modal is ONE shared surface reused by every end state
-// (win / mine loss / time-out) across every mode, and its optional sections
+// (win / mine loss; the time-out outcome retired with Quick Play, whose
+// countdown had already been removed) across every mode, and its optional sections
 // persist in the DOM between games. Before this module, each handler hid only
 // the sections it knew about, so any section another path had shown leaked
 // into the next render: a challenge loss after a weekly win displayed the
@@ -32,6 +33,7 @@ export const GAMEOVER_ELEMENT_IDS = [
   'gameover-powerup-earned',
   'gameover-share',
   'gameover-crux-challenge',
+  'gameover-match-next',
   'gameover-remind-tomorrow',
   'gameover-retry',
   'gameover-done',
@@ -41,19 +43,21 @@ export const GAMEOVER_ELEMENT_IDS = [
   'gameover-explore',
   'gameover-chaos-next',
   'chaos-run-summary',
+  'match-summary',
   'share-card-preview',
 ];
 
 /**
  * Baseline visibility for one game-over render.
  *
- * @param {'win'|'loss'|'timeout'} outcome  which handler is rendering
+ * @param {'win'|'loss'} outcome  which handler is rendering
  * @param {string} mode                     state.gameMode
  * @returns {Object<string, boolean>}       id -> visible, covering the FULL registry
  */
 export function gameoverModalPlan(outcome, mode) {
   const isDailyLike = mode === 'daily' || mode === 'weekly';
   const isChaos = mode === 'chaos';
+  const isMatch = mode === 'match';
 
   // Everything hidden is the safe default: an unknown outcome (future
   // caller bug) degrades to a modal with just the retry escape hatch
@@ -64,21 +68,24 @@ export function gameoverModalPlan(outcome, mode) {
   if (outcome === 'win') {
     plan['gameover-share'] = true;
     plan['gameover-crux-challenge'] = isDailyLike;
-    plan['gameover-retry'] = !isDailyLike;
+    // A match board, once won, is banked: Play Again on it would hand the
+    // player a fresh clock on a layout they have already cleared, the same
+    // reason the canonical modes hide it. The match's own flow buttons
+    // (Next board mid-match, Done on the last) are data-dependent and
+    // unhidden by the handler.
+    plan['gameover-retry'] = !isDailyLike && !isMatch;
     plan['gameover-done'] = isDailyLike;
     plan['gameover-chaos-next'] = isChaos;
     // Data-dependent, unhidden by handleWin after content renders:
     // par, history-dots, receipt, record, nextlevel, powerup-earned,
-    // achievements, remind-tomorrow, share-card-preview.
+    // achievements, remind-tomorrow, share-card-preview, match-next,
+    // match-summary (and done doubles as the match's last-board close).
   } else if (outcome === 'loss') {
     plan['gameover-retry'] = true;
     plan['gameover-encouragement'] = true;
     plan['gameover-analysis'] = true;
     plan['gameover-explore'] = true;
     plan['chaos-run-summary'] = isChaos;
-  } else if (outcome === 'timeout') {
-    plan['gameover-retry'] = true;
-    plan['gameover-encouragement'] = true;
   } else {
     plan['gameover-retry'] = true;
   }

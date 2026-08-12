@@ -1,15 +1,14 @@
 import { state, clearCoastlinePractice } from '../state/gameState.js';
-import { $, $$ } from '../ui/domHelpers.js';
+import { $ } from '../ui/domHelpers.js';
 import { newGame, clearAllPlateTimers, rearmPlateTimers } from './gameActions.js';
 import { persistGameState, tryResumeGame } from './gamePersistence.js';
 import { loadCheckpoint, loadStats } from '../storage/statsStorage.js';
 import { CHAOS_UNLOCK_LEVEL } from '../logic/difficulty.js';
+import { sanitizeMatchRules, matchUnlocks } from '../logic/matchRules.js';
 import { restorePreChaosTheme } from '../ui/themeManager.js';
 
 // ── Mode Manager ──────────────────────────────────────
 
-const timedDiffPanel = $('#timed-difficulty');
-const timedSizeTabs = $('#timed-size-tabs');
 const boardContainer = $('#board-container');
 const powerUpBar = $('#powerup-bar');
 const gameHeader = $('#game-header');
@@ -17,41 +16,19 @@ const gameInfoBar = $('#game-info-bar');
 const progressBarContainer = $('#progress-bar-container');
 const chaosModifierBar = $('#chaos-modifier-bar');
 
-export function updateTimedDiffVisibility() {
-  if (timedDiffPanel) {
-    if (state.gameMode === 'timed') {
-      timedDiffPanel.classList.remove('hidden');
-    } else {
-      timedDiffPanel.classList.add('hidden');
-    }
-  }
-}
-
 export function updateModeUI(mode) {
-  // Quick Play size tabs
-  if (timedSizeTabs) {
-    timedSizeTabs.classList.toggle('hidden', mode !== 'timed');
-  }
-
-  if (mode === 'timed') {
-    // Sync active tab highlight to match state.currentLevel
-    for (const t of document.querySelectorAll('.timed-tab')) {
-      const isActive = parseInt(t.dataset.level, 10) === state.currentLevel;
-      t.classList.toggle('active', isActive);
-      t.setAttribute('aria-selected', isActive ? 'true' : 'false');
-    }
-  }
-
   // Chaos modifier bar
   if (chaosModifierBar) {
     chaosModifierBar.classList.toggle('hidden', mode !== 'chaos');
   }
 
-  // Power-ups hidden in chaos and weekly. Weekly is a time-trial against
-  // a fixed board, letting players cheese with power-ups on later
-  // attempts would defeat the bestTime leaderboard.
+  // Power-ups hidden in chaos, weekly, and matches. Weekly is a time-trial
+  // against a fixed board, letting players cheese with power-ups on later
+  // attempts would defeat the bestTime leaderboard; a match's clocks feed
+  // the match total (and, next PR, an opponent's comparison), so the same
+  // economy applies, and the inventory is zeroed there anyway.
   if (powerUpBar) {
-    if (mode === 'chaos' || mode === 'weekly') {
+    if (mode === 'chaos' || mode === 'weekly' || mode === 'match') {
       powerUpBar.classList.add('hidden');
     } else {
       powerUpBar.classList.remove('hidden');
@@ -137,11 +114,73 @@ export function switchMode(mode) {
       // Fall back to last checkpoint (not Level 1) so mobile swipe-kill
       // doesn't lose all progress
       state.currentLevel = loadCheckpoint('challenge');
-    } else if (mode !== 'timed') {
+    } else {
       state.currentLevel = 1;
     }
     newGame();
   }
+}
+
+/**
+ * Launch a Challenge match from the setup sheet's rules. Its own entry
+ * path, the launchDailyArchive pattern, rather than a switchMode branch:
+ * the outgoing game persists FIRST (so pre-setting match state cannot
+ * forge its snapshot), then the match structure installs and newGame's
+ * match branch deals. Rules are re-sanitized here against the CURRENT
+ * unlocks, so a stale or hand-edited payload can never reach outside them
+ * (his rule: the host's filter is the rules).
+ *
+ * A pinned board (?matchboard=, test-env) rides in as pinnedEntries with
+ * isLevelPractice already set: the deal is skipped and nothing records.
+ */
+export function launchMatch(rawRules, pinnedEntries = null) {
+  persistGameState();
+  if (state.gameMode === 'chaos') restorePreChaosTheme();
+  clearAllPlateTimers();
+  const stats = loadStats();
+  const maxLevel = stats.modeStats?.challenge?.maxLevelReached || 1;
+  const rules = sanitizeMatchRules(rawRules, matchUnlocks(maxLevel));
+  if (pinnedEntries) rules.count = pinnedEntries.length;
+  state.gameMode = 'match';
+  state.match = {
+    rules,
+    entries: Array.isArray(pinnedEntries) ? pinnedEntries : [],
+    current: 0,
+    results: [],
+  };
+  state.isArchivePlay = false;
+  state._archiveRaw = null;
+  state.isWeeklyArchive = false;
+  state._weeklyArchiveRaw = null;
+  state.climbBoardIndex = null;
+  clearCoastlinePractice();
+  updateModeUI('match');
+  newGame();
+}
+
+/** Resume a saved mid-board match from the setup sheet's Resume slot. */
+export function resumeMatch() {
+  persistGameState();
+  if (state.gameMode === 'chaos') restorePreChaosTheme();
+  clearAllPlateTimers();
+  state.gameMode = 'match';
+  state.isArchivePlay = false;
+  state._archiveRaw = null;
+  state.isWeeklyArchive = false;
+  state._weeklyArchiveRaw = null;
+  state.isLevelPractice = false;
+  state.climbBoardIndex = null;
+  clearCoastlinePractice();
+  updateModeUI('match');
+  if (!tryResumeGame('match')) {
+    // The save went stale between the sheet's offer and the tap; a fresh
+    // match under the saved rules beats a dead end.
+    const saved = state.match;
+    state.match = null;
+    launchMatch(saved && saved.rules ? saved.rules : null);
+    return;
+  }
+  rearmPlateTimers();
 }
 
 /**
@@ -202,8 +241,3 @@ export function isChaosUnlocked() {
   return maxLevel >= CHAOS_UNLOCK_LEVEL;
 }
 
-export function syncTimedDiffButtons() {
-  for (const d of $$('.timed-diff-btn')) {
-    d.classList.toggle('active', parseInt(d.dataset.level, 10) === state.currentLevel);
-  }
-}

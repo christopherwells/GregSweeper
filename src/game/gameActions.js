@@ -30,7 +30,7 @@ import { challengeSpecForLevel } from '../logic/challenge250.js';
 import { buildChallenge250Board, challengeBoardSeed } from '../logic/challenge250Builder.js';
 import { floodFillReveal, checkWin, chordReveal, unrevealChordMines, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache, findDecorativeGimmicks, certificateFromCheck } from '../logic/boardSolver.js';
 import { plateDisarmCells, cellAt, defineCellNeighbors } from '../logic/adjacency.js';
-import { getTimedDifficulty, getChaosDifficulty, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE, BOARD_WIDTH_CAP, plateSeconds } from '../logic/difficulty.js';
+import { getChaosDifficulty, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE, BOARD_WIDTH_CAP, plateSeconds } from '../logic/difficulty.js';
 import { computeDailyFeatures, predictPar } from '../logic/dailyFeatures.js';
 import { shieldDefuse } from '../logic/powerUps.js';
 import { applyGimmicks, isLockedCell, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getWeeklyGimmicks, getChaosGimmicks, recomputeDisplayedMines } from '../logic/gimmicks.js';
@@ -46,7 +46,8 @@ import { fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
 import { getUid, markWeeklyDayAttempted } from '../firebase/firebaseProgress.js';
 import { isTestEnvironment } from '../firebase/env.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
-import { dealClimbBoard } from './climbDeal.js';
+import { dealClimbBoard, certifyStoredBoard } from './climbDeal.js';
+import { dealMatchEntries } from './matchDeal.js';
 import {
   loadModePowerUps, loadCheckpoint, clearGameState, saveDailyPar,
   hasSeenNotice, markNoticeSeen,
@@ -312,11 +313,17 @@ let _newGameGeneration = 0;
 // The lab parameterizes the DAILY par model, so its mines must cost what
 // daily mines cost (Christopher's ruling, 2026-08-02): a loss-on-mine lab
 // measures a more cautious solve than the model's own response frame, and
-// its rows would carry that bias straight into the priors. ONE predicate for
-// the two routing sites (revealCell's mine branch and handleChordReveal's
-// strike-vs-refog split) so they can never disagree about what a mine is.
+// its rows would carry that bias straight into the priors. Challenge
+// matches joined the strike side with the Quick Play absorption (his
+// ruling: match rows are to feed the DAILY fit, and "mine hits behave like
+// dailies/weeklies, so it is the same response frame"; a head-to-head
+// where one player dies on board 2 of 5 is also not a race). ONE predicate
+// for the two routing sites (revealCell's mine branch and
+// handleChordReveal's strike-vs-refog split) so they can never disagree
+// about what a mine is.
 function mineIsStrike() {
-  return state.gameMode === 'daily' || state.gameMode === 'weekly' || !!state.parLab;
+  return state.gameMode === 'daily' || state.gameMode === 'weekly'
+    || state.gameMode === 'match' || !!state.parLab;
 }
 
 // One abort contract for every mode newGame can give up on (issue #285).
@@ -367,8 +374,15 @@ export async function newGame() {
       const c = containerFor(state.chaosTiling.cells);
       diff = { rows: c.rows, cols: c.cols, mines: state.chaosTiling.mines };
     }
-  } else if (state.gameMode === 'timed') {
-    diff = getTimedDifficulty(state.currentLevel);
+  } else if (state.gameMode === 'match') {
+    // A dealt board's container is in its own payload. Before the first
+    // deal resolves there is nothing to read, so the placeholder holds a
+    // neutral shape and the install below overwrites it.
+    const entry = state.match && Array.isArray(state.match.entries)
+      ? state.match.entries[state.match.current] : null;
+    diff = entry && entry.payload
+      ? { rows: entry.payload.rows, cols: entry.payload.cols, mines: entry.payload.totalMines }
+      : { rows: 10, cols: 10, mines: 10 };
   } else {
     // Challenge 250: the level's authored spec owns the dimensions (the
     // sawtooth's getDifficultyForLevel is gone). A tiling spec's container
@@ -406,7 +420,6 @@ export async function newGame() {
   state.revealedCount = 0;
   state.elapsedTime = 0;
   state.modalPaused = false; // fresh game must never inherit a stale modal-pause
-  state.timeLimit = 0; // Timed mode now counts up, no countdown
   state.shieldActive = false;
   state.scanMode = false;
   state.xrayMode = false;
@@ -461,8 +474,11 @@ export async function newGame() {
   state.dailyBombHitEvents = [];
   state.clickTimeline = [];
   state.boardCertificate = null;
-  state.timedPar = 0;
-  state.timedFeatures = null;
+  // The match structure survives across its own boards (launchMatch set it,
+  // the win path advances it); any other mode entering wipes it.
+  if (state.gameMode !== 'match') state.match = null;
+  state.matchPar = 0;
+  state.matchFeatures = null;
   state.chaosTiling = state.gameMode === 'chaos' ? state.chaosTiling : null;
   state.coastlinePar = 0;
   state.coastlineFeatures = null;
@@ -536,7 +552,7 @@ export async function newGame() {
     //
     // Computed HERE rather than on first click because a tiling board is
     // frozen at generation like daily/weekly, not resolved on the opening
-    // click the way challenge and timed boards are.
+    // click the way chaos boards are.
     try {
       state.coastlineFeatures = computeDailyFeatures(state, res.check);
       state.coastlinePar = predictPar(state.coastlineFeatures);
@@ -620,6 +636,82 @@ export async function newGame() {
       if (res.features) {
         try { state.challengePar = predictPar(res.features); } catch { /* stored par stands */ }
       }
+    }
+
+    // Same contract as daily/weekly: certified from the marked opener, and
+    // the board never mutates after this point.
+    state.boardCertificate = certificateFromCheck(res.check);
+    const oc = res.firstClick;
+    const oRow = Math.floor(oc / res.cols), oCol = oc % res.cols;
+    state.board[oRow][oCol].suggestedStart = true;
+    setDailySuggestedCell({ r: oRow, c: oCol });
+  }
+
+  // Challenge match: FROZEN dealt boards from the match library. The deal
+  // runs ONCE per match (all N entries up front, the same list the async
+  // match node will ship between players); each board re-certifies from
+  // its stored opener at install, certifyStoredBoard's ground-truth audit,
+  // so a corrupt entry, in a fetched file or a tampered save, is skipped
+  // rather than played. No drawn fallback out here: the library is the
+  // match's whole space, and an unreachable library aborts under the
+  // standing abort contract instead of leaving a persistable husk.
+  if (state.gameMode === 'match' && state.match) {
+    // Let the placeholder paint before the fetch + certification solve.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    if (staleRun()) return;
+
+    if (!Array.isArray(state.match.entries) || state.match.entries.length === 0) {
+      const deal = await dealMatchEntries(state.match.rules);
+      if (staleRun()) return;
+      if (!deal || deal.entries.length === 0) {
+        abortModeStart('match', 'Could not load the boards. Check your connection and try again.');
+        return;
+      }
+      if (deal.entries.length < state.match.rules.count) {
+        import('../ui/toastManager.js').then(m => m.showToast(
+          `Only ${deal.entries.length} board${deal.entries.length === 1 ? '' : 's'} fit those rules right now.`,
+          4000, 'uiWarning'));
+      }
+      state.match.entries = deal.entries;
+    }
+
+    let res = null;
+    while (!res && state.match.current < state.match.entries.length) {
+      const entry = state.match.entries[state.match.current];
+      res = certifyStoredBoard(entry, `match #${state.match.current + 1}`);
+      if (!res) {
+        // Drop the failing entry and let the next one take its slot; the
+        // match shortens rather than shipping an unverified board.
+        state.match.entries.splice(state.match.current, 1);
+        import('../ui/toastManager.js').then(m => m.showToast(
+          'One board failed its check and was skipped.', 4000, 'uiWarning'));
+      }
+    }
+    if (staleRun()) return;
+    if (!res) {
+      abortModeStart('match', 'The boards could not be verified. Try again.');
+      return;
+    }
+
+    state.rows = res.rows;
+    state.cols = res.cols;
+    state.totalMines = res.totalMines;
+    state.board = res.board;
+    state.activeGimmicks = res.activeGimmicks || [];
+    state.gimmickData = res.applied || {};
+    state.firstClick = false;
+    state.currentLevel = state.match.current + 1;
+    // Worm traits and the save's board identity key on the dealt board's
+    // seed, the same field the Climb's deal uses (hatchWormEggs reads it;
+    // both players of a future head-to-head hatch identical worms from it).
+    state.challengeBoardSeed = res.seed;
+    // Par through the CLIENT's own model (the climb deal's rule): the file
+    // was priced under the nightly's fingerprint, and this client's cached
+    // difficulty.js can be older or newer than the fetched JSON.
+    state.matchFeatures = res.features;
+    state.matchPar = res.par || 0;
+    if (res.features) {
+      try { state.matchPar = predictPar(res.features); } catch { /* stored par stands */ }
     }
 
     // Same contract as daily/weekly: certified from the marked opener, and
@@ -1263,7 +1355,7 @@ export async function newGame() {
   // of the inventory. The two saveModePowerUps sites in winLossHandler are
   // parLab-guarded so these zeros can never persist over the player's real
   // challenge inventory.
-  if (state.gameMode === 'timed' || state.gameMode === 'daily' || state.gameMode === 'weekly' || state.gameMode === 'chaos' || state.parLab) {
+  if (state.gameMode === 'match' || state.gameMode === 'daily' || state.gameMode === 'weekly' || state.gameMode === 'chaos' || state.parLab) {
     state.powerUps = { ...emptyPU };
   } else {
     state.powerUps = {
@@ -1276,11 +1368,12 @@ export async function newGame() {
     };
   }
 
-  // Gimmicks / modifiers: reset here ONLY for modes that resolve them on the
-  // first click (challenge / timed / chaos). Daily/weekly canonical boards and
-  // coastline tiling boards resolve their modifiers during pre-generation (the
-  // branches above already set activeGimmicks / gimmickData), so wiping here
-  // would leave the active-modifier bar empty on a board that has modifiers.
+  // Gimmicks / modifiers: reset here ONLY for the mode that resolves them on
+  // the first click (chaos). Everything else, daily/weekly canonicals, Climb
+  // deals, match deals, coastline tiling boards, resolves modifiers during
+  // pre-generation (the branches above already set activeGimmicks /
+  // gimmickData), so wiping here would leave the active-modifier bar empty
+  // on a board that has modifiers.
   if (!modifiersPreResolved(state.gameMode, state.coastlinePractice)) {
     state.activeGimmicks = [];
     state.gimmickData = {};
@@ -1340,8 +1433,8 @@ export async function newGame() {
   if (state._initialized && state.gameMode === 'chaos') {
     const chaosRound = state.chaosRound || 1;
     showLevelInfoToast(chaosRound, diff, 'Round ' + chaosRound);
-  } else if (state._initialized && (state.gameMode === 'normal' || state.gameMode === 'timed')) {
-    const label = diff.label ? `${diff.label}` : null;
+  } else if (state._initialized && (state.gameMode === 'normal' || state.gameMode === 'match')) {
+    let label = diff.label ? `${diff.label}` : null;
     let card = diff;
     let expected = '';
     if (state.gameMode === 'normal' && !state.coastlinePractice) {
@@ -1355,6 +1448,20 @@ export async function newGame() {
       }
       if (state.challengePar > 0) {
         expected = expectedTimeLine(personalPar(state.challengePar, getUid()));
+      }
+    } else if (state.gameMode === 'match' && state.match) {
+      // The pre-board card names the board's place in the match and its
+      // shape, and carries the same personalized expected-time line the
+      // Climb's card does. It reads the INSTALLED board (the dealt spec),
+      // never the sheet's request, the fieldnote-drift rule again.
+      const shape = state.board && state.board._tiling ? state.board._tiling.type : 'rect';
+      card = {
+        rows: state.rows, cols: state.cols, mines: state.totalMines,
+        shapeLabel: shape === 'rect' ? CLASSIC_SHAPE_LABEL : tilingLabel(shape),
+      };
+      label = `Board ${state.match.current + 1} of ${state.match.entries.length}`;
+      if (state.matchPar > 0) {
+        expected = expectedTimeLine(personalPar(state.matchPar, getUid()));
       }
     }
     showLevelInfoToast(state.currentLevel, card, label, expected);
@@ -1410,9 +1517,9 @@ export function revealCell(row, col) {
   // BEFORE processing so a bomb hit still logs the click that caused it.
   recordPlayerAction('r', row, col);
 
-  // First click, generate board (timed and chaos only). Challenge 250,
-  // daily, weekly, and coastline boards are FROZEN at newGame (their
-  // branches set firstClick = false), so this branch never sees them.
+  // First click, generate board (chaos only). Climb, match, daily, weekly,
+  // and coastline boards are FROZEN at newGame (their branches set
+  // firstClick = false), so this branch never sees them.
   if (state.firstClick) {
     state.activeGimmicks = [];
     state.gimmickData = {};
@@ -1469,39 +1576,15 @@ export function revealCell(row, col) {
     // flags are gone. The counter must die with them or the mine counter
     // reads totalMines - N for the whole game; the full-cell re-render
     // clears any stale flag icons off the replaced cells (chaos re-renders
-    // again after gimmicks apply; timed has no other full pass).
+    // again after gimmicks apply).
     state.flagCount = 0;
     updateAllCells();
 
-    // Stamp the no-guess certificate from the accepted check, the
-    // contract here runs from the player's ACTUAL first click. Chaos is
-    // excluded: its modifiers are applied AFTER this loop without
-    // re-verification, so the base-board check certifies nothing about
-    // the board the player ends up on.
-    if (state.gameMode === 'timed') {
-      state.boardCertificate = certificateFromCheck(acceptedCheck);
-      updateActiveGimmickBar();
-    }
-
-    // Timed mode: compute features + par for THIS board (same PAR_MODEL
-    // as daily, timed boards are gimmick-free, so the gimmick terms are
-    // zero). Powers the par-relative rating on the win modal and
-    // the timed/{pushId} submission that will eventually feed the fit.
-    if (state.gameMode === 'timed') {
-      try {
-        const tcheck = isBoardSolvable(state.board, state.rows, state.cols, row, col);
-        cleanSolverArtifacts(state.board);
-        state.timedFeatures = computeDailyFeatures(state, tcheck);
-        // Mode indicator rides IN the feature vector, so submitted timed
-        // rows carry it and the R refit reads it straight off features.
-        state.timedFeatures.modeTimed = 1;
-        state.timedPar = predictPar(state.timedFeatures);
-      } catch (err) {
-        state.timedFeatures = null;
-        state.timedPar = 0;
-        reportCaughtError('timed-par-compute', err);
-      }
-    }
+    // Chaos is the ONE remaining first-click generator (Quick Play, the
+    // other one, was absorbed into the dealt Challenge match mode), and
+    // chaos deliberately stamps no certificate: its modifiers are applied
+    // AFTER this loop without re-verification, so the base-board check
+    // certifies nothing about the board the player ends up on.
 
     // Apply gimmicks for chaos mode
     if (state.gameMode === 'chaos') {
@@ -1540,15 +1623,15 @@ export function revealCell(row, col) {
     startTimer();
 
   } else if (state.status === 'idle' && (state.gameMode === 'daily' || state.gameMode === 'weekly'
-      || state.gameMode === 'normal' || state.coastlinePractice)) {
-    // Daily / weekly / challenge / coastline: the board is FROZEN. It
+      || state.gameMode === 'normal' || state.gameMode === 'match' || state.coastlinePractice)) {
+    // Daily / weekly / climb / match / coastline: the board is FROZEN. It
     // never mutates, so a daily's players all play the identical layout
     // and the submitted features always describe the board that was
     // actually played. The marked start cell is the certified safe entry;
     // a first click that ignores it and lands on a mine is on the player,
-    // by design (decided 2026-06-12), on daily/weekly it falls through
-    // to the bomb-hit strike path below, on the challenge ladder it is a
-    // classic loss (lifelines apply, never strikes, the C250 ruling).
+    // by design (decided 2026-06-12), on daily/weekly/match it falls
+    // through to the bomb-hit strike path below, on the Climb ladder it is
+    // a classic loss (lifelines apply, never strikes, the C250 ruling).
     state.status = 'playing';
     startTimer();
 
@@ -1572,11 +1655,20 @@ export function revealCell(row, col) {
 
     // Shape card FIRST, before any modifier card: the shape is the frame
     // around every modifier on the board, so meeting the lattice
-    // before its modifiers is the order that reads.
-    if (state.gameMode === 'normal' && state.challengeSpec
-        && state.challengeSpec.shape !== 'rect' && !hasSeenShape(state.challengeSpec.shape)) {
-      markShapeSeen(state.challengeSpec.shape);
-      showShapeIntro(state.challengeSpec.shape);
+    // before its modifiers is the order that reads. The Climb reads its
+    // dealt spec (the fieldnote-drift rule); a match board reads its OWN
+    // installed lattice, per board rather than per match (his ruling: the
+    // cards fire for unmet shapes AND modifiers, reading time free), and
+    // the board's _tiling stamp is the deal's own geometry, so the card
+    // can never name a lattice the player is not looking at.
+    const introShape = (state.gameMode === 'normal' && state.challengeSpec)
+      ? state.challengeSpec.shape
+      : (state.gameMode === 'match' && state.board && state.board._tiling)
+        ? state.board._tiling.type
+        : null;
+    if (introShape && introShape !== 'rect' && !hasSeenShape(introShape)) {
+      markShapeSeen(introShape);
+      showShapeIntro(introShape);
     }
 
     // Modifier intro: full card only for modifiers the player hasn't met
@@ -1914,8 +2006,8 @@ export function handleChordReveal(row, col) {
   // satisfied number, chordReveal keeps revealing past the first mine).
   // Daily/weekly charge EVERY exposed mine as its own strike (the intel is
   // real, so the price is too, each stays revealed as a strike marker and
-  // gets its own marginal info-value + ramped base). Challenge/timed/chaos
-  // keep the re-fog: one lifeline/loss on the first mine, the rest go back
+  // gets its own marginal info-value + ramped base; match mines strike the
+  // same way). Climb/chaos keep the re-fog: one lifeline/loss on the first mine, the rest go back
   // under the fog so a survived chord never grants free intel (the
   // 2026-07-10 audit's original fix, still the right economy where a
   // revealed mine means death rather than a priced strike).
@@ -1989,7 +2081,7 @@ export function handleChordReveal(row, col) {
   hatchWormEggs(result.revealed);
 
   if (result.hitMine && primaryMine) {
-    // Challenge/timed/chaos: every chord-exposed mine was un-revealed
+    // Climb/chaos: every chord-exposed mine was un-revealed
     // above; only the primary proceeds through the lifeline/loss flow.
     if (tryLifeline(primaryMine.row, primaryMine.col)) {
       // Lifeline saved, continue playing

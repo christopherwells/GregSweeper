@@ -9,7 +9,9 @@ import { uiSpriteImgHTML } from './spriteLoader.js';
 import { showToast } from './toastManager.js';
 import { getLastShareFile } from './shareCardImage.js';
 import { loadStats } from '../storage/statsStorage.js';
-import { getTimedDifficulty, getSpeedRating } from '../logic/difficulty.js';
+import { matchTotals } from '../logic/matchRules.js';
+import { getHandicapRatio, isRatedHandicap } from '../logic/handicaps.js';
+import { getUid } from '../firebase/firebaseProgress.js';
 import { getHighestTier } from '../logic/achievements.js';
 import { getGimmickDefs } from '../logic/gimmicks.js';
 import { getLocalDateString, addCalendarDays } from '../logic/seededRandom.js';
@@ -22,21 +24,19 @@ export function generateShareCard() {
   const level = state.currentLevel;
   const time = state.elapsedTime;
   // The card describes the PLAYED board, so it reads the live state
-  // rather than re-deriving from a level table (the Challenge 250 ladder
-  // has no level→dims function, a level is a spec, and the board on
-  // screen is its draw). Timed keeps its table read for the tab label.
-  const diff = state.gameMode === 'timed'
-    ? getTimedDifficulty(level)
-    : { rows: state.rows, cols: state.cols, mines: state.totalMines };
+  // rather than re-deriving from a level table (no mode has a level→dims
+  // function any more: a Climb level is a spec, a match board is a deal,
+  // and the board on screen is what was played).
+  const diff = { rows: state.rows, cols: state.cols, mines: state.totalMines };
   const mode = state.gameMode;
-  const modeLabel = { normal: 'The Climb', timed: 'Timed', daily: 'Daily', weekly: 'Weekly', chaos: 'Chaos' }[mode] || 'The Climb';
+  const modeLabel = { normal: 'The Climb', match: 'Challenge', daily: 'Daily', weekly: 'Weekly', chaos: 'Chaos' }[mode] || 'The Climb';
 
   const stats = loadStats();
   const streakText = stats.currentStreak > 1 ? ` | 🔥 ${stats.currentStreak} streak` : '';
   const tier = getHighestTier(stats);
   const tierText = tier ? ` | ${tier.icon} ${tier.name}` : '';
 
-  const levelLabel = diff.label || `Level ${level}`;
+  const levelLabel = `Level ${level}`;
 
   if (mode === 'daily') {
     // Wordle-style card, built by the pure (node-tested) dailyShareLines:
@@ -61,10 +61,19 @@ export function generateShareCard() {
     }).join('\n');
   }
 
-  if (mode === 'timed') {
-    const rating = getSpeedRating(level, time);
-    return `${getThemeEmoji('mine')} GregSweeper · Timed ${levelLabel}\n` +
-           `${rating.icon} ${rating.name} · ${time}s (${diff.rows}×${diff.cols})${tierText}\n\n` +
+  if (mode === 'match') {
+    // A match card reports the MATCH, not the board just finished: the
+    // per-board clocks are the match's own business and the total is the
+    // thing a player would share. Adjusted rides beneath it when this
+    // player carries a rating (his adjusted-only ruling is about
+    // comparison, and the total is the comparable number).
+    const results = (state.match && state.match.results || []).filter(Boolean);
+    const uid = getUid();
+    const totals = matchTotals(results, isRatedHandicap(uid) ? getHandicapRatio(uid) : null);
+    const n = results.length;
+    const adjLine = totals.adjusted != null ? ` · ${totals.adjusted.toFixed(1)}s adjusted` : '';
+    return `${getThemeEmoji('mine')} GregSweeper · Challenge\n` +
+           `${n} board${n === 1 ? '' : 's'} in ${totals.raw.toFixed(1)}s${adjLine}${tierText}\n\n` +
            PROD_SITE_BASE;
   }
 

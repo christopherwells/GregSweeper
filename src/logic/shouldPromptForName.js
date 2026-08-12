@@ -22,7 +22,7 @@
 // automated e2e spec wins a game, so the modal never blocks CI; a future
 // win-journey spec would seed a player name (as a returning player has one).
 
-const GATED_MODES = new Set(['daily', 'weekly', 'timed']);
+const GATED_MODES = new Set(['daily', 'weekly']);
 
 /**
  * @param {Object} args

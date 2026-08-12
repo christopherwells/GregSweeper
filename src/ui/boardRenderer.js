@@ -720,10 +720,11 @@ export function updateCell(r, c) {
     // not just the one NEXT MOVE chip.
     if (cell.frontierSafe) cellEl.classList.add('frontier-safe');
     // Frozen-board suggested start cell (daily / weekly / coastline /
-    // Challenge 250 ladder, every mode that certifies from a marked
-    // opener; shows while the board is fresh or re-fogged)
+    // the Climb / a Challenge match, every mode that certifies from a
+    // marked opener; shows while the board is fresh or re-fogged)
     if (cell.suggestedStart && (state.gameMode === 'daily' || state.gameMode === 'weekly'
-        || state.gameMode === 'normal' || state.coastlinePractice) &&
+        || state.gameMode === 'normal' || state.gameMode === 'match'
+        || state.coastlinePractice) &&
         (state.status === 'idle' || (state.status === 'playing' && state.revealedCount <= 1))) {
       cellEl.classList.add('suggested-start');
     }
@@ -940,7 +941,7 @@ export function adjustCellSize() {
 // ── Zoom (for Timed mode large boards) ────────────────
 
 export function needsZoom() {
-  return state.gameMode === 'timed' && (state.cols > 13 || state.rows > 13);
+  return state.gameMode === 'match' && (state.cols > 13 || state.rows > 13);
 }
 
 export function updateZoom() {

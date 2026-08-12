@@ -52,8 +52,8 @@ test('efficient: player clicks at or below the certified click count', () => {
 });
 
 test('search and liar read the provably-required move counts', () => {
-  assert.equal(detectSkillFeats({ gameMode: 'timed', timedFeatures: features({ adv: 1 }), clickTimeline: reveals(2) }).search, true);
-  assert.equal(detectSkillFeats({ gameMode: 'timed', timedFeatures: features({ adv: 0 }), clickTimeline: reveals(2) }).search, false);
+  assert.equal(detectSkillFeats({ gameMode: 'match', matchFeatures: features({ adv: 1 }), clickTimeline: reveals(2) }).search, true);
+  assert.equal(detectSkillFeats({ gameMode: 'match', matchFeatures: features({ adv: 0 }), clickTimeline: reveals(2) }).search, false);
   assert.equal(detectSkillFeats({ gameMode: 'weekly', weeklyFeatures: features({ disj: 1 }), clickTimeline: reveals(2) }).liar, true);
   assert.equal(detectSkillFeats({ gameMode: 'weekly', weeklyFeatures: features({ disj: 0 }), clickTimeline: reveals(2) }).liar, false);
 });

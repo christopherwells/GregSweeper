@@ -87,10 +87,17 @@ export function persistGameState() {
     // Purist-achievement flag: without it a resumed game that had already
     // used a power-up counted as a purist win on completion.
     usedPowerUps: state.usedPowerUps || false,
-    // Timed par + features: without them a resumed timed win lost its par
-    // line and its timed/{pushId} fit row.
-    timedPar: state.timedPar || 0,
-    timedFeatures: state.timedFeatures || null,
+    // The match in progress: its rules, its DEALT ENTRIES (verbatim
+    // payloads, re-certified at install so a bent save cannot install a
+    // board), the board index, and the banked per-board results. Without
+    // the entries a resumed match would have to re-deal, which is a
+    // different set of boards mid-match, and next PR a different set from
+    // the opponent's. matchPar/matchFeatures describe the CURRENT board:
+    // without them a resumed board renders no par line and prices its
+    // strikes against no baseline.
+    match: state.match || null,
+    matchPar: state.matchPar || 0,
+    matchFeatures: state.matchFeatures || null,
     // Challenge 250 draw identity: the seed is what live worm hatches key
     // their traits on (matching the wormLoad the builder priced), and the
     // par feeds the expected-time surfaces. Both must survive a resume.
@@ -217,8 +224,9 @@ export function tryResumeGame(mode) {
   state.dailyBombHitEvents = Array.isArray(gs.dailyBombHitEvents) ? gs.dailyBombHitEvents : [];
   state.clickTimeline = Array.isArray(gs.clickTimeline) ? gs.clickTimeline : [];
   state.usedPowerUps = gs.usedPowerUps === true;
-  state.timedPar = typeof gs.timedPar === 'number' ? gs.timedPar : 0;
-  state.timedFeatures = gs.timedFeatures || null;
+  state.match = gs.match || null;
+  state.matchPar = typeof gs.matchPar === 'number' ? gs.matchPar : 0;
+  state.matchFeatures = gs.matchFeatures || null;
   // Challenge 250 draw identity (worm-trait seed + level par). Pre-engine
   // saves lack both; the worm chain then falls back to the bare-level
   // identity, which is exactly what those boards hatched under.

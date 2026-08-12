@@ -62,6 +62,27 @@ const SHAPE_COPY = {
 
 export const SHAPE_INTRO_TYPES = Object.freeze(TILING_TYPES.slice());
 
+// Classic's 3x3 block, in the same unit frame and with the same fill and
+// stroke contract every built patch uses, so a caller cannot tell a drawn
+// motif from a built one. Nine cells on a 0..1 frame with the builders'
+// own 5% padding.
+function classicPatchSVG(size) {
+  const pad = 0.05;
+  const step = (1 - 2 * pad) / 3;
+  let rects = '';
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      rects += `<rect x="${(pad + c * step).toFixed(4)}" y="${(pad + r * step).toFixed(4)}"`
+        + ` width="${step.toFixed(4)}" height="${step.toFixed(4)}"/>`;
+    }
+  }
+  return `<svg class="shape-intro-patch" viewBox="0 0 1 1" width="${size}" height="${size}" `
+    + 'aria-hidden="true" focusable="false">'
+    + '<g fill="var(--color-cell-hidden, #bdbdbd)" stroke="var(--color-border, #7a7a7a)" '
+    + `stroke-width="0.012" stroke-linejoin="round" vector-effect="non-scaling-stroke">${rects}</g>`
+    + '</svg>';
+}
+
 /**
  * The SVG symbol for a shape: the MINIMUM REPEATING UNIT of its lattice
  * (his ruling 2026-08-04), drawn from the shipped builder's own polygons.
@@ -78,11 +99,21 @@ export const SHAPE_INTRO_TYPES = Object.freeze(TILING_TYPES.slice());
  * reads as a piece of board rather than as a diagram, and it is cropped
  * to the drawn cells so the motif fills its frame on every lattice.
  *
- * @param {string} type a TILING_TYPES entry
+ * CLASSIC is drawn here rather than built: `buildTiling` has no 'rect'
+ * builder and its dispatcher deliberately falls through to the 4.8.8 for
+ * an unrecognized type, so asking it for a square patch silently returns
+ * OCTAGONS, a plausible picture of the wrong lattice with no error (the
+ * documented topology hazard, met live on the Challenge setup sheet, where
+ * the Classic chip drew an octagon motif). A square grid needs no builder:
+ * the motif is the 3x3 block, which is exactly one cell plus everything a
+ * corner-inclusive neighborhood touches.
+ *
+ * @param {string} type a TILING_TYPES entry, or 'rect' for Classic
  * @param {number} size rendered px (square frame)
  * @returns {string} SVG markup
  */
 export function shapePatchSVG(type, size = 96) {
+  if (type === 'rect') return classicPatchSVG(size);
   const dims = PATCH_DIMS[type] || { M: 3, N: 3 };
   const T = buildTiling(type, dims.M, dims.N);
 

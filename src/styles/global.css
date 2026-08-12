@@ -2427,64 +2427,6 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   transform: translateY(-1px);
 }
 
-/* ── Timed Difficulty Picker ───────────────── */
-
-.timed-difficulty {
-  margin-top: 8px;
-}
-
-.timed-difficulty h4 {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: var(--color-muted);
-  margin: 0 0 6px 0;
-}
-
-.timed-diff-buttons {
-  display: flex;
-  gap: 6px;
-}
-
-.timed-diff-btn {
-  flex: 1;
-  padding: 8px 6px;
-  border: 2px solid var(--color-border);
-  background: var(--color-btn-bg);
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  transition: all 0.15s ease;
-}
-
-.timed-diff-btn span {
-  font-size: 10px;
-  font-weight: 400;
-  opacity: 0.6;
-}
-
-.timed-diff-btn.active {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: #fff;
-  box-shadow: 0 2px 8px var(--color-accent-glow);
-}
-
-.timed-diff-btn.active span {
-  opacity: 0.85;
-}
-
-.timed-diff-btn:hover:not(.active) {
-  background: var(--color-btn-hover);
-  transform: translateY(-1px);
-}
-
 /* ── Reset Profile ─────────────────────────── */
 
 .reset-group {
@@ -4965,14 +4907,9 @@ details[open] > .journal-ledger-summary::after { transform: rotate(225deg); }
     gap: 8px;
   }
 
-  .timed-size-tabs {
-    gap: 4px;
-  }
-
-  .timed-tab {
-    padding: 8px 10px;
+  .match-chip {
+    padding: 6px 9px;
     font-size: 11px;
-    min-height: 38px;
   }
 }
 
@@ -6272,34 +6209,200 @@ button.weekly-archive-row:focus-visible {
 
 /* ── Timed Size Tabs ───────────────────────────────── */
 
-.timed-size-tabs {
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 0;
+/* ── Challenge setup sheet ──────────────────────────────
+   The chip is the app's one theme-proof selected state (inherited from
+   the Quick Play tabs this mode replaced): an accent BORDER plus the glow
+   over the hidden-cell fill. Never white-on-accent, which measures below
+   2:1 on about a dozen themes. Labels use --font-family, never
+   --font-display, which is a pixel font on neon and blackletter on
+   stainedglass; numeric readouts add tabular-nums. */
+.match-setup-content {
+  max-width: 480px;
 }
-.timed-size-tabs.hidden { display: none; }
-
-.timed-tab {
-  padding: 10px 16px;
+.match-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.match-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 12px;
   min-height: 44px;
-  border-radius: 20px;
+  min-width: 44px;
+  border-radius: 14px;
   border: 2px solid var(--color-border, #333);
   background: transparent;
   color: var(--color-text-secondary, #888);
+  font-family: var(--font-family);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
 }
-.timed-tab.active {
+.match-chip.active {
   border-color: var(--color-accent, #e94560);
   color: var(--color-text, #eee);
   background: var(--color-cell-hidden, #2a2a4a);
   box-shadow: 0 0 8px var(--color-accent-glow, rgba(233,69,96,0.3));
 }
-.timed-tab:hover:not(.active) {
+.match-chip:hover:not(.active):not(:disabled) {
   border-color: var(--color-text-secondary, #666);
+}
+.match-chip-locked,
+.match-chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.match-chip-art {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+}
+.match-chip-art svg,
+.match-chip-art img {
+  width: 30px;
+  height: 30px;
+}
+/* The shape patch is drawn from real lattice geometry (shapePatchSVG), and
+   its own fill is --color-cell-hidden over a --color-border stroke, which
+   is what the intro CARD needs and what makes it nearly invisible HERE:
+   over a transparent chip on a themed panel, both tokens sit within a
+   shade of the backdrop (measured on chalkboard). Painting it in
+   currentColor instead ties the geometry to the same channel as the
+   label, so it reads on every theme and brightens when the chip is
+   selected, with no per-theme override anywhere. */
+.match-chip-art svg g {
+  fill: currentColor;
+  fill-opacity: 0.22;
+  stroke: currentColor;
+}
+.match-chip-label {
+  font-size: 11px;
+  line-height: 1.2;
+}
+.match-chip-sub {
+  font-size: 10px;
+  color: var(--color-text-secondary, #888);
+  font-variant-numeric: tabular-nums;
+}
+.match-chip-icon {
+  padding: 8px;
+}
+/* The inspected modifier's name rides this slot, so the icon row above it
+   stays a row of icons (his design-sheet ruling). Fixed height: the line
+   changes on hover and a reflowing sheet under the pointer reads broken. */
+.match-readout {
+  margin-top: 8px;
+  min-height: 18px;
+  font-size: 12px;
+  color: var(--color-text-secondary, #888);
+}
+.match-stepper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.match-step-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 2px solid var(--color-border, #333);
+  background: transparent;
+  color: var(--color-text, #eee);
+  font-family: var(--font-family);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.match-step-btn:hover:not(:disabled) {
+  border-color: var(--color-accent, #e94560);
+}
+.match-step-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.match-step-value {
+  min-width: 2ch;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text, #eee);
+  font-variant-numeric: tabular-nums;
+}
+.match-supply {
+  margin: 4px 0 14px;
+  font-size: 12px;
+  color: var(--color-text-secondary, #888);
+  min-height: 18px;
+}
+.match-supply-empty {
+  color: var(--color-accent, #e94560);
+}
+/* The primary action, deliberately NOT .action-btn.primary's white-on-accent:
+   that pairing measures 1.30:1 on chalkboard and 1.76:1 on blueprint (the
+   same trap the leaderboard toggle and the resume button carry). This is the
+   chip's selected idiom at button scale, an accent BORDER plus the glow over
+   the hidden-cell fill, which never puts a fixed foreground on a themed
+   accent and measured 8:1 or better on all four probe themes. */
+.match-start-btn {
+  width: 100%;
+  padding: 14px 18px;
+  border: 2px solid var(--color-accent, #e94560);
+  border-radius: 12px;
+  background: var(--color-cell-hidden, #2a2a4a);
+  color: var(--color-text, #eee);
+  font-family: var(--font-family);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 0 10px var(--color-accent-glow, rgba(233,69,96,0.3));
+}
+.match-start-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px var(--color-accent-glow, rgba(233,69,96,0.3));
+}
+.match-start-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+/* The end-of-match summary on the game-over card: one row per board, then
+   the totals. Borders use the theme's own token, never a hardcoded rgba,
+   because about a dozen themes ship a LIGHT modal background. */
+.match-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 0;
+  margin: 8px 0;
+  border-top: 1px solid var(--color-border, #333);
+  border-bottom: 1px solid var(--color-border, #333);
+}
+.match-summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--color-text-secondary, #888);
+  font-variant-numeric: tabular-nums;
+}
+.match-summary-total {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border, #333);
+  font-weight: 700;
+  color: var(--color-text, #eee);
+}
+.match-summary-adjusted {
+  font-size: 12px;
 }
 
 /* ── Skill Trainer ─────────────────────────────────── */

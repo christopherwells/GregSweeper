@@ -62,7 +62,7 @@ test('the Daily and Weekly cards lead the grid at full width', async ({ page }) 
   // Everything below the heroes shares its row, or spans as the odd one out.
   const below = rows.slice(2).flat().map((c) => c.label);
   expect(below, 'the four evergreen modes sit under the heroes')
-    .toEqual(expect.arrayContaining(['normal', 'timed', 'mode-card-gym']));
+    .toEqual(expect.arrayContaining(['normal', 'match', 'mode-card-gym']));
 });
 
 // 2026-07-06 orphan-cell incident: the old span rule

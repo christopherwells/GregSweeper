@@ -21,10 +21,35 @@ import { readFileSync, readdirSync } from 'node:fs';
 const root = new URL('../', import.meta.url);
 const read = (rel) => readFileSync(new URL(rel, root), 'utf8');
 
-// When the head-to-head Challenge mode lands, ITS copy legitimately says
-// "Challenge" -- add those strings here rather than weakening the scan. Each
-// entry is an exact phrase that may appear in player-visible text.
-const SANCTIONED_PHRASES = [];
+// The head-to-head Challenge mode's OWN copy legitimately says "Challenge"
+// -- those strings live here rather than weakening the scan. Each entry is an
+// exact phrase from that mode's own surfaces, matched against the SOURCE line
+// (markup included, which is what makes a short one like the mode-card name
+// safe: it can only ever match that one element, never a bare "Challenge"
+// written of the ladder somewhere else).
+//
+// PR 3 (Challenge solo, absorbing Quick Play) filled this hook. Additions
+// belong to the mode's own surfaces only; if a phrase here would read as the
+// ladder in its own context, it does not belong.
+const SANCTIONED_PHRASES = [
+  // index.html: the title card, the stats tab, the setup sheet.
+  '<div class="mode-card-name">Challenge</div>',
+  'data-tab="match" role="tab" aria-selected="false">Challenge<',
+  'Challenge setup',
+  'Start Challenge',
+  // index.html help + stats copy, where the mode is named beside the others.
+  'Hitting a mine in Daily, Weekly or Challenge is not the end.',
+  '<p><strong>Challenge:</strong> build a run of one to ten boards',
+  'Daily, Weekly and Challenge are played clean.',
+  'Every board you have finished in a Challenge run.',
+  // src: the two share cards' mode maps (each names the ladder correctly in
+  // the same line, so the line itself proves the distinction), the text
+  // card's headline, and the stats panel's empty state.
+  "normal: 'The Climb', match: 'Challenge'",
+  "normal: 'THE CLIMB', match: 'CHALLENGE'",
+  'GregSweeper · Challenge',
+  'Build a Challenge run to see your history!',
+];
 
 // ── index.html: visible text and the attributes a human reads ──────────────
 
@@ -47,11 +72,15 @@ function visibleHtmlLines(html) {
 }
 
 test('REGRESSION: index.html never says "Challenge" where it means the ladder', () => {
-  const lines = visibleHtmlLines(read('index.html'));
+  const html = read('index.html');
+  const lines = visibleHtmlLines(html);
+  const rawLines = html.split('\n');
   const hits = [];
   lines.forEach((text, i) => {
     if (!/challeng/i.test(text)) return;
-    if (SANCTIONED_PHRASES.some((p) => text.includes(p))) return;
+    // Sanctions match the RAW source line, so a markup-anchored phrase can
+    // exempt exactly one element rather than any line reading "Challenge".
+    if (SANCTIONED_PHRASES.some((p) => rawLines[i].includes(p))) return;
     hits.push(`index.html:${i + 1}  ${text.trim().slice(0, 110)}`);
   });
   assert.deepEqual(hits, [],

@@ -2,13 +2,17 @@ import { test, expect } from '@playwright/test';
 import { prepareInteractionSpec } from './helpers.mjs';
 
 // REGRESSION (2026-07-10 audit): flags placed BEFORE the first click sit on
-// the placeholder board (timed generates the real layout on the first
-// click, and generateBoard returns fresh cell objects), so the flags
-// silently vanish — but state.flagCount was never reset, leaving the mine
-// counter reading totalMines - N for the whole game, and (in timed, which
-// had no post-generation full re-render) stale flag icons painted on cells
-// whose state said unflagged. The fix zeroes flagCount and re-renders every
-// cell when the real board lands.
+// the placeholder board (a first-click generator builds the real layout on
+// that click, and generateBoard returns fresh cell objects), so the flags
+// silently vanish, but state.flagCount was never reset, leaving the mine
+// counter reading totalMines - N for the whole game, and stale flag icons
+// painted on cells whose state said unflagged. The fix zeroes flagCount and
+// re-renders every cell when the real board lands.
+//
+// The case was originally pinned in Quick Play. That mode was absorbed into
+// the dealt Challenge match (whose boards are FROZEN, so it belongs with
+// the ladder below), leaving CHAOS as the one first-click generator in the
+// game and therefore the only place this defect can still occur.
 //
 // CHALLENGE flipped contracts with the Challenge 250 engine: the ladder
 // board is FROZEN at newGame (drawn certified from the level's spec, like
@@ -79,10 +83,28 @@ test('challenge (C250 frozen board) — pre-first-click flags are real flags and
   await expect(page.locator('#board .cell.revealed')).not.toHaveCount(0);
 });
 
-test('REGRESSION: timed — pre-first-click flags leave no stale flag icons after generation', async ({ page }) => {
+test('REGRESSION: chaos, pre-first-click flags leave no stale flag icons after generation', async ({ page }) => {
+  // Chaos unlocks at Climb L100, so the card is hidden until the stats say
+  // so; seeding progression is what makes the one surviving first-click
+  // generator reachable from the front door.
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem('minesweeper_stats', JSON.stringify({
+        totalGames: 100, wins: 100, losses: 0, currentStreak: 0, bestStreak: 0,
+        maxLevelReached: 100, bestTimes: {}, recentGames: [],
+        challengeEpoch: 1, challengeSeenEpoch: 1, challengeArtifactEpoch: 1,
+        modeStats: {
+          challenge: {
+            totalGames: 100, wins: 100, losses: 0, currentStreak: 0, bestStreak: 0,
+            maxLevelReached: 100, bestTimes: {}, recentGames: [],
+          },
+        },
+      }));
+    } catch {}
+  });
   await page.goto('?isTest=1');
   await page.waitForSelector('#boot-overlay', { state: 'detached', timeout: 20_000 });
   await page.waitForSelector('#title-screen:not(.hidden)', { timeout: 20_000 });
-  await page.click('.mode-card[data-mode="timed"]');
+  await page.click('.mode-card[data-mode="chaos"]');
   await flagTwoThenFirstClick(page);
 });

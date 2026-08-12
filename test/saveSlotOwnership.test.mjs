@@ -58,10 +58,18 @@ test('REGRESSION: winLossHandler clears the slot only through the ownership guar
   assert.match(helper[0], /clearGameState\(state\.gameMode\)/,
     'and the one bare call must be the one inside it');
 
-  // Every end-of-game path routes through it.
-  const calls = winLoss.match(/_clearOwnSave\(\)/g) || [];
-  assert.ok(calls.length >= 4,
-    'win, loss, time-up and the helper itself — a path that clears directly would have skipped the guard');
+  // Every end-of-game path routes through it. Named rather than counted:
+  // the count was 4 while a dead time-up handler still existed (it went
+  // with Quick Play), and a bare count cannot tell a path that was REMOVED
+  // from one that started clearing the slot directly.
+  for (const fn of ['handleWin', 'handleLoss']) {
+    const from = winLoss.indexOf(`function ${fn}(`);
+    assert.ok(from > 0, `${fn} must exist`);
+    const next = winLoss.indexOf('\nexport ', from + 1);
+    const slice = winLoss.slice(from, next === -1 ? undefined : next);
+    assert.match(slice, /_clearOwnSave\(\)/,
+      `${fn} must clear through the guard, never directly`);
+  }
 });
 
 test('persistGameState refuses the same lanes, through the same predicate', () => {
