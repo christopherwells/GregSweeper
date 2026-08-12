@@ -449,10 +449,20 @@ test('REGRESSION: matchPlay is a SIGNED deviation, never a bounded slope', () =>
     'matchPlay must NOT join the bounded fixed formula');
   assert.ok(/if \(add_match_term\) "matchPlay"/.test(R_SRC),
     'matchPlay must enter through dev_cols, the signed nlpar');
-  // And it is still never shipped: new_coefs is built from COEF_TO_PREDICTOR
-  // alone, so a fit-only nuisance term cannot reach predictPar.
-  assert.ok(!/COEF_TO_PREDICTOR\[\["matchPlay"\]\]/.test(R_SRC),
-    'matchPlay must never be a shipped predictor');
+  // And it is still never shipped: new_coefs is built by iterating
+  // COEF_TO_PREDICTOR and indexing the fit with each VALUE, so the only way
+  // matchPlay reaches difficulty.js is an entry in that table pointing at it.
+  // Scan the table's own literal rather than the whole file: the mutate()
+  // that derives the matchPlay COLUMN is legitimate, so a file-wide scan
+  // would assert the wrong thing. (The previous form looked for
+  // `COEF_TO_PREDICTOR[["matchPlay"]]`, a string this file would never
+  // contain under any edit, so it could not fail.)
+  const coefTable = R_SRC.match(/COEF_TO_PREDICTOR\s*<-\s*c\(([\s\S]*?)\n\)/);
+  assert.ok(coefTable, 'COEF_TO_PREDICTOR literal not found; this scan is vacuous');
+  assert.match(coefTable[1], /secPerCell\s*=\s*"cellCount"/,
+    'the table scan must be reading the real mapping');
+  assert.ok(!/=\s*"matchPlay"/.test(coefTable[1]),
+    'matchPlay must never be a shipped predictor: no COEF_TO_PREDICTOR entry may map to it');
 });
 
 test('make_positive_init is GONE and no fit passes a custom init', () => {

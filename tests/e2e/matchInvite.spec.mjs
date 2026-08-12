@@ -103,15 +103,52 @@ test('a junk ?match= value is ignored entirely and the title screen loads', asyn
   expect(errors, `console errors: ${errors.join(' | ')}`).toHaveLength(0);
 });
 
-test('the invite card offers all three answers', async ({ page }) => {
+test('each of the three invite answers dismisses the card and says what it did', async ({ page }) => {
   // His ruling: Join, "Later" meaning remind me in 24 hours, and a reject
-  // meaning "I don't want to play that". All three must exist, and the card
-  // carries a detail line so the player knows what they are answering about.
+  // meaning "I don't want to play that".
+  //
+  // This drives the card rather than counting its buttons. Asserting the
+  // three ids exist would pass on static markup with every handler deleted,
+  // which is the "element is visible is not a test" rule: the markup is in
+  // index.html unconditionally and needs no JS at all. So each answer is
+  // CLICKED and the outcome checked. A signed-out session has no uid, so the
+  // Firebase write behind each answer no-ops; what is under test here is the
+  // wiring the player actually feels, the card closing and the confirmation.
   await boot(page);
-  for (const id of ['#match-invite-accept', '#match-invite-later', '#match-invite-decline']) {
-    await expect(page.locator(id)).toHaveCount(1);
+
+  const cases = [
+    ['#match-invite-later', /ask again tomorrow/i],
+    ['#match-invite-decline', /turned down/i],
+  ];
+  for (const [button, toastText] of cases) {
+    // Stage the card the way a live invite does: real matchId + code on the
+    // dataset, then unhide. Nothing else about the card is faked.
+    await page.evaluate(() => {
+      const card = document.getElementById('match-invite-toast');
+      card.dataset.matchId = 'MJ0abcdefghijklmnopq';
+      card.dataset.code = 'ABC234';
+      card.classList.remove('hidden');
+    });
+    await expect(page.locator('#match-invite-toast')).toBeVisible();
+
+    await page.locator(button).click();
+
+    await expect(page.locator('#match-invite-toast')).toBeHidden();
+    await expect(page.locator('.queued-toast', { hasText: toastText }).first()).toBeVisible();
   }
-  await expect(page.locator('#match-invite-toast-detail')).toHaveCount(1);
+
+  // Accept routes to the join card carrying the invite's own code, which is
+  // what makes an invite and a pasted code the same path.
+  await page.evaluate(() => {
+    const card = document.getElementById('match-invite-toast');
+    card.dataset.matchId = 'MJ0abcdefghijklmnopq';
+    card.dataset.code = 'ABC234';
+    card.classList.remove('hidden');
+  });
+  await page.locator('#match-invite-accept').click();
+  await expect(page.locator('#match-invite-toast')).toBeHidden();
+  await expect(page.locator('#match-join-modal')).toBeVisible();
+  await expect(page.locator('#match-join-input')).toHaveValue('ABC234');
 });
 
 test('the review list exists and stays hidden with nothing to review', async ({ page }) => {

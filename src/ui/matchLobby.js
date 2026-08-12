@@ -192,9 +192,15 @@ async function _renderInviteFriends() {
     if (!btn || btn.disabled || !_pending) return;
     btn.disabled = true;
     const { sendMatchInvite } = await import('../firebase/firebaseMatch.js');
-    const ok = await sendMatchInvite(btn.dataset.uid, _pending.matchId, _pending.code);
-    btn.textContent = ok ? 'Invited' : 'Try again';
-    if (!ok) btn.disabled = false;
+    const outcome = await sendMatchInvite(btn.dataset.uid, _pending.matchId, _pending.code);
+    // 'exists' is a refusal, but not a failure the player should retry: the
+    // invite is already sitting in their friend's list, and the rules refuse
+    // the overwrite precisely so a re-send cannot wipe an answer they have
+    // already given. Only a genuinely offline attempt is worth another tap.
+    btn.textContent = outcome === 'sent' ? 'Invited'
+      : outcome === 'exists' ? 'Already invited'
+      : 'Try again';
+    if (outcome === 'offline') btn.disabled = false;
   });
 }
 

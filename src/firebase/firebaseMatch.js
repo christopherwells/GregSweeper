@@ -23,8 +23,15 @@
  *    server-enforced in the read gate, so an old code is unreadable regardless
  *    of the client clock.
  *  - users/{uid}/matchInvites/{matchId} = { from, code, sentAt }. A friend may
- *    write this into your node, which is the second deliberate write exception
- *    on users/ after friends/. The sender's NAME is deliberately not stored:
+ *    CREATE this in your node, which is the second deliberate write exception
+ *    on users/ after friends/, and the grant stops at creation: the rule
+ *    carries `!data.exists()`, so once an invite is in your list only YOU can
+ *    change it. Without that clause the sender kept standing write access,
+ *    because a partial update leaves `from` untouched and the rule reads it
+ *    from the merged result, so the person who sent an invite could answer it
+ *    on your behalf, and a re-sent invite (a plain set()) would wipe the
+ *    `state` recording your "no thanks" back to pending. An answer belongs to
+ *    the person who was asked. The sender's NAME is deliberately not stored:
  *    it resolves from playerNames at render time (join-at-read), so there is
  *    one fewer name-bearing path to sweep and a renamed friend reads correctly.
  *
@@ -302,22 +309,30 @@ export function subscribeMatch(matchId, callback) {
  * code aloud (his ruling: "you can either share a code or invite someone if
  * you're friends already"). The invite carries the code, so accepting it takes
  * the same path a pasted code does.
+ *
+ * @returns {Promise<'sent'|'exists'|'offline'>} never throws
  */
 export async function sendMatchInvite(friendUid, matchId, code) {
   const ready = await _readyOrNull();
   const uid = getUid();
-  if (!ready || !uid || !friendUid || !matchId || !code) return false;
+  if (!ready || !uid || !friendUid || !matchId || !code) return 'offline';
   try {
     await db().ref(`users/${friendUid}/matchInvites/${matchId}`).set({
       from: uid,
       code,
       sentAt: firebase.database.ServerValue.TIMESTAMP,
     });
-    return true;
+    return 'sent';
   } catch (err) {
-    // The rules refuse an invite from someone the recipient has not befriended.
+    // Two refusals reach here and the sender cannot tell them apart from the
+    // error alone, because a recipient's invite list is owner-read: the
+    // recipient has not befriended them, or an invite for this match is
+    // ALREADY in their list (the creation-only grant refuses the overwrite,
+    // which is what stops a re-send wiping their answer). This button only
+    // renders for people already on the friend list, so the second is the
+    // live case and the copy says so.
     reportCaughtError('match-invite-send', err);
-    return false;
+    return 'exists';
   }
 }
 

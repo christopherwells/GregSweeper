@@ -504,7 +504,7 @@
         },
         "matchInvites": {
           "$matchId": {
-            ".write": "auth != null && (auth.uid === $uid || (newData.exists() && auth.uid === newData.child('from').val() && root.child('users/' + $uid + '/friends/' + auth.uid).exists()))",
+            ".write": "auth != null && (auth.uid === $uid || (!data.exists() && newData.exists() && auth.uid === newData.child('from').val() && root.child('users/' + $uid + '/friends/' + auth.uid).exists()))",
             ".validate": "$matchId.matches(/^[A-Za-z0-9_-]{20}$/) && newData.hasChildren(['from', 'code', 'sentAt'])",
             "from": {
               ".validate": "newData.isString() && newData.val().length >= 10 && newData.val().length <= 64"
