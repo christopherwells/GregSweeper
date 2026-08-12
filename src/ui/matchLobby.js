@@ -26,7 +26,7 @@ import { getUid } from '../firebase/firebaseProgress.js';
 import { getHandicapRatioMap } from '../logic/handicaps.js';
 import { matchUnlocks, unmetMatchRules } from '../logic/matchRules.js';
 import { matchStandings } from '../logic/matchStandings.js';
-import { normalizeCode, planMatchJoin, matchDaysRemaining, partitionInvites } from '../logic/matchCodes.js';
+import { normalizeCode, planMatchJoin, matchDaysRemaining, matchExpiresAt, partitionInvites } from '../logic/matchCodes.js';
 import { tilingLabel, CLASSIC_SHAPE_LABEL } from '../logic/coastlineLink.js';
 import { getGimmickDefs } from '../logic/gimmicks.js';
 import { PROD_SITE_BASE } from '../config.js';
@@ -100,7 +100,7 @@ export async function createSharedMatch(rules) {
     rules,
     entries: deal.entries,
     createdAt,
-    expiresAt: createdAt + 604800000,
+    expiresAt: matchExpiresAt(createdAt),
   };
   _renderInvite();
 }
@@ -250,7 +250,9 @@ async function _lookupJoinCode() {
   }
 
   const verdict = planMatchJoin({ match: found.match, uid: getUid(), now: Date.now() });
-  if (verdict !== 'join' && verdict !== 'resume') {
+  // 'finished' is a destination, not a refusal: the run is over and the
+  // preview shows where everyone landed instead of dealing the boards again.
+  if (verdict !== 'join' && verdict !== 'resume' && verdict !== 'finished') {
     _status('#match-join-status', JOIN_MESSAGES[verdict] || JOIN_MESSAGES.failed, true);
     return;
   }
@@ -281,6 +283,21 @@ function _renderJoinPreview() {
          ${escapeHtml(unmetNames.join(', '))}. You will get an introduction before each one.</p>`
     : '';
 
+  // A run this player already finished shows the standings and no way back
+  // onto the boards. Replaying it would restart at board 1 and overwrite the
+  // times they actually set, so the button is absent rather than disabled:
+  // there is nothing here for them to do again.
+  if (_joinFound.verdict === 'finished') {
+    preview.innerHTML = `<div class="friends-code-block">
+        <p class="friends-code-label">${n} board${n === 1 ? '' : 's'}</p>
+        <p class="friends-code-hint">${escapeHtml(shapes)}</p>
+      </div>
+      <p class="friends-code-hint">You have played this one. Here is how it went.</p>
+      <div id="match-join-standings" class="match-standings"></div>`;
+    renderMatchStandingsInto($('#match-join-standings'), _joinFound.matchId);
+    return;
+  }
+
   preview.innerHTML = `<div class="friends-code-block">
       <p class="friends-code-label">${n} board${n === 1 ? '' : 's'}</p>
       <p class="friends-code-hint">${escapeHtml(shapes)}</p>
@@ -298,7 +315,15 @@ async function _acceptJoin() {
   if (go) go.disabled = true;
   try {
     const { joinMatch } = await import('../firebase/firebaseMatch.js');
-    await joinMatch(found.matchId, found.match, found.code);
+    // Re-checked against the node as it is NOW, not as the preview found it:
+    // the run can finish in another tab between the lookup and this tap, and
+    // dealing the boards again would overwrite the results it just posted.
+    const verdict = await joinMatch(found.matchId, found.match, found.code);
+    if (verdict === 'finished') {
+      _joinFound = { ...found, verdict };
+      _renderJoinPreview();
+      return;
+    }
   } catch (err) {
     if (go) go.disabled = false;
     _status('#match-join-status', JOIN_MESSAGES[err.reason] || JOIN_MESSAGES.failed, true);
@@ -315,7 +340,7 @@ async function _acceptJoin() {
   launchMatch(null, null, {
     id: found.matchId,
     code: found.code,
-    expiresAt: createdAt + 604800000,
+    expiresAt: matchExpiresAt(createdAt),
     rules: found.match.rules,
     entries: found.match.boards,
   });

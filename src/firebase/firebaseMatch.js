@@ -50,9 +50,11 @@ import { getPlayerName } from '../storage/statsStorage.js';
 import { isTestEnvironment } from './env.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
 import {
-  generateCode, normalizeCode, MATCH_TTL_MS, planMatchJoin,
+  generateCode, normalizeCode, planMatchJoin, matchExpiresAt,
   snoozeUntilFrom, inviteShouldPopUp,
 } from '../logic/matchCodes.js';
+
+export { matchExpiresAt };
 
 function db() {
   return firebase.database();
@@ -84,11 +86,6 @@ function _storableEntry(entry) {
     spec: entry.spec,
     payload: entry.payload,
   };
-}
-
-/** When a match created at `createdAt` stops accepting writes. */
-export function matchExpiresAt(createdAt) {
-  return (typeof createdAt === 'number' ? createdAt : 0) + MATCH_TTL_MS;
 }
 
 /**
@@ -200,7 +197,7 @@ export async function fetchMatchByCode(input) {
  * bounds a match's size in the rules, and writing it separately would leave a
  * window where a slot exists that the count does not know about.
  *
- * @returns {Promise<'joined'|'resume'>}
+ * @returns {Promise<'joined'|'resume'|'finished'>}
  * @throws Error with .reason in {'offline','expired','full','missing','failed'}
  */
 export async function joinMatch(matchId, match, code = null) {
@@ -209,11 +206,13 @@ export async function joinMatch(matchId, match, code = null) {
   if (!ready || !uid) throw _fail('offline');
 
   const verdict = planMatchJoin({ match, uid, now: Date.now() });
-  if (verdict === 'resume') {
+  if (verdict === 'resume' || verdict === 'finished') {
     // Already in it, so nothing to write except the listing, which a player
-    // who joined before this shipped will not have.
+    // who joined before this shipped will not have. 'finished' passes back
+    // rather than throwing: a completed run is a destination (the standings),
+    // not a failure, and the caller is what refuses to re-deal its boards.
     recordMyMatch(matchId, code, match.host === uid).catch(() => {});
-    return 'resume';
+    return verdict;
   }
   if (verdict !== 'join') throw _fail(verdict);
 
