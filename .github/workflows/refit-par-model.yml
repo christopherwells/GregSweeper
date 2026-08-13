@@ -246,14 +246,44 @@ jobs:
           # while Stan was sampling. That is not hypothetical: the 2026-08-03
           # refit fit cleanly (4 files, 315 insertions) and then died on
           # "! [rejected] main -> main (fetch first)" because a PR merged
-          # mid-run, and the model simply did not update that day. The four
-          # files this commit touches are refit-OWNED — nothing else writes
-          # them — so rebasing onto whatever landed is always the right merge.
+          # mid-run, and the model simply did not update that day.
+          #
+          # Rebasing handles that for the FIT OUTPUTS, which nothing else in
+          # the repo writes. It cannot handle the GENERATED LIBRARY DATA this
+          # commit also carries: those are single-line JSON blobs a human PR
+          # can rewrite too, and on 2026-08-13 exactly that happened — a PR
+          # rewrote match-index.json three minutes before this push, the
+          # rebase hit a conflict no text merge can settle, and `|| exit 1`
+          # threw away the whole night a second time.
+          #
+          # A conflict in generated data has a right answer that is not a
+          # blend: re-derive against whatever main now holds. The repricers
+          # cost seconds (they re-price from stored features and solve
+          # nothing). Anything conflicting OUTSIDE that data means an
+          # assumption has broken, and the run stops rather than pushing a
+          # file nobody reasoned about. scripts/refit-push-conflict.mjs owns
+          # that judgement; test/refitPushConflict.test.mjs holds the path
+          # lists in lockstep with the `git add` above, which is the drift
+          # that caused the incident.
           pushed=false
           for attempt in 1 2 3 4 5; do
             if git push; then pushed=true; break; fi
             echo "push rejected (attempt $attempt) — rebasing onto origin/main and retrying"
-            git pull --rebase --autostash origin main || exit 1
+            git fetch origin main
+            if ! git rebase origin/main; then
+              if git diff --name-only --diff-filter=U | node scripts/refit-push-conflict.mjs; then
+                git checkout origin/main -- src/logic/challengePool.js scripts/data/climb-library scripts/data/match-library
+                node scripts/reprice-challenge-pool.mjs || echo "::warning::pool left at main's prices"
+                node scripts/reprice-climb-library.mjs || echo "::warning::climb library left at main's prices"
+                node scripts/reprice-match-library.mjs || echo "::warning::match library left at main's prices"
+                git add src/logic/challengePool.js scripts/data/climb-library scripts/data/match-library
+                GIT_EDITOR=true git rebase --continue || { git rebase --abort; exit 1; }
+              else
+                git rebase --abort
+                echo "::error::refit push conflicted outside the generated data; not auto-resolving"
+                exit 1
+              fi
+            fi
             sleep $((attempt * 5))
           done
           if [ "$pushed" != "true" ]; then
