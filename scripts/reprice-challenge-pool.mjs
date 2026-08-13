@@ -196,22 +196,96 @@ function reprice() {
 
   // ── Guards. A re-price relabels; it must never quietly ship a pool that
   // breaks a ruling, and it must never quietly delete a shape.
-  const violations = [];
+  // ── An entry that leaves its pool's rulings MIGRATES ───────────────────
+  //
+  // His ruling, 2026-08-13: "shouldn't something that exceeds the ceiling of
+  // the ladder go to endless and something that is in endless that falls
+  // below the endless floor go to the levels?"
+  //
+  // It should, and the library one layer up has worked exactly that way since
+  // 2026-08-11 ("boards flow BOTH ways"). The SPEC pool did not: it refused
+  // the whole write and demanded a re-search, so one entry drifting four
+  // seconds past a ceiling left the ladder priced under an old model and
+  // reddened main until a human ran a long search. A spec that outgrew the
+  // ladder has not become worthless, it has become an endless spec, and the
+  // reverse holds too.
+  //
+  // Migration is judged against the DESTINATION's own rulings, never assumed:
+  // a ladder entry over the 480s ceiling still has to clear the endless
+  // shape's ppc floor and its par ceiling, and an endless entry under the ppc
+  // floor still has to fit under the ladder's ceiling. An entry that qualifies
+  // for NEITHER pool is homeless, and it is DROPPED from the shipped tables
+  // rather than shipped somewhere it does not belong, which is the one place
+  // this can lose material. It is reported loudly and by face, so a shape
+  // quietly bleeding entries is visible on the night it starts.
+  const fitsLadder = (p) => p.par <= PAR_CEILING_SECONDS;
+  const fitsEndless = (p) => p.par <= endlessParCeiling(p.e.shape)
+    && p.now >= endlessPpcFloor(p.e.shape);
+
+  const migrations = [];
+  const homeless = [];
   for (const p of priced) {
-    const ceiling = p.pool === 'endless' ? endlessParCeiling(p.e.shape) : PAR_CEILING_SECONDS;
-    if (p.par > ceiling) {
-      violations.push(`${p.face} (${p.pool}) now prices ${p.par.toFixed(0)}s against a ${ceiling}s ceiling`);
-    }
-    if (p.pool === 'endless' && p.now < endlessPpcFloor(p.e.shape)) {
-      violations.push(`${p.face} now prices ${p.now.toFixed(2)} s/cell, under the ${endlessPpcFloor(p.e.shape)} endless floor`);
+    const ok = p.pool === 'endless' ? fitsEndless(p) : fitsLadder(p);
+    if (ok) { p.finalPool = p.pool; continue; }
+    const other = p.pool === 'endless' ? 'ladder' : 'endless';
+    const otherOk = other === 'endless' ? fitsEndless(p) : fitsLadder(p);
+    if (otherOk) {
+      p.finalPool = other;
+      migrations.push(`${p.face}: ${p.pool} -> ${other} (${p.par.toFixed(0)}s, ${p.now.toFixed(2)} s/cell)`);
+    } else {
+      p.finalPool = null;
+      homeless.push(`${p.face} (${p.pool}): ${p.par.toFixed(0)}s, ${p.now.toFixed(2)} s/cell fits neither pool`);
     }
   }
-  if (violations.length) {
-    console.error(`\n${violations.length} entries left the rulings after re-pricing:`);
-    for (const v of violations.slice(0, 20)) console.error(`  ${v}`);
-    console.error('\nThis is a RE-SEARCH, not a re-price: run scripts/search-endless-specs.mjs');
-    console.error('and scripts/write-challenge-pool.mjs, then re-capture. Nothing was written.');
-    process.exit(1);
+
+  if (migrations.length) {
+    console.log(`\n${migrations.length} entries migrated between pools:`);
+    for (const m of migrations) console.log(`  ${m}`);
+  }
+  if (homeless.length) {
+    console.log(`\n${homeless.length} entries fit NEITHER pool and were dropped:`);
+    for (const h of homeless) console.log(`  ${h}`);
+    console.log('Re-search to replace them: node scripts/search-endless-specs.mjs --absorb');
+  }
+
+  // Migration must never empty a shape out of a pool. Losing the last
+  // rhombille endless spec would leave a future endless build unable to make
+  // the shape at all, which is a bigger loss than one entry sitting a little
+  // under its floor.
+  //
+  // So the migration is PINNED rather than the write refused. Refusing the
+  // whole file for one shape is the all-or-nothing behaviour that caused the
+  // original problem: every other price stays stale, the ladder keeps
+  // yesterday's numbers and main stays red until a human runs a long search.
+  // Pinning costs one honestly-flagged entry and lets everything else land.
+  // Measured 2026-08-13: rhombille has exactly one endless spec, so this
+  // fires on the first night the policy exists rather than being theoretical.
+  const pinned = [];
+  let settled = false;
+  while (!settled) {
+    settled = true;
+    for (const pool of ['ladder', 'endless']) {
+      const before = new Set(priced.filter((p) => p.pool === pool).map((p) => p.e.shape));
+      const after = new Set(priced.filter((p) => p.finalPool === pool).map((p) => p.e.shape));
+      for (const shape of before) {
+        if (after.has(shape)) continue;
+        // Put the leavers back, cheapest first: whichever is closest to still
+        // qualifying is the one that hurts least to keep.
+        const leavers = priced.filter((p) => p.pool === pool && p.finalPool !== pool
+          && p.e.shape === shape);
+        if (leavers.length === 0) continue;
+        const keep = leavers[0];
+        keep.finalPool = pool;
+        pinned.push(`${keep.face} stays in ${pool}: it is the last ${shape} spec there`);
+        settled = false;
+      }
+    }
+  }
+  if (pinned.length) {
+    console.log(`\n${pinned.length} migration(s) pinned to keep a shape in its pool:`);
+    for (const p of pinned) console.log(`  ${p}`);
+    console.log('These entries are outside their pool\'s rulings until a re-search replaces them:');
+    console.log('  node scripts/search-endless-specs.mjs --absorb --seeds 10');
   }
 
   if (CHECK) { console.log('\n--check: nothing written'); return; }
@@ -238,8 +312,40 @@ function reprice() {
     console.error(`patched ${patched} of ${lines} price lines — the pool file does not match the loaded pool; nothing written`);
     process.exit(1);
   }
+
+  // A migration MOVES a line between the two tables, which a price patch
+  // cannot express, so the table bodies are rebuilt from the priced list
+  // whenever anything moved or was dropped. Rebuilding both bodies rather
+  // than splicing single lines keeps the file's shape exactly what the
+  // emitter produces, and each entry's own constructor text is reused
+  // verbatim, so a spec can never be altered by being moved.
+  if (migrations.length || homeless.length) {
+    // CRLF-tolerant on purpose: this repo's checkouts carry \r\n, and a
+    // \n-only anchor silently matches nothing, which reads as a corrupt pool
+    // file rather than as a regex that missed.
+    const eol = src.includes('\r\n') ? '\r\n' : '\n';
+    const body = (pool) => priced
+      .filter((p) => p.finalPool === pool)
+      .map((p) => `  E(${p.now.toFixed(2)}, ${emitCtor(p.e)}),`)
+      .join(eol);
+    const replaceTable = (text, startMark, endMark, rows) => {
+      const re = new RegExp(
+        `(// ${startMark}[^\\r\\n]*\\r?\\n[^\\r\\n]*\\r?\\n)[\\s\\S]*?(\\r?\\n\\]\\);\\r?\\n// ${endMark})`);
+      if (!re.test(text)) {
+        console.error(`could not find the ${startMark}..${endMark} table; nothing written`);
+        process.exit(1);
+      }
+      return text.replace(re, `$1${rows}$2`);
+    };
+    src = replaceTable(src, 'POOL:START', 'POOL:END', body('ladder'));
+    src = replaceTable(src, 'ENDLESS:START', 'ENDLESS:END', body('endless'));
+  }
+
   fs.writeFileSync(POOL_PATH, src);
-  console.log(`\nrewrote ${patched} prices in ${path.relative(process.cwd(), POOL_PATH)}`);
+  const kept = priced.filter((p) => p.finalPool).length;
+  console.log(`\nrewrote ${patched} prices in ${path.relative(process.cwd(), POOL_PATH)}`
+    + (migrations.length ? `; ${migrations.length} migrated` : '')
+    + (homeless.length ? `; ${homeless.length} dropped (${kept} shipped)` : ''));
 }
 
 /** The constructor call as write-challenge-pool emits it, for identity matching. */

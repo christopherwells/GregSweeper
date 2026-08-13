@@ -68,8 +68,13 @@ const OUT_DIR = new URL('./data/climb-library/', import.meta.url);
 // needed. There's no max", "minimum of 10 boards but I don't care if there's
 // a ton of good boards in one level", "I like the 20 vs 10 at the high end".
 const MIN_PAR = CLIMB_MIN_PAR_SECONDS;              // 120s
-const MIN_BOARDS = 10;
-const MIN_BOARDS_HIGH = 20;                          // from HIGH_BAND_FROM up
+// His 2026-08-13 ruling: 20 everywhere, not 10 below the high band. Measured
+// when he made it, 174 of 225 levels sat under 20 and the deficit was 1,606
+// boards, which the nightly fill drains over weeks rather than in a night; the
+// levels stay playable at their current counts throughout, because a deficit
+// is a target to grow into and never a reason to withhold a board.
+const MIN_BOARDS = 20;
+const MIN_BOARDS_HIGH = 20;                          // from HIGH_BAND_FROM up (now equal)
 const HIGH_BAND_FROM = 200;
 // THE RAMP IS A RISING FLOOR, not a target with a band around it (his
 // correction, 2026-08-10: "I thought it was a 420s floor for ladder top and
