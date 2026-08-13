@@ -193,6 +193,49 @@ export function getCoverageTargets() {
   return list.filter(t => t && typeof t.feature === 'string');
 }
 
+// ── Shape coverage ───────────────────────────────────────────────────
+//
+// The coverage question asked about the board LATTICE instead of the
+// modifiers on it: `[{ shape, n_boards, deficit_weight }]`, most starved
+// first, on the same 1/(n+1) deficit scale coverage_targets uses so the two
+// lists compare directly. The refit emits it (see the shape_coverage block in
+// scripts/refit-par-model.R); the ONE consumer is the Challenge match's
+// mission steering, which is where the reasoning for it lives.
+//
+// The daily deliberately ignores this. Its shape comes from a fixed 50/50
+// rotation draw (shapeRotation.js), so on that path there is no shape
+// decision left for a deficit to inform.
+//
+// An entry survives only with a usable shape key and a positive finite
+// weight: a malformed row must degrade to "one fewer steerable shape", never
+// to a NaN that sorts unpredictably against the real ones.
+
+export function normalizeShapeCoverage(raw) {
+  const list = Array.isArray(raw) ? raw : [];
+  const out = [];
+  for (const e of list) {
+    if (!e || typeof e.shape !== 'string' || !e.shape) continue;
+    const weight = Number(e.deficit_weight);
+    if (!Number.isFinite(weight) || weight <= 0) continue;
+    const n = Number(e.n_boards);
+    out.push({
+      shape: e.shape,
+      n_boards: Number.isFinite(n) ? n : 0,
+      deficit_weight: weight,
+    });
+  }
+  return out;
+}
+
+/**
+ * Shape coverage from the loaded experimentTarget.json. Empty array when the
+ * refit has not emitted the key yet, which reads as "no shape steering
+ * tonight" rather than as an error.
+ */
+export function getShapeCoverage() {
+  return normalizeShapeCoverage(getExperimentMeta().shape_coverage);
+}
+
 // ── Decorrelation missions ───────────────────────────────────────────
 //
 // The gap the primary and coverage missions leave open. A primary mission

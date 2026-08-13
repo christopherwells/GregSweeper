@@ -28,7 +28,7 @@ import assert from 'node:assert';
 import { readFileSync, readdirSync } from 'node:fs';
 import { OUT_DIR } from '../scripts/build-match-library.mjs';
 import {
-  parseMatchIndex, matchIndexRow, timeBandOf, MATCH_TIME_BANDS,
+  parseMatchIndex, matchIndexRow, matchIndexFeatureKeys, timeBandOf, MATCH_TIME_BANDS,
 } from '../src/logic/matchRules.js';
 import { predictPar } from '../src/logic/dailyFeatures.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
@@ -74,11 +74,34 @@ test('every board prices from its own stored features', () => {
 });
 
 test('the index rows reproduce the page files row for row', () => {
+  // The header is derived from the boards, so a feature key that reached the
+  // pages and not the index would show up here as a shorter union.
+  const keys = matchIndexFeatureKeys(boards);
+  assert.deepEqual(index.featureKeys, keys, 'the shipped header must match the boards it describes');
   const expected = [];
-  pages.forEach((p, pi) => p.boards.forEach((b, i) => expected.push(matchIndexRow(pi, i, b))));
+  pages.forEach((p, pi) => p.boards.forEach((b, i) => expected.push(matchIndexRow(pi, i, b, keys))));
   assert.deepEqual(index.rows, expected);
   const parsed = parseMatchIndex(index);
   assert.ok(parsed && parsed.length === boards.length, 'the client parser accepts the shipped index');
+});
+
+test('every shipped index row carries a usable feature vector', () => {
+  // Mission steering scores on these numbers, and a vector that silently
+  // arrived empty would steer nothing while every test above stayed green.
+  const parsed = parseMatchIndex(index);
+  const need = ['cellCount', 'totalMines', 'density', 'clueShare3'];
+  for (const r of parsed) {
+    for (const k of need) {
+      assert.ok(Number.isFinite(r.features[k]),
+        `${r.key} has no ${k}: steering cannot score it`);
+    }
+    assert.ok(r.features.cellCount > 0, `${r.key} has cellCount ${r.features.cellCount}`);
+  }
+  // Non-vacuity: the modifier counts must actually vary, or "a real count
+  // outranks a bare presence" is a claim about a column of ones.
+  const compass = parsed.map((r) => r.features.compassCellCount || 0).filter((n) => n > 0);
+  assert.ok(compass.length > 20, `only ${compass.length} boards carry compass cells`);
+  assert.ok(new Set(compass).size > 1, 'compassCellCount never varies: the vector is degenerate');
 });
 
 test('REGRESSION: no stored board is over on the opening click (his immediately-done ruling)', () => {

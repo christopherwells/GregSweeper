@@ -12,6 +12,11 @@
 // could have bent. The async head-to-head build ships these same entries
 // through the match node, which is why they stay verbatim payloads here.
 //
+// Which boards get dealt is decided by the pure planMatchDeal
+// (src/logic/matchSteering.js), which applies the host's filter, spends at most
+// floor(N/5) slots on mission steering, and fills the rest through
+// matchRules.pickMatchBoards. Everything below the plan is I/O.
+//
 // Seen-tracking is his cycle rule at match scale (matchRules.pickMatchBoards):
 // keys are `page:idx`, stable across the nightly reprice (numbers rewrite in
 // place; boards never move between pages), reset only when the eligible
@@ -19,9 +24,18 @@
 
 import { state } from '../state/gameState.js';
 import { fetchLibraryJson } from './climbDeal.js';
-import { parseMatchIndex, eligibleRows, pickMatchBoards } from '../logic/matchRules.js';
+import { parseMatchIndex, resolveMatchPicks } from '../logic/matchRules.js';
+import { planMatchDeal, currentSteerMissions } from '../logic/matchSteering.js';
+import { loadExperimentTarget } from '../logic/experimentDesign.js';
 import { getMatchSeen, setMatchSeen } from '../storage/statsStorage.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
+
+// How long the deal will wait for the experiment file before dealing without
+// steering. main.js warms that cache at startup and the service worker
+// pre-caches the file, so in practice the await is already resolved; the bound
+// is here because an unbounded await on a half-open socket would hold a match
+// behind a study, and a match matters more than a study.
+const STEER_LOAD_TIMEOUT_MS = 1500;
 
 // RELATIVE on purpose: the app serves at / in production and /test/ on the
 // test branch, and a root-anchored path would cross the two.
@@ -66,31 +80,41 @@ export async function dealMatchEntries(rules) {
   const rows = await fetchMatchIndexRows();
   if (!rows) return null;
 
-  const eligible = eligibleRows(rows, rules);
-  const seen = state.isLevelPractice ? [] : getMatchSeen();
-  const { picks, cycled } = pickMatchBoards(eligible, rules.count, Math.random, seen);
+  // Mission steering (matchSteering.js) prefers, for at most floor(N/5) of the
+  // slots, a board that also advances whatever study the nightly refit is
+  // starved of. It only ever prefers WITHIN the host's filter, and a file that
+  // never arrives leaves an empty mission list, which deals exactly as before.
+  await Promise.race([
+    loadExperimentTarget(),
+    new Promise((resolve) => { setTimeout(resolve, STEER_LOAD_TIMEOUT_MS); }),
+  ]);
 
-  const byPage = new Map();
+  const seen = state.isLevelPractice ? [] : getMatchSeen();
+  const { picks, cycled, eligible } = planMatchDeal(rows, rules, {
+    rand: Math.random,
+    seenKeys: seen,
+    missions: currentSteerMissions(),
+  });
+
+  const pending = new Map();
   for (const p of picks) {
-    if (!byPage.has(p.page)) byPage.set(p.page, fetchPage(p.page));
+    if (!pending.has(p.page)) pending.set(p.page, fetchPage(p.page));
   }
-  const entries = [];
-  for (const pick of picks) {
-    const boards = await byPage.get(pick.page);
-    const entry = boards && boards[pick.idx];
-    if (!entry || !entry.payload || !entry.seed) {
-      reportCaughtError('match-deal',
-        new Error(`match p${pick.page}#${pick.idx}: entry missing or malformed`));
-      continue;
-    }
-    entries.push(entry);
+  const byPage = new Map();
+  for (const [page, promise] of pending) byPage.set(page, await promise);
+
+  // The pairing itself is pure (resolveMatchPicks), so the seen keys come back
+  // in lockstep with the entries rather than being sliced off the picks.
+  const { entries, keys, missing } = resolveMatchPicks(picks, byPage);
+  for (const pick of missing) {
+    reportCaughtError('match-deal',
+      new Error(`match p${pick.page}#${pick.idx}: entry missing or malformed`));
   }
 
   if (!state.isLevelPractice && entries.length > 0) {
-    const dealtKeys = picks.slice(0, entries.length).map((p) => p.key);
-    setMatchSeen(cycled ? dealtKeys : [...seen, ...dealtKeys]);
+    setMatchSeen(cycled ? keys : [...seen, ...keys]);
   }
-  return { entries, eligible: eligible.length };
+  return { entries, eligible };
 }
 
 /**

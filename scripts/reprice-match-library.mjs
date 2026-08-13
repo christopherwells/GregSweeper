@@ -18,7 +18,7 @@
 
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { predictPar } from '../src/logic/dailyFeatures.js';
-import { matchIndexRow, timeBandOf } from '../src/logic/matchRules.js';
+import { matchIndexRow, matchIndexFeatureKeys, timeBandOf } from '../src/logic/matchRules.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
 
 const OUT_DIR = new URL('./data/match-library/', import.meta.url);
@@ -42,11 +42,13 @@ function main() {
   let maxShift = 0;
   let featureless = 0;
 
-  pageNames.forEach((name, p) => {
+  // Two passes, because the index's feature header is the UNION over every
+  // board and the rows encode against it positionally: a row written before
+  // the last page is read would be keyed to a header that then grew.
+  const loaded = pageNames.map((name, p) => {
     const url = new URL(name, OUT_DIR);
     const page = JSON.parse(readFileSync(url, 'utf8'));
-    for (let i = 0; i < page.boards.length; i++) {
-      const b = page.boards[i];
+    for (const b of page.boards) {
       boards++;
       if (b.features) {
         let par = 0;
@@ -63,18 +65,24 @@ function main() {
       } else {
         featureless++;
       }
-      rows.push(matchIndexRow(p, i, b));
     }
     counts.push(page.boards.length);
     page.parModel = fp;
     if (!dry) writeFileSync(url, JSON.stringify(page));
+    return { p, page };
   });
+
+  const featureKeys = matchIndexFeatureKeys(loaded.flatMap(({ page }) => page.boards));
+  for (const { p, page } of loaded) {
+    page.boards.forEach((b, i) => rows.push(matchIndexRow(p, i, b, featureKeys)));
+  }
 
   const index = {
     parModel: fp,
     boards,
     pages: pageNames.length,
     counts,
+    featureKeys,
     rows,
   };
   if (!dry) writeFileSync(INDEX_FILE, JSON.stringify(index));

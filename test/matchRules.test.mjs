@@ -12,8 +12,8 @@ import {
   MATCH_TIME_BANDS, MATCH_DENSITY_BANDS, timeBandOf, densityBandOf,
   densityPhrase, matchUnlocks, matchUnlockLevel,
   defaultMatchRules, sanitizeMatchRules,
-  matchIndexRow, parseMatchIndex, boardMatchesRules, eligibleRows,
-  pickMatchBoards, matchAdvance, matchTotals,
+  matchIndexRow, matchIndexFeatureKeys, parseMatchIndex, boardMatchesRules, eligibleRows,
+  pickMatchBoards, matchAdvance, matchTotals, resolveMatchPicks,
   matchRulesForLaunch, unmetMatchRules,
 } from '../src/logic/matchRules.js';
 import { LIB_SHAPE_INTROS, LIB_MOD_INTROS } from '../src/logic/climbLibrary.js';
@@ -129,15 +129,44 @@ test('REGRESSION: an empty modifier list survives sanitation (plain-boards-only 
 
 // ── The index row contract ──────────────────────────────────────────────
 
-test('matchIndexRow and parseMatchIndex round-trip', () => {
-  const entry = { par: 73.2, spec: { shape: 'hex', cells: 72, mines: 12, gimmicks: ['sonar', 'liar'] } };
-  const row = matchIndexRow(3, 7, entry);
-  const rows = parseMatchIndex({ rows: [row] });
+test('matchIndexRow and parseMatchIndex round-trip, feature vector included', () => {
+  const entry = {
+    par: 73.2,
+    spec: { shape: 'hex', cells: 72, mines: 12, gimmicks: ['sonar', 'liar'] },
+    features: { cellCount: 72, sonarCellCount: 3, clueShare3: 0.123456789 },
+  };
+  const keys = matchIndexFeatureKeys([entry]);
+  assert.deepEqual(keys, ['cellCount', 'clueShare3', 'sonarCellCount'], 'sorted union');
+  const row = matchIndexRow(3, 7, entry, keys);
+  const rows = parseMatchIndex({ featureKeys: keys, rows: [row] });
   assert.equal(rows.length, 1);
   assert.deepEqual(rows[0], {
     page: 3, idx: 7, shape: 'hex', cells: 72, mines: 12, par: 73.2,
     mods: ['liar', 'sonar'], key: '3:7',
+    // Rounded to MATCH_INDEX_FEATURE_DP: these numbers steer a choice among
+    // boards, and par is re-priced from the page's full-precision copy.
+    features: { cellCount: 72, clueShare3: 0.1235, sonarCellCount: 3 },
   });
+});
+
+test('a row with NO feature vector still parses, and steers on nothing', () => {
+  // An index cached from before the vector shipped must keep dealing boards.
+  // Refusing it would turn a stale file into an unplayable Challenge, which is
+  // a far worse trade than a quiet study.
+  const legacy = [3, 7, 'hex', 72, 12, 73.2, ['liar', 'sonar']];
+  const rows = parseMatchIndex({ rows: [legacy] });
+  assert.equal(rows.length, 1);
+  assert.deepEqual(rows[0].features, {});
+  assert.equal(rows[0].par, 73.2, 'everything the deal needs still reads');
+});
+
+test('a missing feature value reads as 0, never as NaN', () => {
+  // A board without one of the union's keys must not poison a comparison:
+  // NaN > 0 is false, but NaN would spread through any arithmetic on it.
+  const keys = ['a', 'b'];
+  const entry = { par: 1, spec: { shape: 'rect', cells: 9, mines: 1, gimmicks: [] }, features: { a: 5 } };
+  const rows = parseMatchIndex({ featureKeys: keys, rows: [matchIndexRow(0, 0, entry, keys)] });
+  assert.deepEqual(rows[0].features, { a: 5, b: 0 });
 });
 
 test('parseMatchIndex refuses malformed rows outright', () => {
@@ -282,4 +311,43 @@ test('unmetMatchRules is empty when the guest has met everything, and never thro
     { shapes: [], mods: [] });
   assert.deepStrictEqual(unmetMatchRules(null, null), { shapes: [], mods: [] });
   assert.deepStrictEqual(unmetMatchRules({}, { shapes: [], mods: [] }), { shapes: [], mods: [] });
+});
+
+// ── Resolving picks against fetched pages ───────────────────────────────
+
+test('REGRESSION: a page that fails MID-deal marks the boards actually dealt', () => {
+  // The defect: the caller collected entries and then took the first
+  // `entries.length` picks as the seen keys, which is only right when the
+  // failures land at the end. Here the FIRST pick is the broken one, so a
+  // slice would mark 0:0 and 0:1 seen while 0:1 and 0:2 were the boards
+  // dealt: one board marked that nobody played, one played that nobody
+  // marked, quietly corrupting his cycle rule.
+  const picks = [
+    { page: 0, idx: 0, key: '0:0' },
+    { page: 0, idx: 1, key: '0:1' },
+    { page: 0, idx: 2, key: '0:2' },
+  ];
+  const byPage = new Map([[0, [
+    { seed: 'a' },                        // no payload: malformed
+    { seed: 'b', payload: {} },
+    { seed: 'c', payload: {} },
+  ]]]);
+  const { entries, keys, missing } = resolveMatchPicks(picks, byPage);
+  assert.deepEqual(keys, ['0:1', '0:2']);
+  assert.deepEqual(entries.map((e) => e.seed), ['b', 'c']);
+  assert.deepEqual(missing.map((p) => p.key), ['0:0']);
+  // The invariant the slice broke: one key per entry, in the same order.
+  assert.equal(keys.length, entries.length);
+});
+
+test('resolveMatchPicks survives a page that never arrived', () => {
+  const picks = [{ page: 0, idx: 0, key: '0:0' }, { page: 9, idx: 0, key: '9:0' }];
+  const byPage = new Map([[0, [{ seed: 'a', payload: {} }]], [9, null]]);
+  const { entries, keys, missing } = resolveMatchPicks(picks, byPage);
+  assert.deepEqual(keys, ['0:0']);
+  assert.equal(entries.length, 1);
+  assert.deepEqual(missing.map((p) => p.key), ['9:0']);
+  // And an empty deal is a no-op rather than a throw.
+  assert.deepEqual(resolveMatchPicks([], new Map()), { entries: [], keys: [], missing: [] });
+  assert.deepEqual(resolveMatchPicks(null, null), { entries: [], keys: [], missing: [] });
 });

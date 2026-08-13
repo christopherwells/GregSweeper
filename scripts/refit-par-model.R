@@ -2008,12 +2008,69 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
       -sapply(coverage_targets, function(x) x$deficit_weight)
     )]
 
+    # Shape coverage: the coverage question again, asked about the board
+    # LATTICE rather than the modifiers on it, and emitted for the Challenge
+    # match's mission steering (src/logic/matchSteering.js). The daily has no
+    # use for it, since its shape comes from a fixed 50/50 rotation draw that
+    # nobody steers.
+    #
+    # DESCRIPTIVE, not prescriptive. These counts report what the fit is thin
+    # on. Which of those a match can actually reach stays the client's
+    # question, because only the client knows the host's unlocks, and a shape
+    # the host has not unlocked can never be dealt no matter how starved it
+    # is.
+    #
+    # `deficit_weight` is the SAME 1/(n+1) scale coverage_targets uses, and
+    # deliberately so: the client ranks shape and gimmick missions against
+    # each other for one steered slot, so without a shared scale it would
+    # have to invent a conversion between "boards of this lattice" and
+    # "boards carrying this modifier". One scale, defined once, here.
+    #
+    # Counted over df_fit's unique boards, the same date_first frame the
+    # gimmick counts use, so both lists mean "boards the FIT has seen". Match
+    # rows held out below MATCH_FIT_THRESHOLD do not count yet, which is the
+    # honest reading: no coefficient has moved on them, so they have covered
+    # nothing.
+    #
+    # Rectangles are the omitted reference in the shape layer and still get a
+    # row here, because a count is a count. Their count is also what settles
+    # rect at the bottom of the client's ranking without a special case
+    # (hundreds of boards, so a weight near zero, so it never wins a slot).
+    shape_coverage_keys <- c("rect", names(SHAPE_TABLE))
+    shape_of_row <- ifelse(is.na(date_first$tilingType) | date_first$tilingType == "",
+                           "rect", date_first$tilingType)
+    shape_coverage <- lapply(shape_coverage_keys, function(k) {
+      cnt <- sum(shape_of_row == k, na.rm = TRUE)
+      list(
+        shape = k,
+        n_boards = as.integer(cnt),
+        deficit_weight = round(1 / (cnt + 1), 4)
+      )
+    })
+    shape_coverage <- shape_coverage[order(
+      -sapply(shape_coverage, function(x) x$deficit_weight)
+    )]
+    message(sprintf("  shape coverage: %s",
+                    paste(sapply(shape_coverage, function(x)
+                      sprintf("%s %d", x$shape, x$n_boards)), collapse = ", ")))
+    # A lattice with fit rows that SHAPE_TABLE does not name falls into no
+    # bucket, so it reports no deficit and nothing ever steers toward it.
+    # test/tilingParModelContract.test.mjs pins the same class from the
+    # other side; this catches a stored type the registry never grew.
+    unnamed_shapes <- setdiff(unique(shape_of_row), shape_coverage_keys)
+    if (length(unnamed_shapes) > 0) {
+      message(sprintf("  WARNING: %d row-shape(s) absent from SHAPE_TABLE: %s",
+                      length(unnamed_shapes), paste(unnamed_shapes, collapse = ", ")))
+    }
+
     # Write experimentTarget.json. Daily clients fetch this at startup
     # and the selectDailyRngSeed helper reads `target` to bias every
     # daily toward exercising that feature. `recentTargets` is the
     # rolling memory the next refit reads to avoid same-target streaks.
     # `coverage_targets` is the ranked secondary-mission list — slots
-    # 1-9 of each candidate selection cycle through it.
+    # 1-9 of each candidate selection cycle through it. `shape_coverage` is
+    # the lattice half of the same report, read only by the Challenge
+    # match's steering (the daily's shape comes from a rotation draw).
     # The `reason` field is BOTH a human note and a client signal: the
     # journal fires its revalidation story only when reason === 'revalidation'
     # exactly (planJournalScreen), so a revalidation day emits the bare tag
@@ -2085,6 +2142,7 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
         )
       }),
       coverage_targets = coverage_targets,
+      shape_coverage = shape_coverage,
       lastDecorrelationDate = new_last_decor,
       decorrelation_mission = decor_mission
     )
