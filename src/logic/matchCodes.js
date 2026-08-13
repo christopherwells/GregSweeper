@@ -130,6 +130,51 @@ export function planMatchJoin({ match, uid, now }) {
   return 'join';
 }
 
+/**
+ * Where a player left off in a match they have already started.
+ *
+ * A `resume` verdict means the player has a slot and an unfinished run, and
+ * re-entering used to hand them a fresh `{current: 0, results: []}`. Every
+ * board they then cleared posted under its index and OVERWROTE the result
+ * already in the node, which is the same destruction the `finished` verdict
+ * was added to stop, left in place for the unfinished case (issue #317). The
+ * review list is documented as the only way back into a match, so the path
+ * that loses the run was the only path there was.
+ *
+ * The node's own results are the truth, not the local save: a player resuming
+ * on a second device has no save, and the whole point of the list is reaching
+ * a match the save slot is not holding.
+ *
+ * `current` is the first index with no result rather than `results.length`,
+ * so a run with a gap (a post that failed while the next one landed) resumes
+ * INTO the gap and fills it, instead of appending past it forever.
+ *
+ * @returns {{results: Array, current: number}} safe defaults for an absent
+ *   or malformed player entry, which resume as a fresh run.
+ */
+export function matchResumePoint(node, uid) {
+  const players = (node && node.players && typeof node.players === 'object')
+    ? node.players : {};
+  const mine = uid ? players[uid] : null;
+  const stored = Array.isArray(mine && mine.results) ? mine.results : [];
+  const of = Array.isArray(node && node.boards) ? node.boards.length : 0;
+
+  const results = [];
+  for (let i = 0; i < of; i++) {
+    const r = stored[i];
+    const time = (r && typeof r.time === 'number' && Number.isFinite(r.time) && r.time >= 0)
+      ? r.time : null;
+    results[i] = time === null ? undefined : {
+      time,
+      penalty: (typeof r.penalty === 'number' && Number.isFinite(r.penalty)) ? r.penalty : 0,
+      strikes: (typeof r.strikes === 'number' && Number.isFinite(r.strikes)) ? r.strikes : 0,
+    };
+  }
+  let current = results.findIndex((r) => r === undefined);
+  if (current < 0) current = of;
+  return { results, current };
+}
+
 // ── The fit-row key ─────────────────────────────────────────────────────
 //
 // A finished match board files its times into the SAME daily/* + dailyMeta/*

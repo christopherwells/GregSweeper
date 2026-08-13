@@ -27,7 +27,7 @@ import { getHandicapRatioMap } from '../logic/handicaps.js';
 import { matchUnlocks, unmetMatchRules } from '../logic/matchRules.js';
 import { matchStandings } from '../logic/matchStandings.js';
 import { matchBoardBreakdown } from '../logic/matchRecord.js';
-import { normalizeCode, planMatchJoin, matchDaysRemaining, matchExpiresAt, partitionMatchReview } from '../logic/matchCodes.js';
+import { normalizeCode, planMatchJoin, matchDaysRemaining, matchExpiresAt, partitionMatchReview, matchResumePoint } from '../logic/matchCodes.js';
 import { tilingLabel, CLASSIC_SHAPE_LABEL } from '../logic/coastlineLink.js';
 import { getGimmickDefs } from '../logic/gimmicks.js';
 import { PROD_SITE_BASE } from '../config.js';
@@ -231,6 +231,39 @@ const JOIN_MESSAGES = {
 // the tap does not re-fetch a node the player is already looking at.
 let _joinFound = null;
 
+/**
+ * Open a match by its ID, the way the review list reaches a run it already
+ * knows about. Codes expire at seven days and are scrubbed outright, so a
+ * finished run opened by code becomes unopenable exactly when the ruling says
+ * it should still be readable (issue #318). The node keeps answering by id.
+ */
+export async function openMatchById(matchId, code = null) {
+  showModalFromTitle('match-join-modal');
+  const preview = $('#match-join-preview');
+  if (preview) preview.innerHTML = '';
+  _joinFound = null;
+  _status('#match-join-status', 'Looking…', false);
+  let match = null;
+  try {
+    const { fetchMatch } = await import('../firebase/firebaseMatch.js');
+    match = await fetchMatch(matchId);
+  } catch (err) {
+    reportCaughtError('match-open-by-id', err);
+  }
+  if (!match) {
+    _status('#match-join-status', JOIN_MESSAGES.missing, true);
+    return;
+  }
+  const verdict = planMatchJoin({ match, uid: getUid(), now: Date.now() });
+  if (verdict !== 'join' && verdict !== 'resume' && verdict !== 'finished') {
+    _status('#match-join-status', JOIN_MESSAGES[verdict] || JOIN_MESSAGES.failed, true);
+    return;
+  }
+  _status('#match-join-status', '', false);
+  _joinFound = { matchId, match, code, verdict };
+  _renderJoinPreview();
+}
+
 async function _lookupJoinCode() {
   const input = $('#match-join-input');
   const preview = $('#match-join-preview');
@@ -338,12 +371,20 @@ async function _acceptJoin() {
   setReturnToTitle(false);
   hideTitleScreen();
   const createdAt = typeof found.match.createdAt === 'number' ? found.match.createdAt : Date.now();
+  // A RESUME carries the run forward. Re-entering used to hand back a fresh
+  // {current: 0, results: []}, so every board replayed posted under its index
+  // and overwrote the time already in the node (issue #317). The node's own
+  // results are the truth here rather than the local save, because the review
+  // list exists precisely to reach a match the save slot is not holding.
+  const resume = matchResumePoint(found.match, getUid());
   launchMatch(null, null, {
     id: found.matchId,
     code: found.code,
     expiresAt: matchExpiresAt(createdAt),
     rules: found.match.rules,
     entries: found.match.boards,
+    current: resume.current,
+    results: resume.results,
   });
 }
 
@@ -764,7 +805,15 @@ async function _onReviewClick(e) {
   // state first: the invite becomes live again, and accepting removes it.
   if (row.dataset.invite) await m.reopenMatchInvite(row.dataset.invite);
   hideModal('match-setup-modal');
-  openMatchJoin(row.dataset.code);
+  // BY ID where the row has one. Codes die after seven days (server-enforced
+  // in the read rule, and the 3-hourly scrub deletes them), so opening a
+  // finished run by code made it unopenable a week on, against the ruling
+  // that finished runs stay readable forever (issue #318). The node itself is
+  // still readable by id, and fetchMyMatches has already read it to draw this
+  // row. An invite row has no matchId of its own on the match node, so it
+  // keeps the code path.
+  if (row.dataset.match) openMatchById(row.dataset.match, row.dataset.code || null);
+  else openMatchJoin(row.dataset.code);
 }
 
 // ── Rematch ─────────────────────────────────────────────────────────────

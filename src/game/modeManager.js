@@ -158,8 +158,13 @@ export function launchMatch(rawRules, pinnedEntries = null, shared = null) {
   state.match = {
     rules,
     entries,
-    current: 0,
-    results: [],
+    // A RESUME carries the run's progress in from the match node, so
+    // re-entering an unfinished shared match continues it instead of
+    // restarting at board 1 and overwriting every result already posted
+    // under its index (issue #317). A fresh launch passes neither and gets
+    // the empty run these defaults describe.
+    current: (shared && Number.isInteger(shared.current)) ? shared.current : 0,
+    results: (shared && Array.isArray(shared.results)) ? shared.results : [],
     id: (shared && shared.id) || null,
     code: (shared && shared.code) || null,
     expiresAt: (shared && shared.expiresAt) || null,
