@@ -26,6 +26,7 @@ import { getUid } from '../firebase/firebaseProgress.js';
 import { getHandicapRatioMap } from '../logic/handicaps.js';
 import { matchUnlocks, unmetMatchRules } from '../logic/matchRules.js';
 import { matchStandings } from '../logic/matchStandings.js';
+import { matchBoardBreakdown } from '../logic/matchRecord.js';
 import { normalizeCode, planMatchJoin, matchDaysRemaining, matchExpiresAt, partitionMatchReview } from '../logic/matchCodes.js';
 import { tilingLabel, CLASSIC_SHAPE_LABEL } from '../logic/coastlineLink.js';
 import { getGimmickDefs } from '../logic/gimmicks.js';
@@ -395,7 +396,59 @@ function _paintStandings(el, node) {
   const note = anyUnrated
     ? '<p class="friends-code-hint">* not rated yet, so that total is the raw clock.</p>'
     : '';
-  el.innerHTML = head + body + note;
+  el.innerHTML = head + body + note + _breakdownHTML(node);
+}
+
+/**
+ * The head-to-head breakdown: board by board, who was fastest.
+ *
+ * A total says who won; this says WHERE. The comparison is adjusted, his
+ * standing ruling for the mode, and a board only reads as won or lost when
+ * somebody else actually played it, so an opponent who is three boards behind
+ * leaves those boards blank rather than losing them by default.
+ *
+ * Rendered only where there is a comparison to make: a solo run has nothing to
+ * break down, and its summary already shows every board's clock.
+ */
+function _breakdownHTML(node) {
+  const rows = matchBoardBreakdown(node, {
+    myUid: getUid(), handicaps: getHandicapRatioMap(),
+  });
+  const contested = rows.filter((r) => r.contested);
+  if (contested.length === 0) return '';
+
+  const body = rows.map((r) => {
+    const label = `Board ${r.index + 1}`;
+    if (!r.mine) {
+      return `<div class="match-breakdown-row match-breakdown-waiting">
+          <span>${label}</span><span>not played</span></div>`;
+    }
+    if (!r.contested) {
+      return `<div class="match-breakdown-row match-breakdown-waiting">
+          <span>${label}</span><span>${r.mine.adjusted.toFixed(1)}s · waiting</span></div>`;
+    }
+    const best = r.fastestAdjusted;
+    const gap = Math.abs(r.mine.adjusted - best.adjusted);
+    const verdict = r.wonAdjusted
+      ? '<span class="match-breakdown-won">you</span>'
+      : (best.tied
+        ? '<span class="match-breakdown-tied">tied</span>'
+        : `<span class="match-breakdown-lost">${escapeHtml(best.name)} by ${gap.toFixed(1)}s</span>`);
+    return `<div class="match-breakdown-row">
+        <span>${label}</span>
+        <span>${r.mine.adjusted.toFixed(1)}s</span>
+        ${verdict}
+      </div>`;
+  }).join('');
+
+  const won = contested.filter((r) => r.wonAdjusted).length;
+  return `<div class="match-breakdown">
+      <div class="match-standings-head"><span>Board by board</span>
+        <span>${won} of ${contested.length}</span></div>
+      ${body}
+      <p class="friends-code-hint">Adjusted times, so a board reads the same
+        whoever played it. A board nobody has raced you on yet is left open.</p>
+    </div>`;
 }
 
 // ── Incoming friend invites ─────────────────────────────────────────────
