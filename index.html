@@ -1613,9 +1613,15 @@
             <p class="stats-blurb">Every board you have finished in a Challenge run.</p>
             <div class="stat-row">
               <div class="stat-mini"><div class="stat-mini-label">Played</div><div class="stat-mini-value" id="stat-match-played">0</div></div>
-              <div class="stat-mini"><div class="stat-mini-label">Win Rate</div><div class="stat-mini-value" id="stat-match-win-rate">0%</div></div>
               <div class="stat-mini"><div class="stat-mini-label">Streak</div><div class="stat-mini-value" id="stat-match-streak">0</div></div>
             </div>
+          </div>
+          <!-- The head-to-head record. A board's mines are strikes, so a run
+               is never lost and "win rate" can only mean who was fastest;
+               the denominator is boards somebody else also played. -->
+          <div class="stats-section">
+            <h3>Head to head</h3>
+            <div id="stat-match-h2h" class="stat-h2h"></div>
           </div>
           <div class="stats-section">
             <h3>Recent boards</h3>

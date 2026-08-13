@@ -67,6 +67,9 @@ const SANCTIONED_PHRASES = [
   // head-to-head sheet a player reaches from the Challenge card, so it names
   // that mode and not the ladder.
   'role="tablist" aria-label="Challenge"',
+  // The head-to-head record's empty state (2026-08-13). It names the mode you
+  // play against a friend, which is the only mode that HAS a head-to-head.
+  'Play a Challenge against a friend',
 ];
 
 // ── index.html: visible text and the attributes a human reads ──────────────

@@ -6,7 +6,7 @@
 // the boot path.
 
 import { state } from '../state/gameState.js';
-import { $, $$ } from './domHelpers.js';
+import { $, $$, escapeHtml } from './domHelpers.js';
 import { spriteImgHTML } from './spriteLoader.js';
 import { getLocalDateString, getWeekStart } from '../logic/seededRandom.js';
 import {
@@ -22,6 +22,9 @@ import {
 import { predictPar } from '../logic/dailyFeatures.js';
 import { waitForUid } from '../game/startupGate.js';
 import { prettyDate, RANK_MEDALS } from './leaderboardModal.js';
+import { tilingLabel, CLASSIC_SHAPE_LABEL } from '../logic/coastlineLink.js';
+import { getGimmickDefs } from '../logic/gimmicks.js';
+import { reportCaughtError } from '../diagnostics/errorReporter.js';
 
 // Owner-only Model tab. Renders the per-refit timeline (RMSE, bias,
 // candidate CVs) from src/logic/modelHistory.json. Tab button is hidden
@@ -420,21 +423,103 @@ function populateChallengePanel() {
   }
 }
 
+// The Challenge head-to-head record: win rate over boards somebody else also
+// played, adjusted and raw, plus what the player is best at.
+//
+// Every decision lives in the pure logic/matchRecord.js; this fetches, paints
+// and says when there is not enough yet to say anything. Splits are withheld
+// below MIN_SPLIT_BOARDS because one contested board reading "100% on Kites"
+// is a claim the data cannot support, and every row it does show carries its
+// own sample beside the percentage.
+const MIN_SPLIT_BOARDS = 3;
+
+async function _renderMatchHeadToHead() {
+  const el = $('#stat-match-h2h');
+  if (!el) return;
+  el.innerHTML = '<p class="stats-blurb">Looking up your runs…</p>';
+
+  let nodes = null;
+  try {
+    const [{ fetchMyMatches }, { matchRecord, winPct, rankedSplits }, { getHandicapRatioMap }] =
+      await Promise.all([
+        import('../firebase/firebaseMatch.js'),
+        import('../logic/matchRecord.js'),
+        import('../logic/handicaps.js'),
+      ]);
+    const rows = await fetchMyMatches(30);
+    if (!rows) {
+      el.innerHTML = '<p class="stats-blurb">Could not reach your runs right now.</p>';
+      return;
+    }
+    nodes = rows.map((r) => r.node);
+    const rec = matchRecord(nodes, { myUid: getUid(), handicaps: getHandicapRatioMap() });
+
+    if (rec.contested === 0) {
+      el.innerHTML = `<p class="stats-blurb">${rec.boardsPlayed > 0
+        ? 'Nobody has raced you yet. Send a friend a code and these fill in.'
+        : 'Play a Challenge against a friend and your record shows up here.'}</p>`;
+      return;
+    }
+
+    const adj = winPct(rec.wonAdjusted, rec.contested);
+    const raw = winPct(rec.wonRaw, rec.contested);
+    const shapes = rankedSplits(rec.splits.shape, { minContested: MIN_SPLIT_BOARDS });
+    const dens = rankedSplits(rec.splits.density, { minContested: MIN_SPLIT_BOARDS });
+    const mods = rankedSplits(rec.splits.modifier, { minContested: MIN_SPLIT_BOARDS });
+
+    const splitBlock = (title, rowsIn, labeler) => {
+      if (rowsIn.length === 0) return '';
+      const items = rowsIn.map((r) => `<div class="stat-h2h-split">
+          <span class="stat-h2h-split-name">${escapeHtml(labeler(r.name))}</span>
+          <span class="stat-h2h-split-pct">${r.pct}%</span>
+          <span class="stat-h2h-split-n">${r.wonAdjusted} of ${r.contested}</span>
+        </div>`).join('');
+      return `<h4 class="stat-h2h-heading">${title}</h4>${items}`;
+    };
+
+    const defs = getGimmickDefs();
+    el.innerHTML = `
+      <div class="stat-row">
+        <div class="stat-mini"><div class="stat-mini-label">Adjusted</div>
+          <div class="stat-mini-value">${adj}%</div></div>
+        <div class="stat-mini"><div class="stat-mini-label">Raw</div>
+          <div class="stat-mini-value">${raw}%</div></div>
+        <div class="stat-mini"><div class="stat-mini-label">Boards raced</div>
+          <div class="stat-mini-value">${rec.contested}</div></div>
+      </div>
+      <p class="stats-blurb">Boards where someone else played the same board.
+        Adjusted divides every time by that player's handicap, so it is the fair
+        comparison; raw is who finished first.</p>
+      ${splitBlock('Best shapes', shapes, (n) => (n === 'rect' ? CLASSIC_SHAPE_LABEL : tilingLabel(n)))}
+      ${splitBlock('Best mine densities', dens, (n) => DENSITY_LABELS[n] || n)}
+      ${splitBlock('Best modifiers', mods, (n) => (defs[n] && defs[n].name) || n)}
+      ${(shapes.length + dens.length + mods.length) === 0
+        ? `<p class="stats-blurb">A few more races and this will show which shapes and
+             modifiers suit you. It needs ${MIN_SPLIT_BOARDS} boards of something before
+             saying anything about it.</p>` : ''}`;
+  } catch (err) {
+    reportCaughtError('match-h2h', err);
+    el.innerHTML = '<p class="stats-blurb">Could not work out your record right now.</p>';
+  }
+}
+
+const DENSITY_LABELS = { sparse: 'Sparse', standard: 'Standard', dense: 'Packed' };
+
 function populateMatchPanel() {
   const stats = loadStats();
   const mm = stats.modeStats?.match;
   const chart = $('#stat-match-recent');
+  // The head-to-head record needs the match NODES (everyone else's times),
+  // so it loads on its own and paints when it arrives.
+  _renderMatchHeadToHead();
   if (!mm) {
     $('#stat-match-played').textContent = '0';
-    $('#stat-match-win-rate').textContent = '0%';
     $('#stat-match-streak').textContent = '0';
     $('#stat-match-wins').textContent = '0';
     if (chart) chart.innerHTML = '<span class="chart-empty">Build a Challenge run to see your history!</span>';
     return;
   }
   $('#stat-match-played').textContent = mm.totalGames || 0;
-  const rate = mm.totalGames > 0 ? Math.round((mm.wins / mm.totalGames) * 100) : 0;
-  $('#stat-match-win-rate').textContent = `${rate}%`;
   $('#stat-match-streak').textContent = mm.currentStreak || 0;
   $('#stat-match-wins').textContent = mm.wins || 0;
 
