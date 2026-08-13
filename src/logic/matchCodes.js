@@ -48,9 +48,27 @@ export const MATCH_TTL_MS = 604800000; // 7 days
  */
 export const MATCH_PLAYER_MAX = 16;
 
-/** When a match created now should stop accepting writes. */
-export function matchExpiryFrom(now) {
-  return now + MATCH_TTL_MS;
+/**
+ * When a match stops accepting writes, DERIVED from its own createdAt.
+ *
+ * THE ONE DEFINITION, and it has to be derived rather than stored. The match
+ * node carries no `expiresAt` child: the rules compute the same deadline from
+ * the server-stamped `createdAt`, because a client cannot know the server
+ * clock and a stored expiry would need either exact equality (a phone running
+ * five minutes fast then fails to create a match at all) or a slack window.
+ *
+ * Everything that asks "is this match still open" must come through here.
+ * `planMatchJoin` once read `match.expiresAt` straight off the node, a field
+ * nothing writes, so every guest got `undefined` and the join refused itself
+ * as expired while the host, who is already in `players`, never reached the
+ * check. A derived answer cannot go stale that way.
+ *
+ * A missing or malformed createdAt yields a deadline in 1970, which reads as
+ * expired: a match whose lifetime cannot be established is one nothing should
+ * be written into.
+ */
+export function matchExpiresAt(createdAt) {
+  return (Number.isFinite(Number(createdAt)) ? Number(createdAt) : 0) + MATCH_TTL_MS;
 }
 
 /**
@@ -75,23 +93,39 @@ export function matchDaysRemaining(expiresAt, now) {
 /**
  * What tapping a valid invite should do, decided from the fetched node alone.
  *
- *   'missing'  no such match (or a node without its boards, which is the same
- *              thing to a player)
- *   'expired'  past its seven days: readable, closed to new results
- *   'resume'   this uid already has a slot, so this is their own match
- *   'full'     at MATCH_PLAYER_MAX and this uid is not in it
- *   'join'     a free slot in a live match
+ *   'missing'   no such match (or a node without its boards, which is the same
+ *               thing to a player)
+ *   'expired'   past its seven days: readable, closed to new results
+ *   'finished'  this uid already PLAYED it through: the standings, never the
+ *               boards again
+ *   'resume'    this uid has a slot and an unfinished run
+ *   'full'      at MATCH_PLAYER_MAX and this uid is not in it
+ *   'join'      a free slot in a live match
  *
  * Pure so the join path is testable without a Firebase; the UI renders one
  * message per verdict and the I/O layer refuses everything but 'join' and
  * 'resume'.
+ *
+ * THE DEADLINE IS DERIVED from the node's own createdAt (matchExpiresAt), the
+ * same quantity the security rules compute, and never read off the node. The
+ * node has no `expiresAt` child for it to be read from.
+ *
+ * FINISHED IS NOT RESUME. `finishedAt` is stamped once, after the last board's
+ * result lands, so its presence means this player's run is over. Treating it
+ * as a resume restarted the run at board 1 with an empty results array, and
+ * every posted result then overwrote the real one at the same index, which is
+ * a player's own record being destroyed by re-opening a link.
  */
 export function planMatchJoin({ match, uid, now }) {
   if (!match || !Array.isArray(match.boards) || match.boards.length === 0) return 'missing';
   const players = (match.players && typeof match.players === 'object') ? match.players : {};
   const mine = uid ? players[uid] : null;
-  if (mine) return 'resume';
-  if (matchIsExpired(match.expiresAt, now)) return 'expired';
+  // A POSITIVE number and nothing else. `Number(null)` is 0, so coercing here
+  // would read an absent stamp as a finish and strand a live run in the
+  // standings; a server TIMESTAMP is always a large positive number.
+  if (mine) return (typeof mine.finishedAt === 'number'
+    && Number.isFinite(mine.finishedAt) && mine.finishedAt > 0) ? 'finished' : 'resume';
+  if (matchIsExpired(matchExpiresAt(match.createdAt), now)) return 'expired';
   if (Object.keys(players).length >= MATCH_PLAYER_MAX) return 'full';
   return 'join';
 }

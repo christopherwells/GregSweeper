@@ -15,6 +15,7 @@ import { readFileSync } from 'node:fs';
 import {
   MATCH_TTL_MS, MATCH_PLAYER_MAX, MATCH_ROW_KEY_REGEX, CODE_REGEX,
   matchRowKey, isMatchRowKey, matchIsExpired, matchDaysRemaining, planMatchJoin,
+  matchExpiresAt,
   generateCode, normalizeCode,
   INVITE_SNOOZE_MS, INVITE_STATES, snoozeUntilFrom,
   inviteState, inviteShouldPopUp, partitionInvites,
@@ -24,12 +25,17 @@ import { CODE_TTL_MS } from '../src/logic/friendCodes.js';
 const rules = JSON.parse(readFileSync(new URL('../firebase-rules.json', import.meta.url), 'utf8')).rules;
 
 // A live match node, minimal but structurally real.
+// The match node EXACTLY as createMatch writes it, and as the rules permit it.
+// It carries no `expiresAt`: the deadline is derived from the server-stamped
+// createdAt on both sides. A fixture that invented one is what let the guest
+// join break in production while this file stayed green, so the shape is
+// pinned against firebase-rules.json below rather than trusted.
 const nodeWith = (players, createdAt = 1750000000000) => ({
   host: 'uid-host',
   rules: { count: 3 },
   boards: [{ seed: 'a' }, { seed: 'b' }, { seed: 'c' }],
   createdAt,
-  expiresAt: createdAt + MATCH_TTL_MS,
+  playerCount: Object.keys(players).length,
   players,
 });
 
@@ -340,4 +346,80 @@ test('the code shape is the friend code shape, one definition', () => {
   }
   assert.equal(normalizeCode('  k7x-pq4 '), 'K7XPQ4');
   assert.equal(normalizeCode('K7XPQ'), null);
+});
+
+// ── The node shape, pinned against the rules that accept it ─────────────
+
+test('REGRESSION: a guest can join a live match (the node carries no expiresAt)', () => {
+  // THE PRODUCTION BREAK, 2026-08-12. planMatchJoin read `match.expiresAt`
+  // straight off the node, and nothing writes that field: the deadline is
+  // derived from the server createdAt on both the client and the rules side.
+  // So every guest got matchIsExpired(undefined) === true and was told the
+  // code had expired, while the HOST, who is already in `players`, returned
+  // 'resume' before ever reaching the check. Both invite routes broke and
+  // neither the host nor this suite could see it.
+  const node = nodeWith({ 'uid-host': { name: 'Host', joinedAt: 1750000000000 } });
+  assert.equal(node.expiresAt, undefined, 'the fixture must not invent the field');
+  assert.equal(planMatchJoin({ match: node, uid: 'uid-guest', now: 1750000000000 }), 'join');
+  // And still expires on its own createdAt, a week later.
+  assert.equal(
+    planMatchJoin({ match: node, uid: 'uid-guest', now: 1750000000000 + MATCH_TTL_MS }),
+    'expired');
+});
+
+test('matchExpiresAt is derived, and a match with no createdAt reads as expired', () => {
+  assert.equal(matchExpiresAt(1750000000000), 1750000000000 + MATCH_TTL_MS);
+  for (const bad of [undefined, null, NaN, 'soon', {}]) {
+    const node = { host: 'h', rules: {}, boards: [{ seed: 'a' }], players: {}, createdAt: bad };
+    assert.equal(planMatchJoin({ match: node, uid: 'me', now: Date.now() }), 'expired',
+      `createdAt ${String(bad)} must not read as a live match`);
+  }
+});
+
+test('a fixture may not carry a field the rules would refuse', () => {
+  // The guard that would have caught the break: `matches/$matchId` ends in
+  // `$other: {validate:false}`, so the legal children are exactly the keys of
+  // that block. A fixture outside them describes a node Firebase cannot hold,
+  // and a test standing on one proves nothing about production.
+  const rules = JSON.parse(readFileSync(new URL('../firebase-rules.json', import.meta.url), 'utf8'));
+  const block = rules.rules.matches.$matchId;
+  assert.equal(block.$other['.validate'], false, 'the whitelist must still be closed');
+  const allowed = new Set(Object.keys(block).filter((k) => !k.startsWith('.') && k !== '$other'));
+  assert.ok(allowed.size >= 6, `only ${allowed.size} fields parsed: the block shape moved`);
+  for (const key of Object.keys(nodeWith({}))) {
+    assert.ok(allowed.has(key),
+      `the fixture carries "${key}", which the rules would refuse (allowed: ${[...allowed].join(', ')})`);
+  }
+});
+
+// ── A finished run is not a resume ──────────────────────────────────────
+
+test('REGRESSION: a player who FINISHED a match gets the standings, never the boards', () => {
+  // His report: "why can I play the runs over again? It should save when I've
+  // finished so I can't overwrite the play." Re-entering restarted at board 1
+  // with an empty results array, and each posted result then overwrote the
+  // real one at the same index.
+  const node = nodeWith({
+    me: { name: 'Me', joinedAt: 1, finishedAt: 1750000500000, results: [{ time: 30 }] },
+  });
+  assert.equal(planMatchJoin({ match: node, uid: 'me', now: 1750000600000 }), 'finished');
+});
+
+test('a run in progress still RESUMES, finished or not is the only difference', () => {
+  const midRun = nodeWith({ me: { name: 'Me', joinedAt: 1, results: [{ time: 30 }] } });
+  assert.equal(planMatchJoin({ match: midRun, uid: 'me', now: 1750000600000 }), 'resume');
+  const untouched = nodeWith({ me: { name: 'Me', joinedAt: 1 } });
+  assert.equal(planMatchJoin({ match: untouched, uid: 'me', now: 1750000600000 }), 'resume');
+  // A malformed finishedAt is not a finish: it must not strand a live run.
+  for (const bad of [null, undefined, 'yes', {}, NaN, 0, -1]) {
+    const odd = nodeWith({ me: { name: 'Me', joinedAt: 1, finishedAt: bad } });
+    assert.equal(planMatchJoin({ match: odd, uid: 'me', now: 1750000600000 }), 'resume',
+      `finishedAt ${String(bad)} must not read as finished`);
+  }
+});
+
+test('finished beats expiry: reads stay open forever (his ruling)', () => {
+  const late = 1750000000000 + MATCH_TTL_MS * 10;
+  const node = nodeWith({ me: { name: 'Me', joinedAt: 1, finishedAt: 2 } });
+  assert.equal(planMatchJoin({ match: node, uid: 'me', now: late }), 'finished');
 });
