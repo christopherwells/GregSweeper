@@ -67,7 +67,7 @@ import { fileURLToPath } from 'node:url';
 import { buildChallenge250Board, challengeBoardSeed } from '../src/logic/challenge250Builder.js';
 import {
   endlessParCeiling, endlessGenCap, endlessGenBudget, endlessPpcFloor,
-  PAR_CEILING_SECONDS, GEN_CAP_MS, ENDLESS_GEN_HEADROOM, specFace,
+  PAR_CEILING_SECONDS, GEN_CAP_MS, ENDLESS_GEN_HEADROOM, specFace, endlessPpcAdmission,
   CLIMB_MIN_DEDUCTIONS,
 } from '../src/logic/challengeRules.js';
 import { buildTiling, containerIsStorable, TILING_TYPES } from '../src/logic/tilingGeometry.js';
@@ -93,8 +93,10 @@ const EMIT = argVal('--emit');
 const ABSORB = hasFlag('--absorb');
 const REPRICE = hasFlag('--reprice-cache');
 
-// 3% above whatever floor applies (see emitPool's floorFn).
-const PPC_FLOOR_MARGIN = 1.03;
+// The endless floor's own margin now lives beside the floor in
+// challengeRules.js (ENDLESS_PPC_FLOOR_MARGIN), read through
+// endlessPpcAdmission, so the emitter, the nightly re-price and the pool's
+// own test cannot each carry a different one.
 
 // And the SAME margin on the par ceiling, for the same reason and learned the
 // same way three times over — first on the generation cap, then on the endless
@@ -558,11 +560,23 @@ function emitLine(e) {
 }
 
 /**
+ * A cache row's specFace. The cache stores lattice dims as `a`/`b` and the
+ * face wants them under both the rect and the tiling names, which is a
+ * translation worth having in ONE place: it is the key every pool is deduped
+ * and compared on, so a copy that drifts silently stops two pools from seeing
+ * each other's entries at all.
+ */
+const cacheFace = (e) => specFace({
+  shape: e.shape, rows: e.a, cols: e.b, M: e.a, N: e.b, mines: e.mines, gimmicks: e.gimmicks,
+});
+
+/**
  * Emit a pool, balanced by construction: walk the ppc range in slices and
  * take a ROUND-ROBIN over shapes within each slice, so no slice can be
  * carried by whichever shape happens to have the most measurements there.
  */
-function emitPool(cache, { floorFn, ceilFn, perSlice, slices, maxPerShape = Infinity }) {
+function emitPool(cache, { floorFn, ceilFn, perSlice, slices, maxPerShape = Infinity,
+  excludeFaces = null }) {
   // The cache OUTLIVES a rule change — it is resumable by design — so
   // legality is re-checked on the way out and not only on the way in. When
   // the rect width cap was read from difficulty.js instead of guessed, every
@@ -581,7 +595,11 @@ function emitPool(cache, { floorFn, ceilFn, perSlice, slices, maxPerShape = Infi
     // admission floor, the par ceiling, and the ppc that ships — is on the
     // cohort's yardstick from this line on.
     .map((e) => ({ ...e, ppc: e.ppc * SCALE, medPar: e.medPar * SCALE }))
-    .filter((e) => e.ppc >= floorFn(e.shape) && e.medPar <= ceilFn(e.shape) * PAR_CEILING_MARGIN);
+    .filter((e) => e.ppc >= floorFn(e.shape) && e.medPar <= ceilFn(e.shape) * PAR_CEILING_MARGIN)
+    // Excluded BEFORE the slices rather than after them, so an excluded face
+    // does not silently consume a shape's per-slice allowance on its way to
+    // being dropped. A caller that excludes nothing is unaffected.
+    .filter((e) => !excludeFaces || !excludeFaces.has(cacheFace(e)));
 
   // An entry priced under older equations is being judged by the ceilings and
   // floors on numbers that no longer describe it. Say so rather than let it
@@ -660,7 +678,7 @@ function emitPool(cache, { floorFn, ceilFn, perSlice, slices, maxPerShape = Infi
         const list = buckets.get(k);
         if (round >= list.length) continue;
         const e = list[round];
-        const face = specFace({ shape: e.shape, rows: e.a, cols: e.b, M: e.a, N: e.b, mines: e.mines, gimmicks: e.gimmicks });
+        const face = cacheFace(e);
         if (taken.has(face)) continue;
         if ((perShape.get(e.shape) || 0) >= perSlicePerShape) continue;
         perShape.set(e.shape, (perShape.get(e.shape) || 0) + 1);
@@ -714,7 +732,7 @@ function emitPool(cache, { floorFn, ceilFn, perSlice, slices, maxPerShape = Infi
           const list = buckets.get(k);
           if (round >= list.length) continue;
           const e = list[round];
-          const face = specFace({ shape: e.shape, rows: e.a, cols: e.b, M: e.a, N: e.b, mines: e.mines, gimmicks: e.gimmicks });
+          const face = cacheFace(e);
           if (taken.has(face)) continue;
           taken.add(face);
           out.push(e);
@@ -842,12 +860,27 @@ async function runEmit(cache, which) {
     return;
   }
   if (which === 'endless') {
+    // THE COVERAGE POOL YIELDS TO NOBODY, so this pool yields to it.
+    //
+    // The three tables are disjoint by design (a face in two of them is drawn
+    // twice as often as its neighbours for no stated reason, and is payload
+    // for nothing). Coverage is emitted as the COMPLEMENT of the other two,
+    // so the natural repair for a collision would be to re-emit coverage —
+    // except that CHALLENGE_POOL is what the match library is built FROM, and
+    // a match-library rebuild re-sorts every board onto a different page.
+    // `page:idx` is the seen-cycle key on every device, so that rebuild would
+    // silently reset every player's no-repeat record. The endless table has
+    // no such anchor: it feeds the L251+ fallback braid and nothing stores a
+    // position in it. So the pool that can move is the one that moves.
+    const coverageFaces = new Set(
+      (await import('../src/logic/challengePool.js')).CHALLENGE_POOL.map((e) => specFace(e)));
     const pool = emitPool(cache, {
+      excludeFaces: coverageFaces,
       // FLOOR MARGIN, not the bare floor. Price varies by seed sample, so an
       // entry measured exactly ON its floor lands under it on the next
       // measurement and the pool fails intermittently with nobody having
       // changed it — the same headroom reasoning the generation budget uses.
-      floorFn: (s) => endlessPpcFloor(s) * PPC_FLOOR_MARGIN,
+      floorFn: endlessPpcAdmission,
       ceilFn: (s) => endlessParCeiling(s),
       perSlice: 14, slices: 8,
       // No shape may hold more than this many endless entries (see the cap's

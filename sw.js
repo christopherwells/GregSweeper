@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.10.52';
+const CACHE_NAME = 'gregsweeper-v1.10.53';
 const ASSETS = [
   './',
   './index.html',

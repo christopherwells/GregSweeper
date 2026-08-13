@@ -61,6 +61,7 @@ import {
   ENDLESS_GEN_CAP_BY_SHAPE, endlessGenCap,
   ENDLESS_GEN_HEADROOM, ENDLESS_GEN_BUDGET_MS, endlessGenBudget,
   ENDLESS_PPC_FLOOR, ENDLESS_PPC_FLOOR_BY_SHAPE, endlessPpcFloor,
+  ENDLESS_PPC_FLOOR_MARGIN, endlessPpcAdmission,
   specFace, specFingerprint,
 } from './challengeRules.js';
 
@@ -74,6 +75,7 @@ export {
   ENDLESS_GEN_CAP_BY_SHAPE, endlessGenCap,
   ENDLESS_GEN_HEADROOM, ENDLESS_GEN_BUDGET_MS, endlessGenBudget,
   ENDLESS_PPC_FLOOR, ENDLESS_PPC_FLOOR_BY_SHAPE, endlessPpcFloor,
+  ENDLESS_PPC_FLOOR_MARGIN, endlessPpcAdmission,
   specFace, specFingerprint,
 };
 

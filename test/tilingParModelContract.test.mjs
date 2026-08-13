@@ -134,25 +134,34 @@ test('LAB SEED: every shape block = PAR_MODEL + its frozen lab deviation centers
   // EXACTLY, because both sides are the same float through the same
   // formatter.
   //
-  // A LAB CENTER IS THE EXPECTATION ONLY UNTIL LIVE ROWS SPEAK. The moment a
-  // shape's column enters the fit, difficulty.js ships the FITTED posterior
-  // and the seed is history — that is the seeding ruling working, not drift.
-  // It first happened on 2026-08-04, hours after the rotation went live: the
-  // first tiling daily ever produced a row, `shapeHex` fitted to -0.408
-  // against a -0.375 lab center, and this test failed on the refit's own
-  // commit for a completely correct model update.
+  // A LAB CENTER IS THE EXPECTATION UNTIL LIVE ROWS EARN THEIR POSTERIOR.
+  // Once a deviation's own column carries NEW_FEATURE_DATA_THRESHOLD nonzero
+  // fit rows, difficulty.js ships the FITTED posterior and the seed is
+  // history — the seeding ruling working, not drift.
   //
-  // So the expectation comes from modelHistory when the fit recorded one, and
-  // from the lab file otherwise. That keeps the pin exactly as sharp — the
-  // emitted block must equal what the fit emitted — while letting each shape
-  // graduate from seed to posterior on its own schedule. (Do NOT read an early
-  // posterior as a finding: shapeHex's sd is 0.8 on a handful of rows.)
+  // The threshold is why this reads `nRows` rather than taking any recorded
+  // posterior. The test used to accept a posterior the moment modelHistory
+  // carried one, which mirrored the refit's own lab-seeded bypass, and both
+  // were wrong in the same direction: on 2026-08-13 ONE live rhombille row
+  // re-priced that shape 62% cheaper, this test agreed with it, and the
+  // failures surfaced two layers downstream in the band configs and the
+  // libraries instead of here. A pin that follows the fit wherever it goes
+  // cannot notice the fit going somewhere it should not.
+  //
+  // A history row that records no `nRows` for a term predates the guard and
+  // cannot demonstrate the threshold, so its seed stands. That is the
+  // conservative direction (a lab center is 86 boards of designed data) and
+  // it self-heals on the next fit night. (Do NOT read an early posterior as a
+  // finding either way: shapeHex's sd is 0.8 on a handful of rows.)
   const TOL = 2e-4;
+  const NEW_FEATURE_DATA_THRESHOLD = 20;
   const history = JSON.parse(readFileSync('src/logic/modelHistory.json', 'utf8'));
   const historyRows = Array.isArray(history) ? history : (history.rows || history.history || []);
-  const fitted = historyRows.length
+  const recorded = historyRows.length
     ? (historyRows[historyRows.length - 1].shapeDeviations || {})
     : {};
+  const fitted = Object.fromEntries(Object.entries(recorded)
+    .filter(([, d]) => (d.nRows ?? 0) >= NEW_FEATURE_DATA_THRESHOLD));
 
   for (const t of TILING_TYPES) {
     const block = PAR_MODEL_SHAPES[t];
@@ -567,13 +576,28 @@ test('the R refit carries the lab-seed machinery (2026-08-03 seeding ruling)', (
   // (asserted by the two-path priors test above).
   assert.ok(R_SRC.includes('sprintf("normal(%f, %f)", seed$mean, seed$sd)'),
     'seeded deviations must center on the lab posterior');
-  // The earn guard: a lab-seeded term ships its fitted posterior WITHOUT the
-  // 20-row guard (the guard stops bare prior medians; a lab center is data),
-  // and a seeded term whose column never entered the formula ships its lab
-  // center directly — that second branch is what makes the blocks lab-seeded
-  // on nights with zero live tiling rows.
-  assert.ok(R_SRC.includes('lab-seeded prior'),
-    'the earn guard must carry the lab-seeded bypass branch');
+  // REGRESSION (2026-08-13): a lab-seeded term ships its LAB CENTER until its
+  // own column earns the same NEW_FEATURE_DATA_THRESHOLD every other
+  // deviation answers to. The branch used to ship the fitted posterior with
+  // no row guard, and one live rhombille row then re-priced that shape 62%
+  // cheaper, out of the daily band and under the weekly floor.
+  //
+  // Pinned on the ASSIGNMENT, not on a message string: the failure mode is a
+  // branch that reads like the center and assigns the posterior, and only the
+  // assignment decides what ships.
+  const guard = R_SRC.slice(R_SRC.indexOf('for (nm in intersect(SHAPE_DEV_NAMES'),
+    R_SRC.indexOf('# Lab-seeded terms with NO live rows'));
+  assert.ok(guard.length > 100, 'the shape-deviation earn guard was not found');
+  const seededBranch = guard.slice(guard.indexOf('!is.null(lab_seed_devs[[nm]])'));
+  assert.ok(seededBranch.includes('earned_shape_devs[[nm]] <- lab_seed_devs[[nm]]$mean'),
+    'a lab-seeded term below the threshold must ship its lab CENTER, never the fitted posterior');
+  assert.ok(!seededBranch.includes('earned_shape_devs[[nm]] <- as.numeric(fe_all[nm, "Estimate"])'),
+    'the lab-seeded bypass is gone: no unguarded posterior may ship');
+  // And the row count must be RECORDED, or nothing downstream can tell an
+  // earned posterior from a center the guard substituted (the LAB SEED test
+  // above re-derives difficulty.js from exactly this field).
+  assert.ok(/nRows\s*=\s*n_dev/.test(guard),
+    'shape_dev_summary must record each deviation’s nonzero-row count');
   assert.ok(R_SRC.includes('setdiff(names(lab_seed_devs), rownames(fe_all))'),
     'seeded terms outside the fit must still ship their lab centers');
   // Fail-soft loader: a lost file degrades to zero-centered deviations (the

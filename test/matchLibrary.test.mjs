@@ -12,9 +12,11 @@
 //     with the remedy named in the failure;
 //   - price honesty: every board's stored par is exactly predictPar of its
 //     own stored features;
-//   - index honesty: match-index.json rows reproduce the page files row
+//   - index honesty: the per-shape index shards reproduce the page files row
 //     for row (the two are written by one function, matchIndexRow, and
-//     this is the alarm if a partial rewrite ever splits them);
+//     this is the alarm if a partial rewrite ever splits them), and the
+//     summary's corner counts answer a rule set with exactly the number the
+//     deal's own row filter would, which is what makes the split safe;
 //   - the deduction floor: no stored board is over on the opening click
 //     (his immediately-done ruling; the pool's easiest corner certified at
 //     work 1 when probed, which is why the build enforces the floor);
@@ -25,10 +27,14 @@
 
 import test from 'node:test';
 import assert from 'node:assert';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { OUT_DIR } from '../scripts/build-match-library.mjs';
 import {
-  parseMatchIndex, matchIndexRow, matchIndexFeatureKeys, timeBandOf, MATCH_TIME_BANDS,
+  matchShardFileUrl, SUMMARY_FILE, LEGACY_INDEX_FILE,
+} from '../scripts/match-index-files.mjs';
+import {
+  parseMatchIndex, parseMatchSummary, countEligibleCorners, eligibleRows,
+  matchIndexRow, matchIndexFeatureKeys, timeBandOf, MATCH_TIME_BANDS,
 } from '../src/logic/matchRules.js';
 import { predictPar } from '../src/logic/dailyFeatures.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
@@ -38,24 +44,88 @@ import { deserializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
 import { recalcAllAdjacency, recomputeDisplayedMines } from '../src/logic/gimmicks.js';
 
-const index = JSON.parse(readFileSync(new URL('match-index.json', OUT_DIR), 'utf8'));
+const summary = JSON.parse(readFileSync(SUMMARY_FILE, 'utf8'));
 const pageNames = readdirSync(OUT_DIR).filter((f) => /^match-\d{3}\.json$/.test(f)).sort();
 const pages = pageNames.map((f) => JSON.parse(readFileSync(new URL(f, OUT_DIR), 'utf8')));
 const boards = pages.flatMap((p) => p.boards);
 const SHAPES = ['rect', ...TILING_TYPES];
+const shardNames = readdirSync(OUT_DIR).filter((f) => /^match-index-.+\.json$/.test(f)).sort();
+const shards = Object.fromEntries(SHAPES
+  .filter((s) => shardNames.includes(`match-index-${s}.json`))
+  .map((s) => [s, JSON.parse(readFileSync(matchShardFileUrl(s), 'utf8'))]));
+/** Every shard's rows, parsed and concatenated: what a deal over all shapes sees. */
+const allRows = SHAPES.flatMap((s) => (shards[s] ? parseMatchIndex(shards[s]) || [] : []));
 
-test('the match library is real, sharded, and its index tells the truth', () => {
-  assert.equal(pages.length, index.pages, 'page files match the index page count');
+test('the match library is real, sharded, and its summary tells the truth', () => {
+  assert.equal(pages.length, summary.pages, 'page files match the summary page count');
   assert.ok(boards.length >= 800, `${boards.length} boards is too few to be the real library`);
-  assert.equal(boards.length, index.boards);
-  assert.deepEqual(index.counts, pages.map((p) => p.boards.length));
+  assert.equal(boards.length, summary.boards);
+  assert.deepEqual(summary.counts, pages.map((p) => p.boards.length));
   pages.forEach((p, i) => assert.equal(p.page, i, `page file ${i} numbers itself`));
+
+  // ONE SHARD PER SHAPE PRESENT, and every board in exactly one of them. A
+  // shape whose shard went missing would deal nothing while the summary went
+  // on advertising its corners, which is the split's own failure mode.
+  const shapesPresent = [...new Set(boards.map((b) => b.spec.shape))].sort();
+  assert.deepEqual(Object.keys(shards).sort(), shapesPresent,
+    'every shape in the pages needs a shard, and no shard may name a shape the pages lack');
+  assert.deepEqual(summary.shards, Object.fromEntries(
+    Object.entries(shards).map(([s, f]) => [s, f.rows.length])));
+  assert.equal(allRows.length, boards.length, 'the shards together hold every board exactly once');
+  for (const [shape, file] of Object.entries(shards)) {
+    assert.equal(file.shape, shape, `${shape}'s shard must name itself`);
+    for (const r of parseMatchIndex(file)) {
+      assert.equal(r.shape, shape, `${shape}'s shard carries a ${r.shape} row`);
+    }
+  }
+
+  // The monolith is GONE, not merely unread. Leaving it would make the
+  // nightly re-price keep a second copy of every row in step forever, which
+  // is the payload the split exists to stop paying.
+  assert.ok(!existsSync(LEGACY_INDEX_FILE),
+    'match-index.json still exists; the split replaces it rather than adding to it');
+});
+
+test('the summary counts what the deal can actually reach', () => {
+  // The split's load-bearing equality: the sheet renders a number from the
+  // SUMMARY and the deal draws from the SHARDS, so a corner key that does not
+  // reproduce boardMatchesRules' own decisions would advertise supply nobody
+  // can be dealt. Swept over rule sets rather than spot-checked, because the
+  // modifier test is a SUBSET test and the disagreements would live in the
+  // combinations, not in the simple cases.
+  const corners = parseMatchSummary(summary);
+  assert.ok(corners && corners.length > 0, 'the shipped summary must parse');
+  const MODS = ['walls', 'liar', 'mystery', 'locked', 'wormhole', 'mirror', 'sonar', 'compass', 'worm'];
+  const TIMES = ['any', ...MATCH_TIME_BANDS.map((b) => b.key)];
+  const DENSITIES = ['any', 'sparse', 'standard', 'dense'];
+  let nonZero = 0;
+  for (let t = 0; t < 240; t++) {
+    // Deterministic sweep: a fixed bit pattern per trial, so a failure is
+    // reproducible rather than a flake nobody can re-run.
+    const rules = {
+      shapes: SHAPES.filter((_, i) => (t >> i) & 1),
+      mods: MODS.filter((_, i) => (t >> (i % 7)) & 1 || i % 3 === t % 3),
+      time: TIMES[t % TIMES.length],
+      density: DENSITIES[(t >> 2) % DENSITIES.length],
+      count: 5,
+    };
+    if (!rules.shapes.length) continue;
+    const filtered = eligibleRows(allRows, rules).length;
+    assert.equal(countEligibleCorners(corners, rules), filtered,
+      `the summary and the shards disagree on ${JSON.stringify(rules)}`);
+    if (filtered > 0) nonZero++;
+  }
+  assert.ok(nonZero >= 100,
+    `only ${nonZero} sweep rule sets found any supply — the sweep is not exercising the equality`);
 });
 
 test('LOCKSTEP: every file is priced under the model of the day', () => {
   const fp = modelFingerprint();
   const stale = [];
-  if (index.parModel !== fp) stale.push(`match-index.json (${index.parModel})`);
+  if (summary.parModel !== fp) stale.push(`match-summary.json (${summary.parModel})`);
+  for (const [shape, file] of Object.entries(shards)) {
+    if (file.parModel !== fp) stale.push(`match-index-${shape}.json (${file.parModel})`);
+  }
   pages.forEach((p, i) => {
     if (p.parModel !== fp) stale.push(`match-${String(i).padStart(3, '0')}.json (${p.parModel})`);
   });
@@ -73,22 +143,35 @@ test('every board prices from its own stored features', () => {
   }
 });
 
-test('the index rows reproduce the page files row for row', () => {
+test('the shard rows reproduce the page files row for row', () => {
   // The header is derived from the boards, so a feature key that reached the
-  // pages and not the index would show up here as a shorter union.
+  // pages and not the shards would show up here as a shorter union. It is
+  // derived over EVERY board rather than per shard, so the positional
+  // encoding means the same thing in all seven files.
   const keys = matchIndexFeatureKeys(boards);
-  assert.deepEqual(index.featureKeys, keys, 'the shipped header must match the boards it describes');
-  const expected = [];
-  pages.forEach((p, pi) => p.boards.forEach((b, i) => expected.push(matchIndexRow(pi, i, b, keys))));
-  assert.deepEqual(index.rows, expected);
-  const parsed = parseMatchIndex(index);
-  assert.ok(parsed && parsed.length === boards.length, 'the client parser accepts the shipped index');
+  const expected = new Map();
+  pages.forEach((p, pi) => p.boards.forEach((b, i) => {
+    expected.set(`${pi}:${i}`, { shape: b.spec.shape, row: matchIndexRow(pi, i, b, keys) });
+  }));
+  for (const [shape, file] of Object.entries(shards)) {
+    assert.deepEqual(file.featureKeys, keys,
+      `${shape}'s shard header must match the boards it describes`);
+    for (const row of file.rows) {
+      const want = expected.get(`${row[0]}:${row[1]}`);
+      assert.ok(want, `shard row p${row[0]}#${row[1]} names a board no page holds`);
+      assert.equal(want.shape, shape, `p${row[0]}#${row[1]} is in the wrong shard`);
+      assert.deepEqual(row, want.row);
+      expected.delete(`${row[0]}:${row[1]}`);
+    }
+  }
+  assert.deepEqual([...expected.keys()], [], 'these stored boards reached no shard');
+  assert.ok(allRows.length === boards.length, 'the client parser accepts every shipped shard');
 });
 
 test('every shipped index row carries a usable feature vector', () => {
   // Mission steering scores on these numbers, and a vector that silently
   // arrived empty would steer nothing while every test above stayed green.
-  const parsed = parseMatchIndex(index);
+  const parsed = allRows;
   const need = ['cellCount', 'totalMines', 'density', 'clueShare3'];
   for (const r of parsed) {
     for (const k of need) {

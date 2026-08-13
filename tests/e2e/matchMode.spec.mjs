@@ -14,8 +14,8 @@ import { readFileSync } from 'node:fs';
 import { prepareInteractionSpec } from './helpers.mjs';
 import { CHALLENGE_250_EPOCH } from '../../src/logic/challenge250.js';
 
-const index = JSON.parse(readFileSync(new URL(
-  '../../scripts/data/match-library/match-index.json', import.meta.url), 'utf8'));
+const summary = JSON.parse(readFileSync(new URL(
+  '../../scripts/data/match-library/match-summary.json', import.meta.url), 'utf8'));
 
 // A pinned rectangular board on page 0 (pages are shape-grouped, rect first),
 // so ?matchboard= has a deterministic target whose dims the spec can assert.
@@ -73,12 +73,14 @@ test('the Challenge card opens the setup sheet, and its supply line is real', as
   // the runs a player already has.
   await page.locator('#match-tab-new').click();
 
-  // The supply line counts the SERVED index through the deal's own filter,
-  // so a real number here proves the fetch, the parse and the filter.
+  // The supply line counts the SERVED summary through the deal's own filter,
+  // so a real number here proves the fetch, the parse and the filter. With
+  // every chip on it must reach every stored board, which is also the
+  // end-to-end check that the split summary did not lose a corner.
   const supply = page.locator('#match-supply');
   await expect(supply).toHaveText(/\d+ boards fit these rules/, { timeout: 30_000 });
   const all = Number((await supply.textContent()).match(/(\d+)/)[1]);
-  expect(all).toBe(index.boards);
+  expect(all).toBe(summary.boards);
 
   // Narrowing to one shape must narrow the count: this is the assertion that
   // the chips are wired to the rules the deal will use, not to decoration.
