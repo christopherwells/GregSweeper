@@ -18,7 +18,7 @@ import {
   matchExpiresAt,
   generateCode, normalizeCode,
   INVITE_SNOOZE_MS, INVITE_STATES, snoozeUntilFrom,
-  inviteState, inviteShouldPopUp, partitionInvites, partitionMatchReview,
+  inviteState, inviteShouldPopUp, partitionInvites, partitionMatchReview, matchResumePoint,
 } from '../src/logic/matchCodes.js';
 import { CODE_TTL_MS } from '../src/logic/friendCodes.js';
 
@@ -525,4 +525,59 @@ test('empty input yields three empty places, never undefined', () => {
     const v = partitionMatchReview(args);
     assert.deepEqual([v.active, v.finished, v.declined, v.expired], [[], [], [], []]);
   }
+});
+
+// ── Resuming a run keeps it (issue #317) ────────────────────────────────
+
+test('REGRESSION: a resume carries the run forward, never restarting at board 1', () => {
+  // Re-entering an unfinished shared match handed back {current: 0,
+  // results: []}, so every board replayed posted under its index and
+  // OVERWROTE the time already in the node. Same destruction the `finished`
+  // verdict stops, left in place for the unfinished case.
+  const n = nodeWith({ me: { name: 'Me', joinedAt: 1,
+    results: [{ time: 30, penalty: 3, strikes: 1 }, { time: 40, penalty: 0, strikes: 0 }] } });
+  const r = matchResumePoint(n, 'me');
+  assert.equal(r.current, 2, 'resumes at the third board, not the first');
+  assert.equal(r.results.length, 3);
+  assert.deepEqual(r.results[0], { time: 30, penalty: 3, strikes: 1 });
+  assert.deepEqual(r.results[1], { time: 40, penalty: 0, strikes: 0 });
+  assert.equal(r.results[2], undefined, 'the unplayed board stays open');
+  assert.equal(planMatchJoin({ match: n, uid: 'me', now: 1750000100000 }), 'resume');
+});
+
+test('a resume fills a GAP rather than appending past it', () => {
+  // A post that failed while the next one landed leaves a hole. Resuming at
+  // results.length would skip it forever and the match could never complete.
+  const n = nodeWith({ me: { name: 'Me', joinedAt: 1,
+    results: [{ time: 30 }, null, { time: 50 }] } });
+  const r = matchResumePoint(n, 'me');
+  assert.equal(r.current, 1, 'resumes INTO the gap');
+  assert.equal(r.results[2].time, 50, 'and the later result is kept');
+});
+
+test('an untouched or unknown player resumes as a fresh run', () => {
+  for (const [node, uid] of [
+    [nodeWith({ me: { name: 'Me', joinedAt: 1 } }), 'me'],
+    [nodeWith({ other: { name: 'O', joinedAt: 1 } }), 'me'],
+    [nodeWith({}), null],
+  ]) {
+    const r = matchResumePoint(node, uid);
+    assert.equal(r.current, 0);
+    assert.equal(r.results.filter(Boolean).length, 0);
+  }
+  assert.deepEqual(matchResumePoint(null, 'me'), { results: [], current: 0 });
+});
+
+test('a garbage stored result is not read as a played board', () => {
+  const n = nodeWith({ me: { name: 'Me', joinedAt: 1,
+    results: [{ time: 'fast' }, { time: -1 }, { time: 20 }] } });
+  const r = matchResumePoint(n, 'me');
+  assert.equal(r.current, 0, 'the first unusable result is where play resumes');
+  assert.equal(r.results[2].time, 20);
+});
+
+test('a fully played run reports current past the last board', () => {
+  const n = nodeWith({ me: { name: 'Me', joinedAt: 1,
+    results: [{ time: 1 }, { time: 2 }, { time: 3 }] } });
+  assert.equal(matchResumePoint(n, 'me').current, 3);
 });
