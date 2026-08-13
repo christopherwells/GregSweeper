@@ -672,6 +672,60 @@ function emitPool(cache, { floorFn, ceilFn, perSlice, slices, maxPerShape = Infi
       if (!progressed) break;
     }
   }
+  // TOP-UP FOR CONCENTRATED SHAPES.
+  //
+  // The per-slice quota above is `maxPerShape / slices`, which is fair only if
+  // every shape has material in every slice. A shape whose whole price range
+  // lands inside ONE slice can therefore never reach its allowance: measured
+  // 2026-08-13, rhombille runs 2.2 to 3.29 s/cell against a pool spanning past
+  // 20, so all of it sits in slice 0 and it took 2 entries where hex and
+  // floret took 16. That is what emptied rhombille out of the endless pool and
+  // reddened `the endless bins carry all SEVEN shapes`.
+  //
+  // So the quota stays as the FIRST pass, keeping the per-slice balance it was
+  // written for, and a second pass tops up only the shapes that finished under
+  // their global allowance, from whatever slices they actually occupy. A shape
+  // that already spread across the range is untouched, so this can only add
+  // entries for the concentrated shapes and never re-balance away from the
+  // spread ones. It deliberately spends past `perSlice`, which is a diversity
+  // device within a slice rather than a contract about pool size.
+  if (Number.isFinite(maxPerShape)) {
+    const held = new Map();
+    for (const e of out) held.set(e.shape, (held.get(e.shape) || 0) + 1);
+    for (const shape of SHAPES) {
+      let room = maxPerShape - (held.get(shape) || 0);
+      if (room <= 0) continue;
+      // The same round-robin over modifier sets the slices use, so a
+      // topped-up shape keeps its modifier spread instead of filling with
+      // one stack.
+      const buckets = new Map();
+      for (const e of ok) {
+        if (e.shape !== shape) continue;
+        const k = [...e.gimmicks].sort().join('+');
+        if (!buckets.has(k)) buckets.set(k, []);
+        buckets.get(k).push(e);
+      }
+      for (const list of buckets.values()) list.sort((x, y) => x.cells - y.cells);
+      const keys = [...buckets.keys()];
+      for (let round = 0; room > 0; round++) {
+        let progressed = false;
+        for (const k of keys) {
+          if (room <= 0) break;
+          const list = buckets.get(k);
+          if (round >= list.length) continue;
+          const e = list[round];
+          const face = specFace({ shape: e.shape, rows: e.a, cols: e.b, M: e.a, N: e.b, mines: e.mines, gimmicks: e.gimmicks });
+          if (taken.has(face)) continue;
+          taken.add(face);
+          out.push(e);
+          room--;
+          progressed = true;
+        }
+        if (!progressed) break;
+      }
+    }
+  }
+
   out.sort((a, b) => a.ppc - b.ppc);
   return out;
 }
