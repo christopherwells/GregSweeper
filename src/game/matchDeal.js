@@ -24,7 +24,9 @@
 
 import { state } from '../state/gameState.js';
 import { fetchLibraryJson } from './climbDeal.js';
-import { parseMatchIndex, resolveMatchPicks } from '../logic/matchRules.js';
+import {
+  parseMatchIndex, parseMatchSummary, matchShardFile, resolveMatchPicks,
+} from '../logic/matchRules.js';
 import { planMatchDeal, currentSteerMissions } from '../logic/matchSteering.js';
 import { loadExperimentTarget } from '../logic/experimentDesign.js';
 import { getMatchSeen, setMatchSeen } from '../storage/statsStorage.js';
@@ -39,27 +41,62 @@ const STEER_LOAD_TIMEOUT_MS = 1500;
 
 // RELATIVE on purpose: the app serves at / in production and /test/ on the
 // test branch, and a root-anchored path would cross the two.
-export function matchIndexUrl() {
-  return 'scripts/data/match-library/match-index.json';
+const LIB = 'scripts/data/match-library';
+
+export function matchSummaryUrl() {
+  return `${LIB}/match-summary.json`;
+}
+
+export function matchShardUrl(shape) {
+  return `${LIB}/${matchShardFile(shape)}`;
 }
 
 export function matchPageUrl(page) {
-  return `scripts/data/match-library/match-${String(page).padStart(3, '0')}.json`;
+  return `${LIB}/match-${String(page).padStart(3, '0')}.json`;
 }
 
-// One index fetch per session: the setup sheet reads it for live counts and
-// the deal reads it moments later. The SW runtime-caches the file too, so
-// this is a courtesy, not the offline story.
-let _indexRows = null;
+// TWO FETCHES, SIZED TO THE TWO QUESTIONS (see the split's note in
+// matchRules.js). The sheet asks how many boards fit and takes the SUMMARY,
+// which is a few KB and does not grow with the library's depth. The deal asks
+// for rows and takes one SHARD per shape in the host's filter, so a two-shape
+// run never pays for the other five.
+//
+// Both are cached per session: the sheet reads the summary on open and the
+// deal reads it again moments later, and a host who tweaks their rules
+// re-counts without a second fetch. The SW runtime-caches the files too, so
+// this is a courtesy rather than the offline story.
+let _corners = null;
+const _shardRows = new Map();
 
-/** The index's filter rows, or null when it cannot be fetched or parsed. */
-export async function fetchMatchIndexRows() {
-  if (_indexRows) return _indexRows;
-  const index = await fetchLibraryJson(matchIndexUrl());
-  const rows = parseMatchIndex(index);
-  if (!rows || rows.length === 0) return null;
-  _indexRows = rows;
-  return rows;
+/** The summary's corner counts, or null when it cannot be fetched or parsed. */
+export async function fetchMatchCorners() {
+  if (_corners) return _corners;
+  const corners = parseMatchSummary(await fetchLibraryJson(matchSummaryUrl()));
+  if (!corners || corners.length === 0) return null;
+  _corners = corners;
+  return corners;
+}
+
+/**
+ * The filter rows for `shapes`, fetched one shard at a time and concatenated.
+ *
+ * A shard that is missing or malformed contributes NOTHING rather than
+ * failing the deal: the other shapes in the filter are still dealable, and a
+ * short deal says so through the supply line it already has. Null comes back
+ * only when nothing at all could be read, which is the same signal the whole
+ * index used to give.
+ */
+export async function fetchMatchIndexRows(shapes) {
+  const want = [...new Set(shapes || [])];
+  if (want.length === 0) return null;
+  await Promise.all(want
+    .filter((s) => !_shardRows.has(s))
+    .map(async (shape) => {
+      const rows = parseMatchIndex(await fetchLibraryJson(matchShardUrl(shape)));
+      _shardRows.set(shape, rows || []);
+    }));
+  const rows = want.flatMap((s) => _shardRows.get(s) || []);
+  return rows.length ? rows : null;
 }
 
 /** Fetch one page's board list, keyed by page number. Null on any failure. */
@@ -77,7 +114,10 @@ async function fetchPage(page) {
  * the match or a page fetch fails mid-deal; the caller owns saying so.
  */
 export async function dealMatchEntries(rules) {
-  const rows = await fetchMatchIndexRows();
+  // Only the shapes the rules can reach: everything else is payload the deal
+  // would filter straight back out (planMatchDeal applies eligibleRows itself,
+  // and its shape test is the same one).
+  const rows = await fetchMatchIndexRows(rules.shapes);
   if (!rows) return null;
 
   // Mission steering (matchSteering.js) prefers, for at most floor(N/5) of the

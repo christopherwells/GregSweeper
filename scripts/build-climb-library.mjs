@@ -293,6 +293,18 @@ function candidate(spec, seed) {
 const ENDLESS_TARGET_BOARDS = 500;
 const ENDLESS_PAGE_SIZE = 16;          // ~150-250KB per page at endless payload sizes
 const ENDLESS_FACE_CAP = 2;            // dims/mines/stack variety, the ladder's own bar
+// His even-coverage ruling, as a number: no shape may hold fewer than this
+// many endless boards. Named here rather than in the test that enforces it,
+// because the nightly RE-BIN has to reserve against it, and a floor only the
+// test knows about is a floor the tool that has to satisfy it cannot see.
+export const ENDLESS_SHAPE_FLOOR = 25;
+// And what the nightly re-bin RESERVES toward, which is deliberately above the
+// floor. Reserving exactly the floor leaves a shape one re-price from red: a
+// board that a refit prices under ENDLESS_PAR_FLOOR cannot be handed back to
+// endless, so the repair pass has nothing to repair with and the remedy jumps
+// straight to an hours-long rebuild. This is the same headroom lesson the spec
+// search learned on its generation cap, its ppc floor and its par ceiling.
+export const ENDLESS_SHAPE_TARGET = Math.ceil(ENDLESS_SHAPE_FLOOR * 1.2);
 const ENDLESS_GL = [70, 100, 120];     // the hard end of the intensity dial
 const ENDLESS_DENSITIES = [0.24, 0.28, 0.32, 0.36];
 // Best-of-N hardness selection, the library's whole reason to exist. Sized

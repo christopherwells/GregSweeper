@@ -235,6 +235,25 @@ export function endlessPpcFloor(shape) {
   return ENDLESS_PPC_FLOOR_BY_SHAPE[shape] ?? ENDLESS_PPC_FLOOR;
 }
 
+// THE MARGIN THE FLOOR IS REALLY APPLIED AT, in one place because it was in
+// three: the emitter admitted at 1.03, the pool's own test asserted 1.02, and
+// the nightly re-price judged migration on the BARE floor. A spec measured at
+// 3 seeds during the search and re-priced from its 16-seed median can land
+// anywhere in that gap, so an entry could be admitted by the emitter, kept by
+// the re-price, and refused by the test on the same commit, which is what
+// happened to two cairo entries on 2026-08-13.
+//
+// One number, read by all three. It is the same headroom the generation cap
+// and the par ceiling carry, and for the same reason: price varies by seed
+// sample, so admission wants room above the ruling rather than a measurement
+// that merely passed.
+export const ENDLESS_PPC_FLOOR_MARGIN = 1.03;
+
+/** The floor an entry must clear to be ADMITTED to, or KEPT in, the endless pool. */
+export function endlessPpcAdmission(shape) {
+  return endlessPpcFloor(shape) * ENDLESS_PPC_FLOOR_MARGIN;
+}
+
 // ── The two dedupe keys ────────────────────────────────────────────────
 
 /**

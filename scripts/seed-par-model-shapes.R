@@ -16,6 +16,15 @@
 # anyway. This script exists so the seeding could land reviewed in a PR
 # rather than waiting for the next nightly to write it unattended.
 #
+# It is also the RECOVERY TOOL, and that is no longer hypothetical. Every
+# deviation now waits for NEW_FEATURE_DATA_THRESHOLD nonzero fit rows before
+# its posterior ships (see the lab-seeded branch in refit-par-model.R), so
+# below that threshold the composed blocks ARE base + lab centers and this
+# script writes exactly what the next nightly will. Run it whenever a refit
+# has to be corrected in place rather than waited out: on 2026-08-13 the fit
+# re-priced rhombille 62% cheaper on a single live row, and every frozen
+# artifact priced against that shape went red.
+#
 # Run from the repo root: Rscript scripts/seed-par-model-shapes.R
 
 suppressPackageStartupMessages({
@@ -108,8 +117,8 @@ shapes_header <- c(
   sprintf("Seeded %s from the Par Lab prior fit: PAR_MODEL base + lab deviation", Sys.Date()),
   "centers (scripts/data/parlab-prior-centers.json; scripts/fit-parlab-priors.qmd;",
   "the 2026-08-03 seeding ruling). The nightly refit recomposes this block on",
-  "every fit night: fitted posterior where live rows exist, the lab center",
-  "where none do, 0 for unseeded terms until they earn out."
+  "every fit night: the lab center until a term's own column carries 20 nonzero",
+  "fit rows, then its fitted posterior; 0 for unseeded terms until they earn out."
 )
 shapes_block <- emit_shape_models_block("PAR_MODEL_SHAPES", shapes_header,
                                         lapply(shape_models, ordered_model_fields))

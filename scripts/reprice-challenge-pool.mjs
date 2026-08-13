@@ -22,9 +22,19 @@
 // in place, and anything that genuinely crosses a boundary is reported and
 // fails the run rather than being silently dropped.
 //
-//   node scripts/reprice-challenge-pool.mjs --capture   # (re)build the feature store
+//   node scripts/reprice-challenge-pool.mjs --capture           # rebuild the whole store
+//   node scripts/reprice-challenge-pool.mjs --capture --merge   # measure only new faces
 //   node scripts/reprice-challenge-pool.mjs --check     # report drift, write nothing
 //   node scripts/reprice-challenge-pool.mjs             # re-price and rewrite the pool
+//
+// MERGE EXISTS BECAUSE A RE-EMIT IS USUALLY A FEW FACES, NOT A NEW POOL.
+// Capture builds SEEDS boards per face and the dear lattices take seconds
+// each, so rebuilding 900 entries to learn about 44 of them is hours spent
+// re-deriving numbers that cannot have changed: the stored vector is the
+// median DRAW's features, and generation is deterministic and
+// model-independent. Merge measures the absent faces at the store's OWN seed
+// count and refuses to run at any other, because the whole value of the store
+// is that every entry in it has one provenance.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -34,7 +44,7 @@ import { LADDER_POOL, ENDLESS_POOL, CHALLENGE_POOL } from '../src/logic/challeng
 import { buildChallenge250Board, challengeBoardSeed } from '../src/logic/challenge250Builder.js';
 import { predictPar } from '../src/logic/dailyFeatures.js';
 import {
-  specFace, PAR_CEILING_SECONDS, endlessParCeiling, endlessPpcFloor,
+  specFace, PAR_CEILING_SECONDS, endlessParCeiling, endlessPpcFloor, endlessPpcAdmission,
 } from '../src/logic/challengeRules.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
 import { referenceScale } from './ladder-reference-cohort.mjs';
@@ -45,6 +55,7 @@ const POOL_PATH = path.join(__dirname, '..', 'src', 'logic', 'challengePool.js')
 
 const args = process.argv.slice(2);
 const CAPTURE = args.includes('--capture');
+const MERGE = args.includes('--merge');
 const CHECK = args.includes('--check');
 const argVal = (n, d) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : d; };
 
@@ -96,8 +107,41 @@ const specOf = (e) => (e.shape === 'rect'
 function capture() {
   const out = {};
   const rows = shipped();
-  let n = 0, restated = 0;
+  let n = 0, restated = 0, kept = 0;
   const scale = referenceScale();
+
+  // MERGE: keep every stored vector and measure only what is missing. The
+  // stored features are re-priced below either way, so a merged store is
+  // internally consistent under today's model rather than half under
+  // yesterday's.
+  if (MERGE) {
+    let prior;
+    try {
+      prior = JSON.parse(fs.readFileSync(FEATURES_PATH, 'utf8'));
+    } catch {
+      console.error(`--merge needs an existing store at ${path.relative(process.cwd(), FEATURES_PATH)}`);
+      process.exit(1);
+    }
+    if (prior.seeds !== SEEDS) {
+      console.error(`the store was captured at ${prior.seeds} seeds and this run is at ${SEEDS}. `
+        + `Re-run with --seeds ${prior.seeds}, or drop --merge to rebuild the whole store: `
+        + 'a store with two seed counts in it has no single provenance, which is the '
+        + 'exact confusion the derive-the-price-here rule was written to end.');
+      process.exit(1);
+    }
+    // Carried over, but only what the pool still SHIPS. A store entry for a
+    // face nobody can be dealt is not merely harmless payload: the store is
+    // what the next reader reasons about, so a stale face is a board it
+    // believes in. A full --capture drops them by construction (it walks the
+    // shipped list); merge has to drop them on purpose.
+    const live = new Set(rows.map(({ e }) => specFace(e)));
+    for (const [face, rec] of Object.entries(prior.entries)) {
+      if (live.has(face)) out[face] = rec;
+    }
+    kept = Object.keys(out).length;
+    const dropped = Object.keys(prior.entries).length - kept;
+    if (dropped) console.log(`  dropped ${dropped} stored entries the pool no longer ships`);
+  }
 
   for (const { e, pool } of rows) {
     const face = specFace(e);
@@ -135,6 +179,20 @@ function capture() {
     if (++n % 50 === 0) console.log(`  ${n}/${rows.length}`);
   }
 
+  // EVERY entry is re-priced from its own stored vector before the store is
+  // written, carried-over ones included. The store stamps ONE model
+  // fingerprint, so a merged store whose kept entries still held yesterday's
+  // prices would be making a claim about them that is not true, and the
+  // faithfulness test reads exactly that claim. Re-pricing is free (no board
+  // is built) and exact, for the monotonicity reason above.
+  const poolOf = new Map(rows.map(({ e, pool }) => [specFace(e), pool]));
+  for (const [face, rec] of Object.entries(out)) {
+    rec.ppc = (predictPar(rec.features) * scale) / rec.cells;
+    // A face that has moved pool since it was captured keeps its vector and
+    // takes its current home, so the field never contradicts the shipped pool.
+    if (poolOf.has(face)) rec.pool = poolOf.get(face);
+  }
+
   fs.mkdirSync(path.dirname(FEATURES_PATH), { recursive: true });
   fs.writeFileSync(FEATURES_PATH, JSON.stringify({
     capturedAt: new Date().toISOString(),
@@ -147,7 +205,9 @@ function capture() {
     note: 'Median-draw feature vectors for every shipped pool entry. Regenerate with --capture whenever the pool composition changes.',
     entries: out,
   }));
-  console.log(`captured ${Object.keys(out).length} entries; ${restated} carried a price of different provenance and were restated`);
+  console.log(`captured ${Object.keys(out).length} entries`
+    + (MERGE ? ` (${kept} carried over, ${n} newly measured)` : '')
+    + `; ${restated} carried a price of different provenance and were restated`);
   console.log('now run: node scripts/reprice-challenge-pool.mjs   (writes the derived prices into the pool)');
 }
 
@@ -218,9 +278,14 @@ function reprice() {
   // rather than shipped somewhere it does not belong, which is the one place
   // this can lose material. It is reported loudly and by face, so a shape
   // quietly bleeding entries is visible on the night it starts.
+  // Judged at the ADMISSION bar, not the bare floor. The emitter admits at
+  // floor x margin and the pool's own test asserts the same, so a re-price
+  // that kept anything above the bare floor left entries in a band all three
+  // disagreed about: admitted by the emitter at its 3-seed cache price, kept
+  // here at the 16-seed re-price, and refused by the test on the same commit.
   const fitsLadder = (p) => p.par <= PAR_CEILING_SECONDS;
   const fitsEndless = (p) => p.par <= endlessParCeiling(p.e.shape)
-    && p.now >= endlessPpcFloor(p.e.shape);
+    && p.now >= endlessPpcAdmission(p.e.shape);
 
   const migrations = [];
   const homeless = [];
@@ -248,44 +313,40 @@ function reprice() {
     console.log('Re-search to replace them: node scripts/search-endless-specs.mjs --absorb');
   }
 
-  // Migration must never empty a shape out of a pool. Losing the last
-  // rhombille endless spec would leave a future endless build unable to make
-  // the shape at all, which is a bigger loss than one entry sitting a little
-  // under its floor.
+  // A SHAPE THAT EMPTIES OUT OF A POOL IS REPORTED, NEVER PINNED.
   //
-  // So the migration is PINNED rather than the write refused. Refusing the
-  // whole file for one shape is the all-or-nothing behaviour that caused the
-  // original problem: every other price stays stale, the ladder keeps
-  // yesterday's numbers and main stays red until a human runs a long search.
-  // Pinning costs one honestly-flagged entry and lets everything else land.
-  // Measured 2026-08-13: rhombille has exactly one endless spec, so this
-  // fires on the first night the policy exists rather than being theoretical.
-  const pinned = [];
-  let settled = false;
-  while (!settled) {
-    settled = true;
-    for (const pool of ['ladder', 'endless']) {
-      const before = new Set(priced.filter((p) => p.pool === pool).map((p) => p.e.shape));
-      const after = new Set(priced.filter((p) => p.finalPool === pool).map((p) => p.e.shape));
-      for (const shape of before) {
-        if (after.has(shape)) continue;
-        // Put the leavers back, cheapest first: whichever is closest to still
-        // qualifying is the one that hurts least to keep.
-        const leavers = priced.filter((p) => p.pool === pool && p.finalPool !== pool
-          && p.e.shape === shape);
-        if (leavers.length === 0) continue;
-        const keep = leavers[0];
-        keep.finalPool = pool;
-        pinned.push(`${keep.face} stays in ${pool}: it is the last ${shape} spec there`);
-        settled = false;
-      }
+  // The first cut of this policy PINNED such a shape's last leaver in place,
+  // on the reasoning that losing the last rhombille endless spec leaves a
+  // future endless build unable to make the shape at all, which is a bigger
+  // loss than one entry sitting a little under its floor. It is not. A pinned
+  // entry is an entry the file says belongs to a pool whose rulings it does
+  // not meet, and the pool's own contract test refuses that — correctly, and
+  // on the refit's own commit, so the pin bought a red main rather than
+  // avoiding one. Weakening the test to let the pin through would be moving
+  // the goalposts on a rule that exists to keep the ladder's prices honest.
+  //
+  // The honest reading is that the model and the cache no longer put that
+  // shape in that pool, which is a true statement worth acting on rather than
+  // hiding. Nothing a PLAYER touches is lost by saying so: the endless pool
+  // feeds the L251+ FALLBACK braid, while the play path is the pre-generated
+  // library, which re-bins the same night and flows boards both ways. So the
+  // remedy is more material, and this names it.
+  const emptied = [];
+  for (const pool of ['ladder', 'endless']) {
+    const before = new Set(priced.filter((p) => p.pool === pool).map((p) => p.e.shape));
+    const after = new Set(priced.filter((p) => p.finalPool === pool).map((p) => p.e.shape));
+    for (const shape of before) {
+      if (!after.has(shape)) emptied.push({ shape, pool });
     }
   }
-  if (pinned.length) {
-    console.log(`\n${pinned.length} migration(s) pinned to keep a shape in its pool:`);
-    for (const p of pinned) console.log(`  ${p}`);
-    console.log('These entries are outside their pool\'s rulings until a re-search replaces them:');
-    console.log('  node scripts/search-endless-specs.mjs --absorb --seeds 10');
+  if (emptied.length) {
+    console.log(`\n${emptied.length} shape(s) no longer have any spec in a pool they used to fill:`);
+    for (const { shape, pool } of emptied) console.log(`  ${shape} is now absent from the ${pool} pool`);
+    console.log('Search for replacements rather than re-shipping the ones that left:');
+    for (const { shape } of emptied) {
+      console.log(`  node scripts/search-endless-specs.mjs --shape ${shape} --seeds 10 --refine`);
+    }
+    console.log('  node scripts/write-challenge-pool.mjs --only endless');
   }
 
   if (CHECK) { console.log('\n--check: nothing written'); return; }

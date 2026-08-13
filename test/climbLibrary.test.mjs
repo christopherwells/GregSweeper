@@ -36,6 +36,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import {
   parFloor, parWindowTop, intakeRules, boardAllowedAtLevel,
   PAR_FLOOR_SHAPE_RELIEF, OUT_DIR, ENDLESS_PAR_FLOOR, ENDLESS_FACE_CAP,
+  ENDLESS_SHAPE_FLOOR, ENDLESS_SHAPE_TARGET,
 } from '../scripts/build-climb-library.mjs';
 import { predictPar } from '../src/logic/dailyFeatures.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
@@ -181,9 +182,40 @@ test('the endless bins carry all SEVEN shapes, Classic included', () => {
   const byShape = new Map();
   for (const b of endlessBoards) byShape.set(b.spec.shape, (byShape.get(b.spec.shape) || 0) + 1);
   for (const s of ['rect', '4.8.8', 'hex', 'cairo', 'floret', 'rhombille', 'deltoidal']) {
-    assert.ok((byShape.get(s) || 0) >= 25,
-      `the endless bins hold ${byShape.get(s) || 0} ${s} boards, under the 25 floor`);
+    assert.ok((byShape.get(s) || 0) >= ENDLESS_SHAPE_FLOOR,
+      `the endless bins hold ${byShape.get(s) || 0} ${s} boards, under the ${ENDLESS_SHAPE_FLOOR} floor`);
   }
+});
+
+test('REGRESSION: the nightly re-bin reserves the endless shape floor before the ladder takes its pick', () => {
+  // 2026-08-13: the refit's bad rhombille prices pushed 344 rhombille boards
+  // out of the endless bins; the re-bin found 194 ladder levels under their
+  // minimum and, on first refusal, handed the ladder every one of them. 118
+  // cleared the 400s endless floor comfortably, so the shape emptied out of a
+  // zone with plenty of material for it and the only thing that noticed was
+  // the test above, whose named remedy is an hours-long rebuild.
+  //
+  // The floor lived only in this file, so the tool that had to satisfy it
+  // could not see it. Both halves are pinned: the constant is EXPORTED by the
+  // producer (a floor two files disagree on is not a floor), and the re-bin
+  // reserves against it BEFORE its placement loop, because reserving after
+  // the ladder has taken first refusal reserves out of an empty pool.
+  assert.equal(typeof ENDLESS_SHAPE_FLOOR, 'number');
+  assert.ok(ENDLESS_SHAPE_TARGET > ENDLESS_SHAPE_FLOOR,
+    'the re-bin must aim above the floor: a shape reserved exactly to it is one re-price from red, '
+    + 'and a board priced under the par floor cannot be handed back to repair it');
+
+  const src = readFileSync(new URL('../scripts/reprice-climb-library.mjs', import.meta.url), 'utf8');
+  assert.ok(src.includes('ENDLESS_SHAPE_TARGET'),
+    'the re-bin must read the shape target rather than restating a number');
+  const reserve = src.indexOf('ENDLESS_SHAPE_TARGET - endlessShapeCount(shape)');
+  // Anchored on what only the LADDER placement does. `for (const b of
+  // homeless)` also opens the duplicate-seed pass, and matching that one made
+  // this assertion fire on correct code.
+  const placement = src.indexOf('const eligible = levels.filter(');
+  assert.ok(reserve > 0 && placement > 0, 'the re-bin no longer has the shape reserved before placement');
+  assert.ok(reserve < placement,
+    'the shape reservation must run BEFORE the ladder placement loop, or it reserves from nothing');
 });
 
 test('the endless bins keep his multi-gimmick variety, heavy stacks included', () => {

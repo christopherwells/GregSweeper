@@ -17,7 +17,7 @@ import assert from 'node:assert/strict';
 
 import {
   CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, TIER_PPC,
-  ENDLESS_SPECS, endlessPpcFloor, ENDLESS_START_LEVEL, ENDLESS_GEN_BUDGET_MS,
+  ENDLESS_SPECS, endlessPpcFloor, endlessPpcAdmission, ENDLESS_START_LEVEL, ENDLESS_GEN_BUDGET_MS,
   ENDLESS_PAR_CEILING_SECONDS, GEN_CAP_MS, endlessPpcRange,
   ENDLESS_GEN_HEADROOM, endlessParCeiling, endlessGenCap, endlessGenBudget, ENDLESS_PPC_FLOOR,
   challengeSpecForLevel, endlessSpecForLevel, blockStartLevel,
@@ -33,19 +33,21 @@ const specKey = (s) => `${s.shape}|${s.rows != null ? `${s.rows}x${s.cols}` : `$
 test('every pool entry is a legal ladder spec at or above the summit', () => {
   assert.ok(ENDLESS_SPECS.length >= 20, `the pool is only ${ENDLESS_SPECS.length} entries deep`);
   for (const s of ENDLESS_SPECS) {
-    // Above the floor WITH MARGIN. The summit is a floor by ruling, and an
-    // entry stored at exactly 3.60 reads under it on a smaller sample — the
-    // validator caught two rect entries doing exactly that at 5 seeds.
-    // Above the POOL FLOOR with margin. The floor (3.5) is deliberately below
-    // the summit the escalation aims at (3.6): his ruling 2026-08-04, drop it
-    // so more boards fit, without making the first endless block easier than
-    // the crown before it. The margin is because an entry stored at exactly
-    // the floor reads under it on a smaller sample.
-    // A shape may carry its own floor where it cannot reach the shared one on
-    // a board a phone can hold (ENDLESS_PPC_FLOOR_BY_SHAPE — his 2026-08-07
-    // ruling that every tiling must be reachable in the endless zone).
+    // ABOVE THE POOL FLOOR, WITH MARGIN. The floor (3.5) sits deliberately
+    // below the summit the escalation aims at (3.6): his ruling 2026-08-04,
+    // drop it so more boards fit without making the first endless block
+    // easier than the crown before it. A shape may carry its own floor where
+    // it cannot reach the shared one on a board a phone can hold
+    // (ENDLESS_PPC_FLOOR_BY_SHAPE, his 2026-08-07 ruling that every tiling
+    // must be reachable in the endless zone).
+    //
+    // The margin exists because an entry stored at exactly the floor reads
+    // under it on a smaller sample, and it is READ rather than restated. It
+    // was a 1.02 literal here against the emitter's 1.03 and the nightly
+    // re-price's bare floor, and two cairo entries in that band were admitted
+    // by one, kept by another and refused by this on the same commit.
     const floor = endlessPpcFloor(s.shape);
-    assert.ok(s.ppc >= floor * 1.02,
+    assert.ok(s.ppc >= endlessPpcAdmission(s.shape),
       `${s.shape}: ppc ${s.ppc} sits on its ${floor} floor with no margin`);
     assert.ok(Number.isInteger(s.mines) && s.mines > 0, `${s.shape}: bad mine count`);
     assert.ok(Number.isInteger(s.cells) && s.cells > 0, `${s.shape}: bad cell count`);
@@ -300,12 +302,27 @@ test('GOLDEN: the first endless block is fixed', () => {
   // landed and six rect entries re-entered under the norm-read harden (see
   // the shape test above), so the deck grew a rect queue and the fair
   // scheduler deals one into the first block.
+  // Moved on 2026-08-13 by the slice-quota fix (#322) finally being applied:
+  // a shape whose whole price range sits inside one slice could never reach
+  // its per-shape allowance, so rhombille and deltoidal came out of the
+  // emitter holding one entry each against hex's and floret's sixteen. The
+  // top-up pass takes all six lattices to sixteen, which is a 32-entry pool
+  // becoming a 95-entry one: whole different pool, whole different draw.
+  //
+  // Classic falls to two entries in the same pass, and that is the honest
+  // reading rather than a regression to fix here: five of the six rect
+  // entries the old pool shipped are marked ok:false in the search cache and
+  // fail generation on re-measurement, surviving only because a harden pass
+  // admitted them before that. Restoring Classic's depth is a targeted
+  // search, not a re-shipped failure. The zone's PLAY path is unaffected
+  // either way — it deals the pre-generated library, where rect holds 81
+  // boards; this pool is the fallback braid behind it.
   assert.deepEqual(got, [
-    'floret:72c:27m:[locked+mirror+sonar]',
-    'hex:104c:38m:[liar+mirror+sonar]',
-    'rect:156c:60m:[liar+mirror+walls]',
-    'cairo:112c:24m:[liar+sonar+compass]',
-    'floret:108c:32m:[walls+liar]',
+    '4.8.8:98c:34m:[liar+mirror+sonar]',
+    'deltoidal:36c:13m:[locked]',
+    'floret:96c:31m:[mystery+worm]',
+    'rhombille:30c:10m:[locked+mirror+sonar]',
+    'hex:110c:38m:[walls+sonar]',
   ]);
 
 

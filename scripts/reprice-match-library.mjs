@@ -18,11 +18,9 @@
 
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { predictPar } from '../src/logic/dailyFeatures.js';
-import { matchIndexRow, matchIndexFeatureKeys, timeBandOf } from '../src/logic/matchRules.js';
+import { timeBandOf } from '../src/logic/matchRules.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
-
-const OUT_DIR = new URL('./data/match-library/', import.meta.url);
-const INDEX_FILE = new URL('match-index.json', OUT_DIR);
+import { OUT_DIR, writeMatchIndexFiles } from './match-index-files.mjs';
 
 function main() {
   const dry = process.argv.includes('--dry-run');
@@ -35,8 +33,6 @@ function main() {
   }
 
   const fp = modelFingerprint();
-  const rows = [];
-  const counts = [];
   let boards = 0;
   let bandMoves = 0;
   let maxShift = 0;
@@ -66,28 +62,19 @@ function main() {
         featureless++;
       }
     }
-    counts.push(page.boards.length);
     page.parModel = fp;
     if (!dry) writeFileSync(url, JSON.stringify(page));
     return { p, page };
   });
 
-  const featureKeys = matchIndexFeatureKeys(loaded.flatMap(({ page }) => page.boards));
-  for (const { p, page } of loaded) {
-    page.boards.forEach((b, i) => rows.push(matchIndexRow(p, i, b, featureKeys)));
-  }
-
-  const index = {
-    parModel: fp,
-    boards,
-    pages: pageNames.length,
-    counts,
-    featureKeys,
-    rows,
-  };
-  if (!dry) writeFileSync(INDEX_FILE, JSON.stringify(index));
+  // Rebuilt from the pages just rewritten, so the index can never describe a
+  // board the pages no longer hold. In place, as ever: a board keeps its
+  // page and its position, because `page:idx` is the seen-cycle key on every
+  // device and moving one silently resets a player's no-repeat record.
+  const written = writeMatchIndexFiles(loaded.map(({ page }) => page.boards), fp, { dry });
 
   console.log(`reprice-match-library: ${boards} boards over ${pageNames.length} pages`
+    + ` in ${Object.keys(written.shards).length} shards, ${written.corners} corners,`
     + ` under model ${fp}; ${bandMoves} changed time band,`
     + ` largest par shift ${maxShift.toFixed(1)}s`
     + (featureless ? `, ${featureless} kept their stored par (no usable features)` : '')

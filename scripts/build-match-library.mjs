@@ -46,12 +46,12 @@ import { CHALLENGE_POOL } from '../src/logic/challengePool.js';
 import { specFace, CLIMB_MIN_DEDUCTIONS } from '../src/logic/challenge250.js';
 import { TILING_TYPES } from '../src/logic/tilingGeometry.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
-import { matchIndexRow, matchIndexFeatureKeys } from '../src/logic/matchRules.js';
+import {
+  OUT_DIR, matchPageFile as pageFile, writeMatchIndexFiles,
+} from './match-index-files.mjs';
 
-export const OUT_DIR = new URL('./data/match-library/', import.meta.url);
-const INDEX_FILE = new URL('match-index.json', OUT_DIR);
+export { OUT_DIR };
 const CACHE_FILE = new URL('./data/match-build-cache.json', import.meta.url);
-const pageFile = (p) => new URL(`match-${String(p).padStart(3, '0')}.json`, OUT_DIR);
 
 export const MATCH_PAGE_SIZE = 16;
 // Two boards per spec: the seen-cycle repeats a board only after exhausting
@@ -121,29 +121,14 @@ export function emitMatchLibrary(boards, { dry = false } = {}) {
     }
   }
   const fp = modelFingerprint();
-  // The feature header is derived from the boards themselves, so a new
-  // feature key reaches the index with no edit here (matchRules.js).
-  const featureKeys = matchIndexFeatureKeys(pages.flat());
-  const rows = [];
-  pages.forEach((page, p) => {
-    page.forEach((b, i) => rows.push(matchIndexRow(p, i, b, featureKeys)));
-  });
-  const index = {
-    parModel: fp,
-    boards: rows.length,
-    pages: pages.length,
-    counts: pages.map((p) => p.length),
-    featureKeys,
-    rows,
-  };
   if (!dry) {
     mkdirSync(OUT_DIR, { recursive: true });
     pages.forEach((boards_, p) => {
       writeFileSync(pageFile(p), JSON.stringify({ page: p, parModel: fp, boards: boards_ }));
     });
-    writeFileSync(INDEX_FILE, JSON.stringify(index));
   }
-  return { pages: pages.length, boards: rows.length };
+  const written = writeMatchIndexFiles(pages, fp, { dry });
+  return { pages: written.pages, boards: written.boards };
 }
 
 async function main() {

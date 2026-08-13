@@ -24,7 +24,7 @@ import { hideTitleScreen } from './titleScreen.js';
 import { launchMatch, resumeMatch } from '../game/modeManager.js';
 import { canResumeMode } from '../game/gamePersistence.js';
 import { loadStats, loadGameState } from '../storage/statsStorage.js';
-import { fetchMatchIndexRows } from '../game/matchDeal.js';
+import { fetchMatchCorners } from '../game/matchDeal.js';
 import { shapePatchSVG } from '../logic/shapeIntro.js';
 import { tilingLabel, CLASSIC_SHAPE_LABEL } from '../logic/coastlineLink.js';
 import { getGimmickDefs } from '../logic/gimmicks.js';
@@ -32,17 +32,20 @@ import { gimmickSpriteImgHTML, uiSpriteImgHTML } from './spriteLoader.js';
 import {
   MATCH_BOARD_MIN, MATCH_BOARD_MAX, MATCH_TIME_BANDS, MATCH_DENSITY_BANDS,
   matchUnlocks, matchUnlockLevel, defaultMatchRules, sanitizeMatchRules,
-  eligibleRows,
+  countEligibleCorners,
 } from '../logic/matchRules.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
 
 const RULES_KEY = 'minesweeper_match_rules';
 
-// The sheet's live working copy, and the index rows behind the supply
-// count. Both are session state, not storage: the rules PERSIST (a player
-// who likes hexes should not rebuild that every time), the rows do not.
+// The sheet's live working copy, and the summary's corner counts behind the
+// supply line. Both are session state, not storage: the rules PERSIST (a
+// player who likes hexes should not rebuild that every time), the counts do
+// not. COUNTS rather than rows, because a count is all this surface renders,
+// and the corner summary does not grow with the library's depth the way a
+// row-per-board index does (see the split's note in matchRules.js).
 let _rules = null;
-let _rows = null;
+let _corners = null;
 
 function loadSavedRules() {
   try {
@@ -169,12 +172,12 @@ function renderSupply() {
   const el = $('#match-supply');
   const startBtn = $('#match-start');
   if (!el) return;
-  if (!_rows) {
+  if (!_corners) {
     el.textContent = 'Checking which boards fit…';
     if (startBtn) startBtn.disabled = true;
     return;
   }
-  const n = eligibleRows(_rows, _rules).length;
+  const n = countEligibleCorners(_corners, _rules);
   if (n === 0) {
     el.innerHTML = `<span class="match-supply-empty">No boards fit these rules yet.`
       + ` Try another shape or length.</span>`;
@@ -347,14 +350,14 @@ export function openMatchSetup() {
   import('./matchLobby.js')
     .then((m) => m.renderMatchReview())
     .catch((err) => reportCaughtError('match-review-open', err));
-  // The index arrives after the sheet paints; the supply line says so
+  // The summary arrives after the sheet paints; the supply line says so
   // while it is in flight and never shows a zero it has not measured.
-  fetchMatchIndexRows().then((rows) => {
-    _rows = rows;
+  fetchMatchCorners().then((corners) => {
+    _corners = corners;
     renderSupply();
   }).catch((err) => {
-    reportCaughtError('match-index-fetch', err);
-    _rows = null;
+    reportCaughtError('match-summary-fetch', err);
+    _corners = null;
     renderSupply();
   });
 }

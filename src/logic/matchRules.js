@@ -290,6 +290,107 @@ export function parseMatchIndex(index) {
   return rows;
 }
 
+// ── The SPLIT index: one summary, one shard per shape ───────────────────
+//
+// THE INDEX WAS THE THING THAT DID NOT SCALE. Every client fetched
+// match-index.json WHOLE to open the setup sheet (for the live counts) and
+// again at deal time, against one row per stored board: 349 KB / 71 KB
+// gzipped at 2,759 boards. His depth target is ~100 boards per (shape x
+// modifier x length x mines), which is 819,000 boards and a 21 MB gzipped
+// index. The PAGES were already sharded by shape and fetched on demand, so
+// the index was the only monolith left and the only thing standing between
+// the library and real depth.
+//
+// It splits along the two questions clients actually ask, which have very
+// different sizes:
+//
+//   THE SHEET asks "how many boards fit these rules", and only ever needs a
+//   COUNT. A count per corner is bounded by the library's VARIETY (shape x
+//   modifier set x time band x density band), not by its depth: 347 corners
+//   at 2,759 boards, and still 347 at 819,000, because adding boards to a
+//   corner moves a number rather than adding a row. That is the whole reason
+//   this is the fix rather than a smaller row format.
+//
+//   THE DEAL asks for the eligible rows themselves, and only for the shapes
+//   in the host's filter. So the rows go into one shard per shape and a deal
+//   fetches only what its rules can reach.
+//
+// The corner key is derived from boardMatchesRules' own decisions, so the
+// summed count and the filtered length cannot disagree; test/matchLibrary
+// asserts that equality over the shipped library, which is what keeps this a
+// single definition rather than a parallel one.
+
+/** Filename for a shape's index shard, relative to the library directory. */
+export function matchShardFile(shape) {
+  return `match-index-${shape}.json`;
+}
+
+/** The corner a row falls in: exactly the four things boardMatchesRules tests. */
+export function matchCornerKey(row) {
+  return [row.shape, (row.mods || []).slice().sort().join('+'),
+    timeBandOf(row.par), densityBandOf(row.mines, row.cells)];
+}
+
+/**
+ * The summary's `corners` payload: one [shape, mods, time, density, n] tuple
+ * per occupied corner, sorted so the file is stable across rebuilds (a
+ * reordered file is a diff nobody can read and a cache nobody can reuse).
+ */
+export function buildMatchCorners(rows) {
+  const n = new Map();
+  for (const r of rows || []) {
+    const k = JSON.stringify(matchCornerKey(r));
+    n.set(k, (n.get(k) || 0) + 1);
+  }
+  return [...n.entries()]
+    .map(([k, count]) => [...JSON.parse(k), count])
+    .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)
+      || (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0)
+      || (a[2] < b[2] ? -1 : a[2] > b[2] ? 1 : 0)
+      || (a[3] < b[3] ? -1 : a[3] > b[3] ? 1 : 0));
+}
+
+/**
+ * Read a summary file back. Null when it is missing or malformed, so a caller
+ * can fall back rather than render a count it did not measure.
+ */
+export function parseMatchSummary(summary) {
+  if (!summary || !Array.isArray(summary.corners)) return null;
+  const corners = [];
+  for (const c of summary.corners) {
+    if (!Array.isArray(c) || c.length < 5) return null;
+    const [shape, mods, time, density, count] = c;
+    if (typeof shape !== 'string' || typeof mods !== 'string') return null;
+    if (typeof time !== 'string' || typeof density !== 'string') return null;
+    if (!Number.isFinite(count) || count < 0) return null;
+    corners.push({ shape, mods: mods ? mods.split('+') : [], time, density, count });
+  }
+  return corners;
+}
+
+/**
+ * How many stored boards a rule set can reach, from the summary alone.
+ *
+ * MUST equal `eligibleRows(rows, rules).length`. The modifier test is the
+ * reason this is a sum rather than a lookup: a board is eligible when its
+ * modifiers are a SUBSET of the allowed ones, so a corner's boards count
+ * toward every rule set that is a superset of that corner's own set, and
+ * there is no single corner to read.
+ */
+export function countEligibleCorners(corners, rules) {
+  const shapes = new Set(rules.shapes || []);
+  const allowed = new Set(rules.mods || []);
+  let n = 0;
+  for (const c of corners || []) {
+    if (!shapes.has(c.shape)) continue;
+    if (c.mods.some((m) => !allowed.has(m))) continue;
+    if (rules.time !== 'any' && c.time !== rules.time) continue;
+    if (rules.density !== 'any' && c.density !== rules.density) continue;
+    n += c.count;
+  }
+  return n;
+}
+
 // ── Eligibility + pick ──────────────────────────────────────────────────
 
 export function boardMatchesRules(row, rules) {

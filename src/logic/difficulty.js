@@ -156,16 +156,16 @@ export const PAR_MODEL_TIMED = {
 // The block between the markers is refit-owned, same contract as PAR_MODEL.
 // PAR_MODEL_SHAPES:START
 export const PAR_MODEL_SHAPES = {
-  // Last refit: 2026-08-13 | composed: PAR_MODEL base + per-shape deviations
-  // Deviations: fitted posterior on shapes with live rows; the Par Lab center
-  // (scripts/data/parlab-prior-centers.json, the 2026-08-03 seeding ruling)
-  // where none do; 0 for unseeded terms until 20 nonzero fit rows
-  // (NEW_FEATURE_DATA_THRESHOLD) earn them.
+  // Seeded 2026-08-13 from the Par Lab prior fit: PAR_MODEL base + lab deviation
+  // centers (scripts/data/parlab-prior-centers.json; scripts/fit-parlab-priors.qmd;
+  // the 2026-08-03 seeding ruling). The nightly refit recomposes this block on
+  // every fit night: the lab center until a term's own column carries 20 nonzero
+  // fit rows, then its fitted posterior; 0 for unseeded terms until they earn out.
   '4.8.8': {
     scale: 'log',
-    intercept: 2.8322,
-    secPerCell: -0.00366,
-    secPerMineFlag: 0.09480,
+    intercept: 2.8483,
+    secPerCell: -0.00270,
+    secPerMineFlag: 0.09722,
     secPerPatternMove: 0.02268,
     secPerSearchMove: 0.01202,
     secPerWallEdge: 0.00193,
@@ -181,9 +181,9 @@ export const PAR_MODEL_SHAPES = {
   },
   hex: {
     scale: 'log',
-    intercept: 2.6523,
-    secPerCell: -0.00556,
-    secPerMineFlag: 0.10678,
+    intercept: 2.6303,
+    secPerCell: -0.00515,
+    secPerMineFlag: 0.10447,
     secPerPatternMove: 0.02268,
     secPerSearchMove: 0.01202,
     secPerWallEdge: 0.00193,
@@ -199,9 +199,9 @@ export const PAR_MODEL_SHAPES = {
   },
   cairo: {
     scale: 'log',
-    intercept: 2.7457,
-    secPerCell: 0.02782,
-    secPerMineFlag: -0.00627,
+    intercept: 2.6969,
+    secPerCell: 0.02642,
+    secPerMineFlag: -0.00738,
     secPerPatternMove: 0.02268,
     secPerSearchMove: 0.01202,
     secPerWallEdge: 0.00193,
@@ -235,9 +235,9 @@ export const PAR_MODEL_SHAPES = {
   },
   rhombille: {
     scale: 'log',
-    intercept: 3.0347,
-    secPerCell: -0.01843,
-    secPerMineFlag: 0.06926,
+    intercept: 3.0548,
+    secPerCell: -0.00964,
+    secPerMineFlag: 0.11682,
     secPerPatternMove: 0.02268,
     secPerSearchMove: 0.01202,
     secPerWallEdge: 0.00193,
@@ -253,9 +253,9 @@ export const PAR_MODEL_SHAPES = {
   },
   deltoidal: {
     scale: 'log',
-    intercept: 3.4296,
-    secPerCell: -0.00490,
-    secPerMineFlag: 0.10770,
+    intercept: 3.4933,
+    secPerCell: -0.00149,
+    secPerMineFlag: 0.11953,
     secPerPatternMove: 0.02268,
     secPerSearchMove: 0.01202,
     secPerWallEdge: 0.00193,

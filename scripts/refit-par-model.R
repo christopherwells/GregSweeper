@@ -2230,24 +2230,50 @@ if (fit_method == "brms-ranef") {
   shape_dev_summary <- list()
   earned_shape_devs <- list()
   for (nm in intersect(SHAPE_DEV_NAMES, rownames(fe_all))) {
-    shape_dev_summary[[nm]] <- list(
-      mean = round(as.numeric(fe_all[nm, "Estimate"]), 4),
-      sd   = round(as.numeric(fe_all[nm, "Est.Error"]), 4)
-    )
     n_dev <- sum(df_fit[[nm]] != 0, na.rm = TRUE)
+    # nRows rides the summary because the SHIPPED value cannot be reproduced
+    # without it: a reader holding only {mean, sd} cannot tell an earned
+    # posterior from one the guard below replaced with its lab center, and the
+    # contract test has to be able to tell (it re-derives difficulty.js from
+    # this row plus the lab file). A row that omits it predates the guard and
+    # is read as unearned, which is the conservative direction.
+    shape_dev_summary[[nm]] <- list(
+      mean  = round(as.numeric(fe_all[nm, "Estimate"]), 4),
+      sd    = round(as.numeric(fe_all[nm, "Est.Error"]), 4),
+      nRows = n_dev
+    )
     if (n_dev >= NEW_FEATURE_DATA_THRESHOLD) {
       earned_shape_devs[[nm]] <- as.numeric(fe_all[nm, "Estimate"])
       message(sprintf("  shape deviation %s: %+.5f (earned on %d nonzero rows)",
                       nm, earned_shape_devs[[nm]], n_dev))
     } else if (!is.null(lab_seed_devs[[nm]])) {
-      # Lab-seeded terms have no 20-row guard: that guard exists to stop a
-      # bare prior median reaching predictPar, and a lab center is not a bare
-      # prior — it is 86 boards of designed data. Below the threshold the
-      # posterior is the lab prior gently updated by the first live rows,
-      # which is exactly what should ship.
-      earned_shape_devs[[nm]] <- as.numeric(fe_all[nm, "Estimate"])
-      message(sprintf("  shape deviation %s: %+.5f (lab-seeded prior, %d live rows)",
-                      nm, earned_shape_devs[[nm]], n_dev))
+      # A LAB-SEEDED TERM SHIPS ITS LAB CENTER UNTIL IT EARNS ITS POSTERIOR,
+      # on the same threshold every other deviation answers to.
+      #
+      # This branch used to ship the fitted posterior with no row guard, on
+      # the reasoning that the guard exists to stop a bare prior median
+      # reaching predictPar and a lab center is 86 boards of designed data,
+      # so the posterior below the threshold would be the lab prior gently
+      # updated by the first live rows. That holds only while the prior is
+      # narrow enough to do the anchoring, and rhombille's is not: the lab
+      # measured it as its noisiest shape (sd 0.181 on the totalMines
+      # interaction against ~0.06 for the others), and his doubling ruling
+      # widens that to 0.361. On 2026-08-13 ONE live rhombille board moved
+      # both of its core deviations far enough, in cancelling directions, to
+      # re-price the shape 62% cheaper. A 72-cell board fell from 110s to
+      # 22s, out of the daily band and under the weekly floor, and the frozen
+      # artifacts calibrated to it (band configs, spec pool, climb and match
+      # libraries) all broke on the refit's own commit.
+      #
+      # So the guard is uniform now, and his two seeding rulings still hold
+      # exactly: a lattice prices as ITSELF from the day the rotation flips
+      # (ruling 1: the center ships, never parity), and live data takes over
+      # at doubled width (ruling 3) once there is enough of it to be evidence
+      # rather than an anecdote. The prior still does its job in the fit; it
+      # is only the SHIPPED number that waits.
+      earned_shape_devs[[nm]] <- lab_seed_devs[[nm]]$mean
+      message(sprintf("  shape deviation %s: %+.5f (lab center; %d of %d live rows)",
+                      nm, earned_shape_devs[[nm]], n_dev, NEW_FEATURE_DATA_THRESHOLD))
     } else {
       message(sprintf("  shape deviation %s: unearned (%d nonzero rows; need %d) — shipping 0",
                       nm, n_dev, NEW_FEATURE_DATA_THRESHOLD))
@@ -2886,11 +2912,11 @@ new_src <- patch_js_markers(new_src, "// TIMED_PAR_MODEL:START",
 shapes_header <- c(
   sprintf("Last refit: %s | composed: PAR_MODEL base + per-shape deviations",
           Sys.Date()),
-  "Deviations: fitted posterior on shapes with live rows; the Par Lab center",
-  "(scripts/data/parlab-prior-centers.json, the 2026-08-03 seeding ruling)",
-  sprintf("where none do; 0 for unseeded terms until %d nonzero fit rows",
+  "Deviations: the Par Lab center (scripts/data/parlab-prior-centers.json,",
+  sprintf("the 2026-08-03 seeding ruling) until a term's own column carries %d",
           NEW_FEATURE_DATA_THRESHOLD),
-  "(NEW_FEATURE_DATA_THRESHOLD) earn them."
+  "nonzero fit rows (NEW_FEATURE_DATA_THRESHOLD), then its fitted posterior;",
+  "0 for unseeded terms until the same threshold earns them."
 )
 shapes_block <- emit_shape_models_block("PAR_MODEL_SHAPES", shapes_header,
                                         lapply(shape_models, ordered_model_fields))

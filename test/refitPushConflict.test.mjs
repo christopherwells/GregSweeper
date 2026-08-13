@@ -70,7 +70,7 @@ test('the workflow re-derives with the commands this module names', () => {
 
 test('a conflict confined to generated data is auto-resolvable', () => {
   const v = classifyConflicts([
-    'scripts/data/match-library/match-index.json',
+    'scripts/data/match-library/match-summary.json',
     'scripts/data/climb-library/level-030.json',
     'src/logic/challengePool.js',
   ]);
@@ -79,9 +79,14 @@ test('a conflict confined to generated data is auto-resolvable', () => {
   assert.deepEqual(v.unexpected, []);
 });
 
-test('THE INCIDENT ITSELF: match-index.json alone resolves', () => {
-  const v = classifyConflicts(['scripts/data/match-library/match-index.json']);
-  assert.equal(v.resolvable, true, 'the exact file that threw away 2026-08-13');
+test('THE INCIDENT ITSELF: a lone match-library index file resolves', () => {
+  const v = classifyConflicts(['scripts/data/match-library/match-summary.json']);
+  assert.equal(v.resolvable, true,
+    // The 2026-08-13 conflict was in match-index.json, which the index split
+    // replaced with match-summary.json plus per-shape shards. The incident is
+    // the same one; the fixture names a file the producer can still emit,
+    // because a fixture for a file nothing writes proves nothing.
+    'the match library index is derived data and a conflict in it is resolvable');
 });
 
 test('a conflict touching anything else is REFUSED, not papered over', () => {
@@ -91,7 +96,7 @@ test('a conflict touching anything else is REFUSED, not papered over', () => {
     'src/main.js',                      // not the refit's at all
     'CLAUDE.md',
   ]) {
-    const v = classifyConflicts(['scripts/data/match-library/match-index.json', path]);
+    const v = classifyConflicts(['scripts/data/match-library/match-summary.json', path]);
     assert.equal(v.resolvable, false, `${path} must not be auto-resolved`);
     assert.deepEqual(v.unexpected, [path]);
   }

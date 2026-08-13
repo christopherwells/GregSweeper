@@ -40,7 +40,7 @@ import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import {
   parFloor, parWindowTop, hardFloor, minBoardsFor,
   intakeRules, boardAllowedAtLevel, PAR_FLOOR_SHAPE_RELIEF, OUT_DIR,
-  ENDLESS_PAR_FLOOR, ENDLESS_FACE_CAP, ENDLESS_INDEX,
+  ENDLESS_PAR_FLOOR, ENDLESS_FACE_CAP, ENDLESS_SHAPE_FLOOR, ENDLESS_SHAPE_TARGET, ENDLESS_INDEX,
 } from './build-climb-library.mjs';
 import { deserializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
@@ -137,10 +137,91 @@ for (const P of endlessPages) {
 }
 console.log(`re-priced: ${movedOut} ladder boards left their window, ${endlessOut} endless boards fell under the ${ENDLESS_PAR_FLOOR}s floor, ${homeless.length - movedOut - endlessOut} were in reserve`);
 
+// A SEED IS A BOARD, so the library may never hold two of one. Conservation
+// is this tool's whole discipline, which makes a duplicate easy to acquire
+// and hard to notice: nothing here ever dropped a board, so a seed banked
+// twice by an earlier pass rode reserve.json indefinitely, unseen because
+// reserve is the one place no uniqueness test looks. Measured on main
+// 2026-08-13: 14 seeds sat in reserve twice, and the moment a placement pass
+// promoted two copies of one into the endless pages the library's own
+// uniqueness test caught it. Dealing the same board twice inside one cycle is
+// exactly what his no-repeat rule forbids, so the extra copies are dropped
+// here, against what is ALREADY placed as well as within the movers.
+const held = new Set();
+for (const L of levels) for (const b of L.json.boards) held.add(b.seed);
+for (const P of endlessPages) for (const b of P.json.boards) held.add(b.seed);
+const unique = [];
+let dropped = 0;
+for (const b of homeless) {
+  if (held.has(b.seed)) { dropped++; continue; }
+  held.add(b.seed);
+  unique.push(b);
+}
+homeless.length = 0;
+homeless.push(...unique);
+if (dropped) console.log(`dropped ${dropped} duplicate board(s): a seed the library already holds`);
+
 // ── Placement: hardest first, neediest level first ──────────────────────
 const faceCount = (L, face) => L.json.boards.filter((b) => b.face === face).length;
+const endlessShapeCount = (shape) => endlessPages.reduce(
+  (a, P) => a + P.json.boards.filter((b) => b.spec.shape === shape).length, 0);
 const endlessFaceCount = (face) => endlessPages.reduce(
   (a, P) => a + P.json.boards.filter((b) => b.face === face).length, 0);
+
+// ── THE ENDLESS SHAPE FLOOR IS A CLAIM ON THE MOVERS, NOT A HOPE ────────
+//
+// Ladder levels get first refusal on every mover because they carry minimums
+// and windows where endless has only its 400s floor. Endless does carry one
+// more requirement, though, and it lives in the TEST rather than in this
+// tool: every shape holds at least ENDLESS_SHAPE_FLOOR boards, his even-
+// coverage ruling. A constraint the tool cannot see is a constraint it will
+// happily break, and on 2026-08-13 it did: the refit's bad rhombille prices
+// pushed 344 rhombille boards out of endless, the re-bin found 194 ladder
+// levels under their minimum, and first refusal handed every one of them to
+// the ladder. 118 of those cleared the endless floor comfortably, so the
+// shape emptied out of a zone that had plenty of material for it, and the
+// only thing that noticed was a red test naming an hours-long rebuild.
+//
+// So the floor is RESERVED first: before the general pass, each short shape
+// takes back just enough of its own floor-clearing movers to reach the bar,
+// hardest first (the dearest boards are the ones the ladder can least use and
+// the zone most wants). It reserves the MINIMUM, so the ladder still gets
+// first refusal on everything above it, and a shape with no floor-clearing
+// movers to give is left short rather than filled with boards that do not
+// belong there. That case is the one the rebuild really is the remedy for,
+// and it is reported.
+const shapesShort = [...new Set(homeless.map((b) => b.spec.shape))]
+  .map((shape) => ({ shape, need: ENDLESS_SHAPE_TARGET - endlessShapeCount(shape) }))
+  .filter(({ need }) => need > 0);
+let reservedForEndless = 0;
+if (hasEndless) {
+  for (const { shape, need } of shapesShort) {
+    const givers = homeless
+      .filter((b) => b.spec.shape === shape && b.par >= ENDLESS_PAR_FLOOR)
+      .sort((a, b) => b.par - a.par);
+    let took = 0;
+    for (const b of givers) {
+      if (took >= need) break;
+      if (endlessFaceCount(b.face) >= ENDLESS_FACE_CAP) continue;
+      const smallest = endlessPages.reduce((m, P) => (P.json.boards.length < m.json.boards.length ? P : m));
+      smallest.json.boards.push(b);
+      homeless.splice(homeless.indexOf(b), 1);
+      took++;
+      reservedForEndless++;
+    }
+    // Short of the TARGET is only worth saying when it is also short of the
+    // FLOOR: the gap between them is headroom, and reporting a missing
+    // cushion every night as if it were a breach is how a real warning stops
+    // being read.
+    const held = endlessShapeCount(shape);
+    if (held < ENDLESS_SHAPE_FLOOR) {
+      console.log(`  endless holds ${held} ${shape} board(s), under the ${ENDLESS_SHAPE_FLOOR} floor,`
+        + ` and the movers cannot cover it:`
+        + ` node scripts/build-climb-library.mjs --endless --shape ${shape}`);
+    }
+  }
+}
+
 homeless.sort((a, b) => b.hard - a.hard);
 let placed = 0;
 let placedEndless = 0;
@@ -181,10 +262,17 @@ for (const b of homeless) {
 console.log(`re-binned ${placed} to ladder levels, ${placedEndless} to endless pages; ${stillHomeless.length} to reserve`);
 
 // ── Conservation, vintage, write ─────────────────────────────────────────
+//
+// Conservation is counted against the DISTINCT boards that came in, not the
+// rows: dropping a seed the library already holds is not losing a board, it is
+// stopping the library from holding one board twice. Everything else must
+// still balance exactly, so the guard keeps its full strength against the
+// failure it was written for (a board vanishing between the passes).
 const totalOut = levels.reduce((a, L) => a + L.json.boards.length, 0)
   + endlessBoardCount() + stillHomeless.length;
-if (totalOut !== totalIn) {
-  throw new Error(`board conservation violated: ${totalIn} in, ${totalOut} out`);
+if (totalOut !== totalIn - dropped) {
+  throw new Error(`board conservation violated: ${totalIn} in, ${dropped} duplicate(s) dropped, `
+    + `${totalOut} out (expected ${totalIn - dropped})`);
 }
 const fp = modelFingerprint();
 const deficits = [];
