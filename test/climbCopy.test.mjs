@@ -63,6 +63,10 @@ const SANCTIONED_PHRASES = [
   'That Challenge is no longer available.',
   'Could not join that Challenge.',
   'invited you to a Challenge.',
+  // The runs/new-run tablist's accessible name (2026-08-13). It labels the
+  // head-to-head sheet a player reaches from the Challenge card, so it names
+  // that mode and not the ladder.
+  'role="tablist" aria-label="Challenge"',
 ];
 
 // ── index.html: visible text and the attributes a human reads ──────────────

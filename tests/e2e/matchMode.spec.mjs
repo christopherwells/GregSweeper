@@ -69,6 +69,9 @@ test('the Challenge card opens the setup sheet, and its supply line is real', as
 
   await page.locator('.mode-card[data-mode="match"]').click();
   await expect(page.locator('#match-setup-modal')).toBeVisible();
+  // The config sheet is the New run tab now (2026-08-13); the sheet opens on
+  // the runs a player already has.
+  await page.locator('#match-tab-new').click();
 
   // The supply line counts the SERVED index through the deal's own filter,
   // so a real number here proves the fetch, the parse and the filter.
