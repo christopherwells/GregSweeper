@@ -1061,12 +1061,33 @@
         <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
       </div>
       <div class="modal-body">
-        <div id="match-resume" class="checkpoint-resume hidden"></div>
-        <!-- Invites in every state (waiting, snoozed, turned down) and the
-             matches you are already in. The only way back into a match you
-             joined but are not currently saved into. -->
-        <div id="match-review" class="match-review hidden"></div>
+        <!-- His two-tab split: what you already have, and making a new one.
+             The runs tab is the default because a player with an invite
+             waiting should not have to find it behind a config sheet. -->
+        <div class="match-tabs" role="tablist" aria-label="Challenge">
+          <button type="button" class="match-tab active" role="tab" id="match-tab-runs"
+                  aria-selected="true" aria-controls="match-panel-runs" data-tab="runs">Your runs</button>
+          <button type="button" class="match-tab" role="tab" id="match-tab-new"
+                  aria-selected="false" aria-controls="match-panel-new" data-tab="new">New run</button>
+        </div>
 
+        <div id="match-panel-runs" class="match-panel" role="tabpanel" aria-labelledby="match-tab-runs">
+          <div id="match-resume" class="checkpoint-resume hidden"></div>
+          <!-- His three places, each with a different lifetime: what is
+               waiting on you, how old runs went, and the ones you turned
+               down (which scrub themselves when the code expires). -->
+          <div class="match-places" role="tablist" aria-label="Your runs">
+            <button type="button" class="match-place active" role="tab" data-place="active"
+                    aria-selected="true">Waiting on you</button>
+            <button type="button" class="match-place" role="tab" data-place="finished"
+                    aria-selected="false">Finished</button>
+            <button type="button" class="match-place" role="tab" data-place="declined"
+                    aria-selected="false">Turned down</button>
+          </div>
+          <div id="match-review" class="match-review" role="tabpanel"></div>
+        </div>
+
+        <div id="match-panel-new" class="match-panel hidden" role="tabpanel" aria-labelledby="match-tab-new">
         <div class="setting-group">
           <h3>Boards</h3>
           <div id="match-count" class="match-stepper">
@@ -1105,6 +1126,7 @@
         <div class="match-share-row">
           <button id="match-invite-btn" class="friends-btn" type="button">Invite a friend</button>
           <button id="match-join-btn" class="friends-btn" type="button">Use a code</button>
+        </div>
         </div>
       </div>
     </div>

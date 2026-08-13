@@ -251,3 +251,67 @@ export function partitionInvites(invites, now) {
   }
   return out;
 }
+
+/**
+ * The three places his review surface shows, from the invites and the matches
+ * this player is in.
+ *
+ * His design, 2026-08-13: "a place where you can dig up old games you declined
+ * that automatically get scrubbed when the code expires, a place where you can
+ * look at the results of old games, and a place where you can join games
+ * you're invited to (or resume ones you were working on)."
+ *
+ * Each place answers a different question, and the split falls out of the
+ * LIFETIME each one has:
+ *
+ *   active    something is waiting for you. Invites still open (pending, and
+ *             snoozed ones you asked to be reminded about) sit here beside
+ *             runs you started and have not finished, because "join this" and
+ *             "carry on with this" are the same intention to a player.
+ *   finished  runs you played through. Reads stay open forever by his earlier
+ *             ruling, so this place never empties on its own.
+ *   declined  turned down, and SELF-SCRUBBING: inviteState reports 'expired'
+ *             past the code's own seven days, so an old refusal drops out of
+ *             the list without anyone tidying it. `expired` carries those out
+ *             separately so the caller can delete the nodes too, which it can,
+ *             since a player owns their own invite list.
+ *
+ * A match whose node could not be read is dropped rather than guessed at: an
+ * unreadable run cannot be said to be finished OR waiting.
+ *
+ * @param {{invites: Array, matches: Array, uid: string|null, now: number}} args
+ *   `matches` are fetchMyMatches rows, each with its live `node` attached.
+ * @returns {{active: Array, finished: Array, declined: Array, expired: Array}}
+ */
+export function partitionMatchReview({ invites, matches, uid, now }) {
+  const parts = partitionInvites(invites, now);
+  const expired = (invites || []).filter((inv) => inviteState(inv, now) === 'expired');
+
+  const active = [];
+  const finished = [];
+  for (const row of matches || []) {
+    if (!row || !row.node) continue;
+    const players = (row.node.players && typeof row.node.players === 'object')
+      ? row.node.players : {};
+    const mine = uid ? players[uid] : null;
+    const done = !!(mine && typeof mine.finishedAt === 'number'
+      && Number.isFinite(mine.finishedAt) && mine.finishedAt > 0);
+    (done ? finished : active).push({ ...row, done });
+  }
+  const newestFirst = (a, b) => (Number(b.joinedAt) || 0) - (Number(a.joinedAt) || 0);
+  active.sort(newestFirst);
+  finished.sort(newestFirst);
+
+  return {
+    // Invites first inside active: an unanswered ask is more urgent than a
+    // run that will still be there tomorrow.
+    active: [
+      ...parts.pending.map((invite) => ({ kind: 'invite', invite })),
+      ...parts.snoozed.map((invite) => ({ kind: 'invite', invite, snoozed: true })),
+      ...active.map((match) => ({ kind: 'match', match })),
+    ],
+    finished: finished.map((match) => ({ kind: 'match', match })),
+    declined: parts.declined.map((invite) => ({ kind: 'invite', invite })),
+    expired,
+  };
+}

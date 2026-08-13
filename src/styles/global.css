@@ -6499,6 +6499,62 @@ button.weekly-archive-row:focus-visible {
   .match-invite-toast-actions .friends-btn { flex: 1; }
 }
 
+/* ── The Challenge sheet's two tabs, and his three places ──────────────
+   Both rows are the SELECTED-CHIP idiom the sheet already uses (accent
+   border over the hidden-cell fill), never white-on-accent: that pairing
+   measures 1.30:1 on chalkboard. The two rows are deliberately different
+   weights, so a glance tells the outer tab from the inner place. */
+.match-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.match-tab {
+  flex: 1;
+  padding: 9px 8px;
+  border: 2px solid var(--color-border, rgba(255, 255, 255, 0.14));
+  border-radius: 9px;
+  background: var(--color-cell-hidden);
+  color: var(--color-text-secondary);
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.match-tab.active {
+  border-color: var(--color-accent);
+  color: var(--color-text, #eee);
+}
+.match-places {
+  display: flex;
+  gap: 5px;
+  margin: 0 0 8px;
+}
+.match-place {
+  flex: 1;
+  padding: 6px 4px;
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.12));
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-family);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.match-place.active {
+  border-color: var(--color-accent);
+  background: var(--color-cell-hidden);
+  color: var(--color-text, #eee);
+}
+/* A place with a lot in it scrolls inside the sheet rather than pushing the
+   sheet past the phone: the front door's height budget is measured, and a
+   player with nine finished runs must not lose the tabs off the top. */
+.match-review {
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
 /* The review list: invites in every state, and the matches you are in. */
 .match-review {
   margin: 4px 0 14px;

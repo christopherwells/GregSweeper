@@ -18,7 +18,7 @@ import {
   matchExpiresAt,
   generateCode, normalizeCode,
   INVITE_SNOOZE_MS, INVITE_STATES, snoozeUntilFrom,
-  inviteState, inviteShouldPopUp, partitionInvites,
+  inviteState, inviteShouldPopUp, partitionInvites, partitionMatchReview,
 } from '../src/logic/matchCodes.js';
 import { CODE_TTL_MS } from '../src/logic/friendCodes.js';
 
@@ -422,4 +422,107 @@ test('finished beats expiry: reads stay open forever (his ruling)', () => {
   const late = 1750000000000 + MATCH_TTL_MS * 10;
   const node = nodeWith({ me: { name: 'Me', joinedAt: 1, finishedAt: 2 } });
   assert.equal(planMatchJoin({ match: node, uid: 'me', now: late }), 'finished');
+});
+
+// ── The three places (his 2026-08-13 design) ────────────────────────────
+
+const inviteAt = (id, over = {}) => ({ matchId: id, from: 'friend', code: 'ABC234', sentAt: 1750000000000, ...over });
+const myMatch = (id, over = {}) => ({
+  matchId: id, joinedAt: over.joinedAt ?? 1750000000000, code: 'ABC234',
+  node: nodeWith(over.players ?? { me: { name: 'Me', joinedAt: 1 } }),
+});
+const REVIEW_NOW = 1750000100000;
+
+test('the three places split by what each one is FOR', () => {
+  const v = partitionMatchReview({
+    invites: [
+      inviteAt('m-pending'),
+      inviteAt('m-snoozed', { state: 'snoozed', snoozedUntil: REVIEW_NOW + 1000 }),
+      inviteAt('m-declined', { state: 'declined' }),
+    ],
+    matches: [
+      myMatch('m-running'),
+      myMatch('m-done', { players: { me: { name: 'Me', joinedAt: 1, finishedAt: 1750000050000 } } }),
+    ],
+    uid: 'me',
+    now: REVIEW_NOW,
+  });
+  // Waiting on you: both open invites, plus the run you have not finished.
+  assert.deepEqual(v.active.map((e) => e.kind), ['invite', 'invite', 'match']);
+  assert.deepEqual(v.active.map((e) => e.invite?.matchId ?? e.match.matchId),
+    ['m-pending', 'm-snoozed', 'm-running']);
+  // Results of old games.
+  assert.deepEqual(v.finished.map((e) => e.match.matchId), ['m-done']);
+  // Turned down, still diggable.
+  assert.deepEqual(v.declined.map((e) => e.invite.matchId), ['m-declined']);
+});
+
+test('a declined invite SCRUBS ITSELF when the code expires (his ruling)', () => {
+  const stale = inviteAt('m-old', { state: 'declined', sentAt: REVIEW_NOW - MATCH_TTL_MS - 1 });
+  const fresh = inviteAt('m-new', { state: 'declined' });
+  const v = partitionMatchReview({ invites: [stale, fresh], matches: [], uid: 'me', now: REVIEW_NOW });
+  assert.deepEqual(v.declined.map((e) => e.invite.matchId), ['m-new'],
+    'an expired refusal must drop out of the list on its own');
+  // And it comes back out separately, so the caller can delete the node too
+  // rather than leaving it to accumulate forever in the player's own list.
+  assert.deepEqual(v.expired.map((i) => i.matchId), ['m-old']);
+});
+
+test('an expired PENDING invite scrubs the same way', () => {
+  // Nothing can be done with it either: the match behind it takes no joins.
+  const v = partitionMatchReview({
+    invites: [inviteAt('m-old', { sentAt: REVIEW_NOW - MATCH_TTL_MS - 1 })],
+    matches: [], uid: 'me', now: REVIEW_NOW,
+  });
+  assert.deepEqual(v.active, []);
+  assert.deepEqual(v.expired.map((i) => i.matchId), ['m-old']);
+});
+
+test('finished is decided by the same rule the join verdict uses', () => {
+  // If these two disagreed, a run could sit under "results" and still hand
+  // the player its boards, which is the overwrite he reported.
+  for (const bad of [null, undefined, 'yes', {}, NaN, 0, -1]) {
+    const row = myMatch('m', { players: { me: { name: 'Me', joinedAt: 1, finishedAt: bad } } });
+    const v = partitionMatchReview({ invites: [], matches: [row], uid: 'me', now: REVIEW_NOW });
+    assert.equal(v.finished.length, 0, `finishedAt ${String(bad)} must not read as finished`);
+    assert.equal(v.active.length, 1);
+    assert.equal(planMatchJoin({ match: row.node, uid: 'me', now: REVIEW_NOW }), 'resume',
+      'and the join verdict must agree');
+  }
+  const done = myMatch('m', { players: { me: { name: 'Me', joinedAt: 1, finishedAt: 99 } } });
+  assert.equal(partitionMatchReview({ invites: [], matches: [done], uid: 'me', now: REVIEW_NOW }).finished.length, 1);
+  assert.equal(planMatchJoin({ match: done.node, uid: 'me', now: REVIEW_NOW }), 'finished');
+});
+
+test('an unreadable match is dropped, never guessed at', () => {
+  const v = partitionMatchReview({
+    invites: [],
+    matches: [{ matchId: 'm', joinedAt: 1, node: null }, { matchId: 'n' }],
+    uid: 'me', now: REVIEW_NOW,
+  });
+  assert.deepEqual(v.active, []);
+  assert.deepEqual(v.finished, []);
+});
+
+test('each place is newest first, and a signed-out player still gets a list', () => {
+  const v = partitionMatchReview({
+    invites: [],
+    matches: [myMatch('old', { joinedAt: 1 }), myMatch('new', { joinedAt: 9 })],
+    uid: 'me', now: REVIEW_NOW,
+  });
+  assert.deepEqual(v.active.map((e) => e.match.matchId), ['new', 'old']);
+  // No uid: nothing can be MINE, so nothing is finished, and the runs still
+  // list rather than throwing.
+  const anon = partitionMatchReview({
+    invites: [], matches: [myMatch('m')], uid: null, now: REVIEW_NOW,
+  });
+  assert.equal(anon.finished.length, 0);
+  assert.equal(anon.active.length, 1);
+});
+
+test('empty input yields three empty places, never undefined', () => {
+  for (const args of [{}, { invites: null, matches: null, uid: null, now: REVIEW_NOW }]) {
+    const v = partitionMatchReview(args);
+    assert.deepEqual([v.active, v.finished, v.declined, v.expired], [[], [], [], []]);
+  }
 });

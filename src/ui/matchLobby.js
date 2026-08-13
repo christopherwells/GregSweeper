@@ -14,7 +14,7 @@
 // .friends-btn-primary. Body copy uses --font-family, since --font-display is
 // a pixel font on neon and blackletter on stainedglass.
 
-import { $, escapeHtml } from './domHelpers.js';
+import { $, $$, escapeHtml } from './domHelpers.js';
 import { hideModal } from './modalManager.js';
 import { showModalFromTitle, closeModalAndReturn, setReturnToTitle, hideTitleScreen } from './titleScreen.js';
 import { showToast } from './toastManager.js';
@@ -26,7 +26,7 @@ import { getUid } from '../firebase/firebaseProgress.js';
 import { getHandicapRatioMap } from '../logic/handicaps.js';
 import { matchUnlocks, unmetMatchRules } from '../logic/matchRules.js';
 import { matchStandings } from '../logic/matchStandings.js';
-import { normalizeCode, planMatchJoin, matchDaysRemaining, matchExpiresAt, partitionInvites } from '../logic/matchCodes.js';
+import { normalizeCode, planMatchJoin, matchDaysRemaining, matchExpiresAt, partitionMatchReview } from '../logic/matchCodes.js';
 import { tilingLabel, CLASSIC_SHAPE_LABEL } from '../logic/coastlineLink.js';
 import { getGimmickDefs } from '../logic/gimmicks.js';
 import { PROD_SITE_BASE } from '../config.js';
@@ -474,9 +474,31 @@ async function _offerInvite(invite) {
 
 let _wired = false;
 /** Bind the invite card's two buttons. Called once at import time. */
+/** Show one of the sheet's two tabs. */
+export function showMatchTab(tab) {
+  const runs = tab !== 'new';
+  for (const btn of $$('.match-tab')) {
+    const on = (btn.dataset.tab === 'runs') === runs;
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-selected', on ? 'true' : 'false');
+  }
+  $('#match-panel-runs')?.classList.toggle('hidden', !runs);
+  $('#match-panel-new')?.classList.toggle('hidden', runs);
+}
+
 function wire() {
   if (_wired) return;
   _wired = true;
+
+  // The two tabs, and his three places inside the first. Delegated from the
+  // sheet rather than bound per button: both rows are static markup, but the
+  // place rows below them re-render on every open.
+  for (const btn of $$('.match-tab')) {
+    btn.addEventListener('click', () => showMatchTab(btn.dataset.tab));
+  }
+  for (const btn of $$('.match-place')) {
+    btn.addEventListener('click', () => showMatchPlace(btn.dataset.place));
+  }
 
   // His three answers. All of them are reversible from the review list, which
   // is why "no thanks" records a STATE instead of deleting the invite.
@@ -535,12 +557,59 @@ wire();
 // into one: the save slot holds a single match, so a player in two of them
 // could otherwise never return to the other.
 
-/** Render the review list into the setup sheet. Hidden when there is nothing. */
-export async function renderMatchReview() {
+// Which of his three places is open. Session state: a player who was reading
+// their finished runs and opens the sheet again is most likely still after
+// the same thing, and re-deriving it from the data would flip the tab under
+// them as invites arrive.
+let _place = 'active';
+
+// The last fetch, so switching place re-renders without going back to the
+// network. Invalidated by every renderMatchReview call.
+let _review = null;
+let _reviewNamesCache = {};
+
+const PLACE_EMPTY = {
+  active: 'Nothing waiting. Start a run on the New run tab, or use a code a friend sent you.',
+  finished: 'No finished runs yet. They collect here once you play one through.',
+  declined: 'Nothing turned down. Invites you say no thanks to wait here until their code expires.',
+};
+
+/** Switch place without re-fetching. */
+export function showMatchPlace(place) {
+  if (!PLACE_EMPTY[place]) return;
+  _place = place;
+  for (const btn of $$('.match-place')) {
+    const on = btn.dataset.place === place;
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-selected', on ? 'true' : 'false');
+  }
+  _paintPlace();
+}
+
+function _paintPlace() {
   const el = $('#match-review');
   if (!el) return;
-  el.innerHTML = '';
-  el.classList.add('hidden');
+  if (!_review) { el.innerHTML = '<p class="friends-empty">Loading…</p>'; return; }
+  const rows = _review[_place] || [];
+  if (rows.length === 0) {
+    el.innerHTML = `<p class="friends-empty">${escapeHtml(PLACE_EMPTY[_place])}</p>`;
+    return;
+  }
+  el.innerHTML = rows.map((entry) => (entry.kind === 'invite'
+    ? _inviteRowHTML(entry.invite, _reviewNamesCache, _place, entry.snoozed)
+    : _myMatchRowHTML(entry.match))).join('');
+}
+
+/**
+ * Fetch and render his three places.
+ *
+ * The partition is pure (partitionMatchReview): what belongs where is decided
+ * where a test can reach it, and this function is fetch, paint, and the
+ * self-scrub.
+ */
+export async function renderMatchReview() {
+  _review = null;
+  _paintPlace();
 
   let invites = null;
   let mine = null;
@@ -549,32 +618,30 @@ export async function renderMatchReview() {
     [invites, mine] = await Promise.all([m.fetchMatchInvites(), m.fetchMyMatches()]);
   } catch (err) {
     reportCaughtError('match-review-fetch', err);
+    const el = $('#match-review');
+    if (el) el.innerHTML = '<p class="friends-empty">Could not reach your runs. Check your connection.</p>';
     return;
   }
-  const parts = partitionInvites(invites || [], Date.now());
-  const anyInvite = parts.pending.length + parts.snoozed.length + parts.declined.length;
-  if (!anyInvite && !(mine && mine.length)) return;
 
-  const names = await _reviewNames([...(invites || [])].map((i) => i.from));
-  const chunks = [];
+  _reviewNamesCache = await _reviewNames();
+  _review = partitionMatchReview({
+    invites: invites || [], matches: mine || [], uid: getUid(), now: Date.now(),
+  });
+  _paintPlace();
 
-  if (anyInvite) {
-    chunks.push('<h3>Invites</h3>');
-    for (const [state, label] of [['pending', ''], ['snoozed', 'Asked to be reminded'], ['declined', 'Turned down']]) {
-      for (const inv of parts[state]) {
-        chunks.push(_inviteRowHTML(inv, names, label));
-      }
-    }
+  // The self-scrub, his ruling: an invite past its code's seven days is gone
+  // from the list already (partitionMatchReview drops it), and this deletes
+  // the node behind it so a player's own invite list cannot grow forever.
+  // Best-effort and after the paint: a failed delete costs nothing visible,
+  // and the next open tries again.
+  if (_review.expired.length > 0) {
+    import('../firebase/firebaseMatch.js').then(({ dismissMatchInvite }) => {
+      for (const inv of _review.expired) dismissMatchInvite(inv.matchId).catch(() => {});
+    }).catch(() => {});
   }
-  if (mine && mine.length) {
-    chunks.push('<h3>Your Challenges</h3>');
-    for (const row of mine) chunks.push(_myMatchRowHTML(row));
-  }
-  el.innerHTML = chunks.join('');
-  el.classList.remove('hidden');
 }
 
-async function _reviewNames(uids) {
+async function _reviewNames() {
   try {
     const { fetchPlayerNames } = await import('../firebase/firebaseLeaderboard.js');
     return await fetchPlayerNames();
@@ -583,16 +650,21 @@ async function _reviewNames(uids) {
   }
 }
 
-function _inviteRowHTML(inv, names, stateLabel) {
+function _inviteRowHTML(inv, names, place, snoozed) {
   const who = (names && names[inv.from]) || 'A friend';
-  // Every state offers Join, which is the point of a review list: a turned-down
-  // invite you changed your mind about must be playable without a fresh one.
-  const note = stateLabel ? `<span class="match-review-note">${escapeHtml(stateLabel)}</span>` : '';
+  // Every place offers Play, which is the point of keeping the turned-down
+  // ones: an invite you changed your mind about must be playable without
+  // asking for a fresh one. Only an unanswered invite offers "No thanks",
+  // since that is the only place the answer is still open.
+  const label = snoozed ? 'Asked to be reminded' : '';
+  const note = label ? `<span class="match-review-note">${escapeHtml(label)}</span>` : '';
+  const decline = (place === 'active' && !snoozed)
+    ? '<button type="button" class="friends-btn match-review-decline">No thanks</button>' : '';
   return `<div class="match-review-row" data-invite="${escapeHtml(inv.matchId)}" data-code="${escapeHtml(inv.code || '')}">
-      <span class="match-review-name">${escapeHtml(who)}${note}</span>
+      <span class="match-review-name">${escapeHtml(who)} invited you${note}</span>
       <span class="match-review-actions">
         <button type="button" class="friends-btn match-review-join">Play</button>
-        ${stateLabel ? '' : '<button type="button" class="friends-btn match-review-decline">No thanks</button>'}
+        ${decline}
       </span>
     </div>`;
 }

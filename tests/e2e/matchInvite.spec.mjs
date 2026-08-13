@@ -35,7 +35,10 @@ test('the setup sheet offers both invite routes beside solo play', async ({ page
   await expect(page.locator('#match-setup-modal')).toBeVisible();
 
   // His two routes: share a code, or invite a friend you already have. Solo
-  // play stays the primary action, because it is the common case.
+  // play stays the primary action, because it is the common case. All three
+  // live on the New run tab now (2026-08-13), since the sheet opens on the
+  // runs a player already has.
+  await page.locator('#match-tab-new').click();
   await expect(page.locator('#match-start')).toBeVisible();
   await expect(page.locator('#match-invite-btn')).toBeVisible();
   await expect(page.locator('#match-join-btn')).toBeVisible();
@@ -50,6 +53,7 @@ test('the join card opens from the sheet and refuses a malformed code', async ({
 
   await boot(page);
   await page.locator('.mode-card[data-mode="match"]').click();
+  await page.locator('#match-tab-new').click();
   await page.locator('#match-join-btn').click();
   await expect(page.locator('#match-join-modal')).toBeVisible();
   await expect(page.locator('#match-setup-modal')).toBeHidden();
@@ -151,13 +155,18 @@ test('each of the three invite answers dismisses the card and says what it did',
   await expect(page.locator('#match-join-input')).toHaveValue('ABC234');
 });
 
-test('the review list exists and stays hidden with nothing to review', async ({ page }) => {
-  // A signed-out test session has no invites and no matches, so the section
-  // must not render an empty heading above the sheet's controls.
+test('with nothing to review, each place says so rather than sitting blank', async ({ page }) => {
+  // A signed-out test session has no invites and no matches. The list used to
+  // hide itself; since it became one of his three browsable places
+  // (2026-08-13) it stays put and explains what would be there, because a
+  // place that vanishes when empty cannot be browsed to.
   await boot(page);
   await page.locator('.mode-card[data-mode="match"]').click();
   await expect(page.locator('#match-setup-modal')).toBeVisible();
-  await expect(page.locator('#match-review')).toBeHidden();
+  await expect(page.locator('#match-review')).toBeVisible();
+  await expect(page.locator('#match-review .friends-empty')).toBeVisible();
+  // And no run rows, which is what "nothing to review" means.
+  await expect(page.locator('#match-review .match-review-row')).toHaveCount(0);
 });
 
 test('the standings and rematch surfaces start hidden, so no run can leak the last one', async ({ page }) => {
