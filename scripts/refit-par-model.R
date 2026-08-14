@@ -1323,40 +1323,71 @@ digit_shares <- if (length(board_raw) > 0) {
   NULL
 }
 digit_df <- NULL
+decor_df <- NULL
 if (!is.null(digit_shares) && nrow(digit_shares) > 0) {
+  # EVERY SHAPE, AND CHALLENGE MATCHES, since 2026-08-14 (his call). This frame
+  # was rectangles-only and daily-only, and the two exclusions had the same
+  # root: at fixed density the digit shares differ BY LATTICE (rhombille's
+  # 5plus share measured 4.4x the 4.8.8's and 15x the hex's), so pooled rows
+  # with nothing to separate them turn the digit coefficients into part-shape
+  # indicators. The answer to a confound you can name is a term, not an
+  # exclusion. The fit below carries shape and shape-by-digit deviations, plus
+  # the matchPlay offset, so a lattice row informs the digit question instead of
+  # contaminating it.
+  #
+  # The cost of the old rule was severe and worth recording: under the 50/50
+  # rotation the study accrued data at half speed, and 47 of the first 48
+  # Challenge boards were tilings, so the two exclusions between them refused
+  # almost every board the game now produces. The frame stood at 276 rows after
+  # three months.
+  #
+  # SHARES COME FROM THE BOARD WHERE THERE IS ONE, otherwise from the meta. The
+  # board-derived values stay authoritative: they cover every canonical date
+  # back to DIGIT_ERA_START, including boards written before any client could
+  # compute them. A match board has no canonical, so before this the
+  # inner_join dropped it whatever the filter said, and only the meta copy can
+  # answer for it. Same coalesce shape the contribution frame uses.
+  #
+  # The rename is what keeps that safe. Both sides carry these names (the
+  # client computes the same histogram now, and every dailyMeta key is
+  # unnest_wider'd into df), and a plain join suffixes them to .x/.y, leaves
+  # digit_df$clueShare2 NULL, makes sd(NULL) an NA, and kills the eligibility
+  # `if` below, which sits OUTSIDE its tryCatch and would take the WHOLE refit
+  # down rather than just this block.
   digit_df <- df |>
-    # `date >= DIGIT_ERA_START` is a STRING comparison, and a match key sorts
-    # above every date under it, so match rows would pass this filter. The
-    # inner_join on the canonical boards would then drop them anyway (a match
-    # board has no dailyBoard entry), but the exclusion is written out rather
-    # than relied on: a study frame should say which rows it studies.
-    filter(!is_match) |>
     filter(uid %in% eligible_uids, date >= DIGIT_ERA_START) |>
-    # RECTANGLES ONLY (2026-08-01). At fixed density the digit shares differ
-    # BY LATTICE — rhombille's 5plus share measured 4.4x the 4.8.8's and 15x
-    # the hex's — so tiling rows would turn the digit coefficients into
-    # part-shape indicators, and the pairwise decorrelation machinery, which
-    # takes exactly two features, cannot see a third axis. The decorrelation
-    # line fitted from this same frame stays rectangles-only for the same
-    # reason. The cost: under a 50/50 tiling rotation the digit studies
-    # accrue data at half speed — accepted until the shape confound gets a
-    # design of its own.
-    filter(is.na(tilingType)) |>
-    # Drop any meta-carried copies of the shares BEFORE the join. The client
-    # computes the same histogram now (dailyFeatures.clueShares, ported so the
-    # decorrelation mission can score a candidate board), and every feature key
-    # in dailyMeta is unnest_wider'd into df. Without this the join finds the
-    # names on both sides, dplyr suffixes them to .x/.y, digit_df$clueShare2
-    # becomes NULL, sd(NULL) is NA, and the eligibility `if` below — which sits
-    # OUTSIDE its tryCatch — dies on "missing value where TRUE/FALSE needed",
-    # taking the WHOLE refit down rather than just the digit block. The
-    # BOARD-derived shares are authoritative regardless: they cover every
-    # canonical date back to DIGIT_ERA_START, including boards written before
-    # any client could compute them.
-    select(-any_of(DIGIT_FEATURES)) |>
-    inner_join(digit_shares, by = "date")
-  message(sprintf("  digit frame: %d canonical-era rows, %d dates (secondary fit only)",
-                  nrow(digit_df), n_distinct(digit_df$date)))
+    # Behind the SAME pooling gate the main fit uses: a row the main fit is
+    # still holding out has no business anchoring a secondary study.
+    filter(pool_match | matchPlay == 0) |>
+    rename_with(~ paste0(.x, "_dgmeta"), any_of(DIGIT_FEATURES)) |>
+    left_join(digit_shares, by = "date")
+  for (f in DIGIT_FEATURES) {
+    mcol <- paste0(f, "_dgmeta")
+    if (!f %in% colnames(digit_df)) digit_df[[f]] <- NA_real_
+    if (!mcol %in% colnames(digit_df)) digit_df[[mcol]] <- NA_real_
+    digit_df[[f]] <- dplyr::coalesce(as.numeric(digit_df[[f]]), as.numeric(digit_df[[mcol]]))
+    digit_df[[mcol]] <- NULL
+  }
+  # What the inner_join used to do implicitly: a row with shares from neither
+  # source cannot be studied. Explicit, so the count below is honest, and
+  # checked on ALL FOUR rather than the first. The eligibility `if` below calls
+  # sd() on each of them and sits OUTSIDE its tryCatch, so a single surviving
+  # NA in the fourth column takes the whole refit down, not just this study.
+  digit_df <- digit_df |>
+    filter(if_all(all_of(DIGIT_FEATURES), ~ !is.na(.x)))
+
+  # THE DECORRELATION LINE KEEPS THE OLD FRAME, and this split is the whole
+  # reason it is a separate object. That machinery takes exactly TWO features
+  # and cannot see a third axis, so it has no way to hold shape still; and it
+  # selects tomorrow's DAILY board, where a Challenge row is not evidence about
+  # what to schedule. Tiling days are single-candidate anyway, so a
+  # decorrelation mission never runs on one.
+  decor_df <- digit_df |> filter(is.na(tilingType), matchPlay == 0)
+
+  message(sprintf("  digit frame: %d canonical-era rows, %d boards (secondary fit only), %d from Challenge matches, %d on tilings",
+                  nrow(digit_df), n_distinct(digit_df$date), sum(digit_df$matchPlay),
+                  sum(!is.na(digit_df$tilingType))))
+  message(sprintf("  decorrelation frame: %d rows (rectangles, day-of only)", nrow(decor_df)))
 }
 
 # ── Contribution-study fit frame (secondary, canonical-era) ─────────────
@@ -1378,14 +1409,26 @@ contrib_df <- tryCatch({
     # those rows and an unfiltered study would read the shift as a finding
     # arriving mid-series. (The digit frame shares this latent gap;
     # flagged 2026-07-30, fix it there when archive pooling actually opens.)
-    # Match rows are excluded for the same reason archive replays are: this
-    # frame carries no offset to absorb a different cohort's pace, so once the
-    # gate upstream pools them, an unfiltered study would read the shift as a
-    # finding arriving mid-series. The backfill join would drop them regardless
-    # (no contribution keys exist for a library board), which is exactly why
-    # the filter is written rather than assumed.
+    # MATCH ROWS ARE IN (2026-08-14), behind the same pooling gate the main fit
+    # uses and carrying the same matchPlay offset, added to contrib_fixed below.
+    # They were excluded on the same grounds as archive replays, that this frame
+    # had no offset to absorb a different cohort's pace, so pooling them would
+    # read a 31% mode difference as a finding arriving mid-series. The answer to
+    # a missing offset is an offset, not an exclusion: the whole point of the
+    # Challenge ladder is volume for exactly these studies, and this frame is
+    # 328 rows after three months.
+    #
+    # Until today the exclusion was moot anyway, because no library board
+    # carried contribution keys at all (0 of 48 played boards, measured
+    # 2026-08-14): the builder never asked for them. It does now, and
+    # backfill-match-contribution.mjs measured the 2,759 already in the library,
+    # so a match row arrives with a real vector rather than an absent one.
+    #
+    # archivePlay == 0 STAYS. Archive replays sit at 3 rows against a threshold
+    # of 20, so they are still held out of the main fit, and a row the main fit
+    # refuses has no business anchoring a secondary one.
     cdf <- df |> filter(uid %in% eligible_uids, date >= DIGIT_ERA_START,
-                        archivePlay == 0, matchPlay == 0)
+                        archivePlay == 0, pool_match | matchPlay == 0)
     for (f in CONTRIB_FEATURES) {
       if (!f %in% colnames(cdf)) cdf[[f]] <- NA_real_
       if (!f %in% colnames(bf)) bf[[f]] <- NA_real_
@@ -1406,16 +1449,24 @@ contrib_df <- tryCatch({
   NULL
 })
 if (!is.null(contrib_df)) {
-  message(sprintf("  contribution frame: %d canonical-era rows, %d dates (secondary fit only)",
-                  nrow(contrib_df), n_distinct(contrib_df$date)))
+  # The match count is printed even at zero, because "no Challenge boards
+  # reached this study" and "Challenge boards were never measured" looked
+  # identical in this log for as long as the exclusion stood.
+  message(sprintf("  contribution frame: %d canonical-era rows, %d dates (secondary fit only), %d from Challenge matches",
+                  nrow(contrib_df), n_distinct(contrib_df$date), sum(contrib_df$matchPlay)))
 }
 
 handicaps        <- list()      # uid -> k (multiplicative clean-skill ratio)
 handicap_details <- list()      # uid -> { k, bombSeconds } — the split the
                                 # client itemizes ("Your par = Greg × k + bombs")
-refPar           <- 60          # reference board par (seconds) for the seconds
-                                # display of a ratio; both fit paths overwrite
-                                # it from real data (median day-of par).
+# NO refPar HERE ANY MORE (his ruling 2026-08-14). The seconds RATING the client
+# shows is quoted against a FIXED one-minute reference par, so nothing in this
+# script computes or writes one. It used to be the median day-of par, recomputed
+# nightly, and the reason that was wrong is worth keeping: displaySeconds is
+# (1 - k) times a constant either way, so the fitted version added no
+# information the percent did not already carry, only DRIFT. The same player's
+# rating moved with the board mix, the shape rotation included, on a night they
+# had not played. The unit now lives once, in handicaps.js as RATING_REF_PAR.
 fit_method    <- "seed-residuals"
 r2            <- NA_real_
 diag_note     <- ""
@@ -1707,16 +1758,64 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
                              "lockedCellCount", "wormholePairCount", "mirrorPairCount",
                              "sonarCellCount", "compassCellCount", "zeroClusterCount")
         digit_fixed <- c(digit_controls, DIGIT_FEATURES)
+        # SHAPE, as deviations rather than as an exclusion (2026-08-14). One
+        # indicator per lattice plus one shape-by-digit interaction each, which
+        # is what makes the four digit coefficients mean "at a given shape"
+        # instead of quietly averaging six lattices whose share distributions
+        # are known to differ. Built here rather than beside the par model's
+        # SHAPE_INTERACTION_COLS because those multiply BASE_MODEL_FEATURES,
+        # and a digit share is deliberately not one of those.
+        for (.s in SHAPE_PREDICTORS) {
+          for (.f in DIGIT_FEATURES) {
+            digit_df[[paste0(.s, "_x_", .f)]] <- digit_df[[.s]] * digit_df[[.f]]
+          }
+        }
+        digit_shape_cols <- c(SHAPE_PREDICTORS,
+                              as.vector(t(outer(SHAPE_PREDICTORS, DIGIT_FEATURES,
+                                                paste, sep = "_x_"))))
+        # Per-column variation gate, the same one active_shape_cols applies: a
+        # lattice with no rows yet contributes an all-zero column, which is not
+        # estimable and would cost the whole fit rather than one term.
+        #
+        # NOTE, for a reader deciding whether to change it: the plain shape
+        # indicators share their names with the par model's LAB-SEEDED terms, so
+        # build_priors centers them on the Par Lab posteriors here too, while
+        # every shape-by-digit column is unseeded and stays zero-centered. That
+        # is defensible, the outcome is the same log(pure_time) and the controls
+        # nearly the same set, so "hex runs faster than a rectangle" is the same
+        # claim in both fits. It is also an inheritance nobody chose on purpose.
+        # The alternative is a wide zero-centered prior on a nuisance parameter
+        # in a secondary study. Left as the machinery does it, flagged rather
+        # than special-cased.
+        digit_dev_cols <- c(
+          digit_shape_cols[vapply(digit_shape_cols,
+                                  function(cn) any(digit_df[[cn]] != 0, na.rm = TRUE), logical(1))],
+          if (length(unique(digit_df$matchPlay)) > 1) "matchPlay" else NULL
+        )
         digit_seeds <- compute_log_ols_seeds(digit_df, digit_fixed)
-        digit_priors <- build_priors(digit_seeds, c("Intercept", digit_fixed))
-        digit_formula <- as.formula(paste("log(pure_time) ~",
-                                          paste(c(digit_fixed, "(1 | uid)"), collapse = " + ")))
-        message(sprintf("Fitting secondary digit model on %d canonical-era rows…", nrow(digit_df)))
-        # The digit fit is always FLAT — its fixed effects are the lognormal
-        # controls plus the four lognormal digit shares, no signed term
-        # anywhere — so build_priors' flat path gives it the class-wide
-        # lb = 0 blanket and brms default inits are valid (no custom init;
-        # see build_priors for the 2026-08-01 geometry incident).
+        digit_priors <- build_priors(digit_seeds, c("Intercept", digit_fixed),
+                                     deviation_names = digit_dev_cols)
+        # TWO PATHS, exactly as the main fit has them, and for the same reason.
+        # The controls and the four shares are lognormal and bounded at zero;
+        # a shape deviation and the match offset are SIGNED, and nobody knows
+        # their sign in advance. Bounding them would pile the posterior at zero
+        # and push the difference into the digit coefficients, which is the
+        # contamination this whole change exists to stop. With no deviation
+        # column active the formula is the flat one this fit has always used,
+        # bit-identical in specification (see build_priors for the 2026-08-01
+        # geometry incident that forced the split upstream).
+        digit_formula <- if (length(digit_dev_cols) > 0) {
+          bf(log(pure_time) ~ base + dev,
+             as.formula(paste("base ~", paste(c("1", digit_fixed, "(1 | uid)"), collapse = " + "))),
+             as.formula(paste("dev ~ 0 +", paste(digit_dev_cols, collapse = " + "))),
+             nl = TRUE)
+        } else {
+          as.formula(paste("log(pure_time) ~",
+                           paste(c(digit_fixed, "(1 | uid)"), collapse = " + ")))
+        }
+        message(sprintf("Fitting secondary digit model on %d canonical-era rows (%d deviation term(s): %s)…",
+                        nrow(digit_df), length(digit_dev_cols),
+                        if (length(digit_dev_cols)) paste(digit_dev_cols, collapse = ", ") else "none"))
         digit_fit <- brm(
           digit_formula, data = digit_df, prior = digit_priors,
           chains = N_CHAINS, iter = N_ITER, warmup = N_WARMUP,
@@ -1732,7 +1831,13 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
           message("  secondary digit fit failed diagnostics — digit studies skipped tonight (shipped model untouched)")
           NULL
         } else {
-          dfe <- fixef(digit_fit)
+          # flat_fixef, NOT fixef: under the deviation path brms names the rows
+          # base_clueShare2 / dev_shape488_x_clueShare2, and indexing this
+          # matrix by the plain feature name would subscript out of bounds and
+          # lose the whole study to the handler below. Stripping the nlpar
+          # prefix is what keeps the two paths one pipeline downstream, the
+          # same reason the main fit reads through it.
+          dfe <- flat_fixef(digit_fit)
           # VIF of the digit block, so the collinearity the r=0.94 confound
           # warns about is on the record. Computed manually (VIF_j = 1/(1-R²_j)
           # of feature j regressed on the other fixed terms) to avoid a `car`
@@ -1746,10 +1851,22 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
             error = function(e) setNames(rep(NA_real_, length(DIGIT_FEATURES)), DIGIT_FEATURES)
           )
           message(sprintf("  digit VIF: %s", paste(sprintf("%s=%.1f", DIGIT_FEATURES, dvif), collapse = ", ")))
-          message(sprintf("  digit posteriors (log-mult): %s",
+          message(sprintf("  digit posteriors (log-mult, shape-adjusted): %s",
                           paste(sprintf("%s=%.3f±%.3f", DIGIT_FEATURES,
                                         dfe[DIGIT_FEATURES, "Estimate"], dfe[DIGIT_FEATURES, "Est.Error"]),
                                 collapse = ", ")))
+          # The per-shape half, reported with its OWN row count beside it. A
+          # deviation fitted on four boards is a prior with a decoration, and
+          # printing the estimate without the n invites reading it as a
+          # finding. Log only: the digit candidates emitted below stay the four
+          # pooled shares, because target_candidates drives experiment
+          # targeting and the shares deliberately score 0 there.
+          for (cn in digit_dev_cols) {
+            if (!cn %in% rownames(dfe)) next
+            message(sprintf("  digit deviation %s: %+.3f±%.3f (%d nonzero rows)",
+                            cn, dfe[cn, "Estimate"], dfe[cn, "Est.Error"],
+                            sum(digit_df[[cn]] != 0, na.rm = TRUE)))
+          }
           data.frame(
             feature   = DIGIT_FEATURES,
             post_mean = dfe[DIGIT_FEATURES, "Estimate"],
@@ -1802,7 +1919,31 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
                                 "wallEdgeCount", "mysteryCellCount", "liarCellCount",
                                 "wormholePairCount", "mirrorPairCount",
                                 "sonarCellCount", "compassCellCount", "zeroClusterCount")
-          contrib_fixed <- c(contrib_controls, active_contrib)
+          # The offset that lets match rows into this frame at all. Same
+          # variation guard the main fit's add_match_term uses: a column that is
+          # all-zero (nothing pooled yet) or all-one (a frame of nothing but
+          # match rows, which the archive filter above makes unreachable today)
+          # is not estimable and would abort the fit rather than inform it.
+          # Without this term a Challenge run's 31% faster pace has nowhere to
+          # go but the contribution posteriors, and it would land on whichever
+          # modifier the library happens to favour.
+          contrib_match <- if (length(unique(contrib_df$matchPlay)) > 1) "matchPlay" else NULL
+          # SHAPE INDICATORS, for the reason the digit frame carries them. Match
+          # rows are 96% lattice boards against 5% of dailies, so admitting them
+          # without a shape term pours a large block of one lattice family into
+          # a study that has no way to hold lattice still, and the contribution
+          # coefficients absorb the difference. Measured on the night the rows
+          # first arrived: wormholeRequired flipped -0.269 to +0.153 and
+          # compassRequired tripled. matchPlay does not cover this on its own,
+          # precisely BECAUSE it is near-collinear with the tiling indicator; it
+          # separates mode from board, not lattice from lattice.
+          #
+          # Main effects only. The contribution columns are already sparse
+          # enough to need CONTRIB_MIN_NONZERO_DATES, and a shape-by-
+          # contribution interaction would be fitted on single figures.
+          contrib_shape <- SHAPE_PREDICTORS[vapply(SHAPE_PREDICTORS, function(cn)
+            cn %in% colnames(contrib_df) && any(contrib_df[[cn]] != 0, na.rm = TRUE), logical(1))]
+          contrib_fixed <- c(contrib_controls, active_contrib, contrib_match, contrib_shape)
           # UNBOUNDED normal priors, deliberately NOT build_priors' lb=0
           # lognormals: a contribution effect has no a-priori sign. A
           # required gimmick plausibly costs time (+) while a big shortcut
@@ -2092,7 +2233,11 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
 
     decor_mission <- if (!decor_due) NULL else tryCatch(
       choose_decorrelation_mission(
-        digit_df, DECORRELATION_FEATURES, DECORRELATION_CONFOUNDERS,
+        # decor_df, NOT digit_df: the study frame now carries every lattice and
+        # the Challenge rows, and this machinery takes exactly two features, so
+        # it has no way to hold shape still. It also picks tomorrow's DAILY
+        # board, which a Challenge row says nothing about.
+        decor_df, DECORRELATION_FEATURES, DECORRELATION_CONFOUNDERS,
         # The coverage weights it competes against, so the emitted weight is
         # calibrated to THIS night's slate rather than a stale constant.
         vapply(coverage_targets, function(x) as.numeric(x$deficit_weight), numeric(1))
@@ -2363,11 +2508,9 @@ if (fit_method == "brms-ranef") {
                           collapse = ", ")))
   }
 
-  # Reference par for the client's seconds display of a ratio: (k-1) × refPar.
-  # The median predicted par over day-of boards — a stable "typical board" so
-  # the handicap chip reads in comparable seconds across dates.
-  refPar <- round(median(apply_par_model(df_fit[dayof, , drop = FALSE], new_coefs, TRUE,
-                                         earned_shape_devs)), 1)
+  # (No reference par is computed here any more. See the note at the handicaps
+  # declarations above: the client quotes its seconds rating against a fixed
+  # one-minute unit, so a median day-of par would only add drift.)
 
   # Guard: until enough plays have NONZERO values for each new structural
   # feature, its posterior is essentially the lognormal prior expectation
@@ -2479,13 +2622,10 @@ if (fit_method == "seed-residuals") {
       )
     }
     handicaps <- setNames(as.list(round(per_user$k, 3)), per_user$uid)
-    # refPar is the reference DAILY board the handicap's seconds display is
-    # quoted against, so it excludes match boards along with archive replays:
-    # the library's pars run a different distribution from the daily band's,
-    # and a median mixed across the two would quote a rating against a board
-    # nobody actually plays each morning.
-    dayof_pred <- df$predicted[df$archive == 0 & df$matchPlay == 0]
-    if (length(dayof_pred) > 0) refPar <- round(median(dayof_pred, na.rm = TRUE), 1)
+    # (This fallback path once derived a refPar here too, and had to exclude
+    # match boards and archive replays to keep the rating quoted against a board
+    # somebody plays each morning. The fixed one-minute unit retires the
+    # question: there is no anchor left for a cohort's pace to contaminate.)
   } else {
     handicaps <- list()
   }
@@ -2511,9 +2651,10 @@ if (length(handicaps) > 0) {
     nPlayers  = n_players,
     method    = fit_method,
     diagnostics = if (nchar(diag_note)) diag_note else NULL,
-    # Reference board par (seconds) for the client's seconds display of a ratio:
-    # displaySeconds = (k - 1) × refPar. Median day-of par from this fit.
-    refPar    = refPar,
+    # No refPar. The client quotes its seconds rating against a fixed one-minute
+    # unit (RATING_REF_PAR in handicaps.js) and ignores this field even when an
+    # older file still carries it, so writing one would be dead weight that
+    # implies the number is fitted.
     # Fixed legacy (+10s/re-fog) per-hit cost in seconds — a frozen historical
     # cohort, surfaced for transparency. NOT a predictPar coefficient.
     secPerBombHit = round(LEGACY_BOMB_RATE, 2),

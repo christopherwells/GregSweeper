@@ -6,7 +6,7 @@
 // All data fetching happens in main.js; this module is pure view + math.
 
 import { predictPar } from '../logic/dailyFeatures.js';
-import { ratioDisplaySeconds, ratioDisplayPercent } from '../logic/handicaps.js';
+import { ratioDisplaySeconds, ratioDisplayPercent, RATING_REF_PAR } from '../logic/handicaps.js';
 import { rankAdjusted } from '../logic/leaderboardViews.js';
 import {
   lineChart, barChart, heatBars, densityChart, valueGradient01,
@@ -67,12 +67,13 @@ function emptyDiv(message) {
  * @param {string} data.uid  signed-in user's uid
  * @param {number} data.ratio  user's multiplicative handicap k (1 = neutral)
  * @param {number} [data.bombSeconds]  the fit's additive bomb-seconds (0 if none)
- * @param {number} [data.refPar]  reference par for the seconds display
+ * @param {number} [data.refPar]  reference par for the seconds display; the
+ *        fixed one-minute rating unit unless a caller passes a board's own par
  * @param {boolean} [data.handicapProvisional]  true when the ratio came from
  *        the local-residual fallback (< MIN_PLAYS_FOR_FIT_INCLUSION plays)
  */
 export function renderDailyStatsTab(data) {
-  const { history, metaByDate, scoresByDate, uid, ratio = 1, bombSeconds = 0, refPar = 60, handicapProvisional, handicaps = null } = data;
+  const { history, metaByDate, scoresByDate, uid, ratio = 1, bombSeconds = 0, refPar = RATING_REF_PAR, handicapProvisional, handicaps = null } = data;
 
   // Chronology is by the day the run was PLAYED (playedDate), not the board's
   // date key, an archive replay of an old board is a play that happened

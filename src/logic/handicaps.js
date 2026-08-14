@@ -10,9 +10,21 @@
 //   adjusted    = time / k       (a Greg-equivalent time; never negative)
 //
 // A seconds MAGNITUDE is still shown for intuition (a RATING vs Greg), derived
-// from the ratio at a REFERENCE par: displaySeconds = (1 - k) × refPar.
+// from the ratio at a REFERENCE par: displaySeconds = (1 - k) × RATING_REF_PAR.
 // POSITIVE = faster/better than Greg, negative = slower, so a fast player reads
-// "+10s / +12%" and a slower one "−47s / −58%", stable across boards.
+// "+10s / +16%" and a slower one "−28s / −47%", stable across boards.
+//
+// THE REFERENCE PAR IS A FIXED UNIT, ONE MINUTE, NOT A FITTED QUANTITY (his
+// ruling 2026-08-14). It used to be the refit's median day-of par, shipped in
+// handicaps.json and recomputed nightly, and that was wrong in a way worth
+// writing down: displaySeconds is (1 - k) times a constant either way, so the
+// seconds have never carried information the percent did not. All a fitted
+// constant added was DRIFT. The daily par distribution moves with the board
+// mix, the shape rotation included, so the same player could read +12s one
+// morning and +11s the next having played identically. Fixing it at 60 makes
+// the number sayable ("per minute of Greg's pace, you save 10 seconds") and
+// stable forever, and it retires the whole question of which rows are allowed
+// to influence the anchor.
 //
 // Data source: src/logic/handicaps.json, refreshed daily by the "Refit
 // Greg-par" GitHub Action. The ratio file is tagged `format: "logratio-v1"`;
@@ -27,13 +39,15 @@
 // -estimated k would censor real skill. [0.1, 10] never bites a plausible human.
 export const HANDICAP_K_MIN = 0.1;
 export const HANDICAP_K_MAX = 10.0;
-// Fallback reference par for the seconds display when the file omits refPar.
-export const REF_PAR_FALLBACK = 60;
+// The reference par the seconds RATING is quoted against: one minute, fixed.
+// A display unit, deliberately not a fitted number (see the header). Any
+// `refPar` still present in handicaps.json is IGNORED, so an older file cannot
+// reintroduce the drift; the refit stops writing the field.
+export const RATING_REF_PAR = 60;
 
 let _format = 'additive'; // 'logratio-v1' | 'additive'
 let _ratios = null;       // uid -> k (empty {} in legacy/unrated mode)
 let _details = null;      // uid -> { k, bombSeconds }
-let _refPar = REF_PAR_FALLBACK;
 let _meta = null;
 let _loading = null;
 
@@ -47,13 +61,11 @@ function applyLoaded(data) {
   if (isRatio) {
     _ratios = data.handicaps || {};
     _details = data.handicapDetails || {};
-    _refPar = typeof data.refPar === 'number' && data.refPar > 0 ? data.refPar : REF_PAR_FALLBACK;
   } else {
     // Legacy additive file (or missing): do NOT interpret seconds as ratios.
     // Everyone is unrated (k=1) until a logratio-v1 file ships.
     _ratios = {};
     _details = {};
-    _refPar = REF_PAR_FALLBACK;
   }
   _meta = data
     ? {
@@ -62,12 +74,12 @@ function applyLoaded(data) {
         nPlayers: data.nPlayers,
         method: data.method,
         format: _format,
-        refPar: _refPar,
+        refPar: RATING_REF_PAR,
         // secPerBombHit is fit-only (not in shipped PAR_MODEL) but published
         // here for provisional-handicap bomb reasoning.
         secPerBombHit: typeof data.secPerBombHit === 'number' ? data.secPerBombHit : 0,
       }
-    : { updatedAt: null, modelFitN: null, nPlayers: null, method: null, format: 'additive', refPar: REF_PAR_FALLBACK, secPerBombHit: 0 };
+    : { updatedAt: null, modelFitN: null, nPlayers: null, method: null, format: 'additive', refPar: RATING_REF_PAR, secPerBombHit: 0 };
 }
 
 /**
@@ -92,12 +104,15 @@ export function loadHandicaps() {
  * cost. Nulls if load hasn't completed or the file was missing.
  */
 export function getHandicapsMeta() {
-  return _meta || { updatedAt: null, modelFitN: null, nPlayers: null, method: null, format: 'additive', refPar: REF_PAR_FALLBACK, secPerBombHit: 0 };
+  return _meta || { updatedAt: null, modelFitN: null, nPlayers: null, method: null, format: 'additive', refPar: RATING_REF_PAR, secPerBombHit: 0 };
 }
 
-/** The reference par used to convert a ratio to a display-seconds magnitude. */
+/**
+ * The reference par a ratio's display-seconds are quoted against: the fixed
+ * one-minute unit, never a value read from the file.
+ */
 export function getRefPar() {
-  return _refPar;
+  return RATING_REF_PAR;
 }
 
 /** The raw ratio map (uid -> k). Empty {} in legacy/unrated mode. For rankAdjusted. */
@@ -130,11 +145,12 @@ export function ratioDisplayPercent(k) { return (1 - k) * 100; }
 /**
  * The user's handicap as a SECONDS magnitude at a reference par, a RATING vs
  * Greg. POSITIVE = typically FASTER/better than Greg, negative = slower.
- * Defaults to the shipped refPar (stable cross-board rating); pass a board's own
- * par for a board-scaled figure.
+ * Defaults to the fixed one-minute unit (a rating that means the same thing on
+ * every board and every night); pass a board's own par for a board-scaled
+ * figure, which is a different and still-useful question.
  */
-export function getHandicapSeconds(uid, refPar = _refPar) {
-  const base = typeof refPar === 'number' && refPar > 0 ? refPar : _refPar;
+export function getHandicapSeconds(uid, refPar = RATING_REF_PAR) {
+  const base = typeof refPar === 'number' && refPar > 0 ? refPar : RATING_REF_PAR;
   return ratioDisplaySeconds(getHandicapRatio(uid), base);
 }
 

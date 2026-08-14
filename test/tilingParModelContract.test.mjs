@@ -607,13 +607,54 @@ test('the R refit carries the lab-seed machinery (2026-08-03 seeding ruling)', (
     'the lab-priors loader must fail soft with a message');
 });
 
-test('the digit frame is rectangles-only', () => {
-  // At fixed density the digit shares differ BY LATTICE (rhombille 5plus
-  // 4.4x the 4.8.8's, 15x the hex's); tiling rows would turn the digit
-  // coefficients into part-shape indicators, and the pairwise decorrelation
-  // mission cannot see a third axis.
+// SUPERSEDES 'the digit frame is rectangles-only' (his ruling 2026-08-14).
+// The old rule dropped every tiling row before the shares join, because at
+// fixed density the digit shares differ BY LATTICE (rhombille's 5plus share
+// 4.4x the 4.8.8's, 15x the hex's) and pooled rows with nothing to separate
+// them turn the digit coefficients into part-shape indicators. That confound is
+// real and the reasoning above still holds; what changed is the response to it.
+// A named confound gets a TERM. The exclusion cost the study almost every board
+// the game now produces: half of every daily under the shape rotation, and 47
+// of the first 48 Challenge boards.
+test('the digit study adjusts for shape with a term, rather than excluding shapes', () => {
   const frame = R_SRC.slice(R_SRC.indexOf('digit_df <- df |>'),
-    R_SRC.indexOf('inner_join(digit_shares, by = "date")'));
-  assert.ok(frame.includes('filter(is.na(tilingType))'),
-    'digit_df must drop tiling rows before the shares join');
+    R_SRC.indexOf('decor_df <- digit_df'));
+  assert.ok(frame.length > 100, 'the digit frame was not found');
+  assert.ok(!frame.includes('filter(is.na(tilingType))'),
+    'the study frame must no longer drop tiling rows');
+  assert.ok(!/filter\(!is_match\)/.test(frame),
+    'nor Challenge rows, which are most of the tiling boards that exist');
+
+  // The term that makes admitting them sound. Without the interactions this is
+  // just pooling, which is what the old exclusion was right to refuse.
+  const fitBlock = R_SRC.slice(R_SRC.indexOf('digit_shape_cols <- c('),
+    R_SRC.indexOf('digit_fit <- brm('));
+  assert.ok(fitBlock.length > 100, 'the digit fit block was not found');
+  assert.ok(/outer\(SHAPE_PREDICTORS,\s*DIGIT_FEATURES/.test(R_SRC),
+    'one shape-by-digit interaction per shape and digit must be built');
+  assert.ok(fitBlock.includes('deviation_names = digit_dev_cols'),
+    'the shape terms must reach build_priors as DEVIATIONS');
+
+  // The lb=0 trap, the same one that collapsed the main fit into divergences
+  // when the bound was removed (2026-08-01). A shape effect is SIGNED, so it
+  // belongs in the dev nlpar; bounded, its posterior piles at zero and the
+  // difference leaks into the digit coefficients this study exists to measure.
+  assert.ok(/dev ~ 0 \+/.test(fitBlock) && /nl = TRUE/.test(fitBlock),
+    'signed shape terms must ride the dev nlpar, never the bounded base block');
+});
+
+test('the DECORRELATION frame stays rectangles-only and day-of, and is its own object', () => {
+  // The half of the old rule that survives, and the half that actually needed
+  // an exclusion: this machinery takes exactly TWO features, so it has no way
+  // to hold shape still the way the fit above does. It also selects tomorrow's
+  // DAILY board, which a Challenge row is not evidence about.
+  const decor = R_SRC.slice(R_SRC.indexOf('decor_df <- digit_df'));
+  assert.ok(decor.length > 100, 'the decorrelation frame was not found');
+  assert.match(decor.slice(0, 200), /filter\(is\.na\(tilingType\), matchPlay == 0\)/,
+    'decor_df must keep both exclusions');
+  // And the mission must actually be fed the narrow frame. Passing digit_df
+  // here would reintroduce every row the narrowing exists to keep out, with
+  // nothing failing loudly.
+  assert.match(R_SRC, /choose_decorrelation_mission\(\s*(?:#[^\n]*\n\s*)*decor_df,/,
+    'the decorrelation mission must be fitted from decor_df, not the study frame');
 });

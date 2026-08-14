@@ -244,11 +244,34 @@ const _round = (v) => {
   return Math.round(n * f) / f;
 };
 
+// The one class of feature the index does NOT carry. Contribution keys are
+// measured on every library board and ride the PAGE, which is where a dealt
+// entry (and therefore its fit row) takes its features from, so excluding them
+// here costs the study nothing. They are kept out of the STEERING vector for
+// the reason they were kept out of `target_candidates`: a contribution effect
+// must never be FORCE-INJECTABLE. His ruling made that structural rather than
+// conventional, "candidate vectors lack the keys, so a mission targeting one
+// could never win a day", and a header derived blindly from the boards would
+// quietly hand the keys back on the first build that measured them. The size
+// argument agrees with the ruling: over the 2,759-board library they add 56 KB
+// (+16%) to the shards a deal fetches, to steer on what nothing may steer on.
+//
+// Stated as the SUFFIX CONVENTION rather than as a copy of
+// CONTRIBUTION_FEATURE_KEYS. That constant is defined in boardSolver.js, so
+// importing it here would mean loading the whole solver into this leaf, and
+// into the setup sheet along with it.
+// test/matchRules.test.mjs pins the two against each other in BOTH directions,
+// so neither a new measured type nor an innocent key ending in "Required" can
+// drift the sets apart unnoticed.
+const CONTRIBUTION_KEY_RE = /(?:Required|ClicksSaved)$/;
+
 /** The union of every entry's feature keys, sorted: the index's own header. */
 export function matchIndexFeatureKeys(entries) {
   const keys = new Set();
   for (const e of entries || []) {
-    for (const k of Object.keys((e && e.features) || {})) keys.add(k);
+    for (const k of Object.keys((e && e.features) || {})) {
+      if (!CONTRIBUTION_KEY_RE.test(k)) keys.add(k);
+    }
   }
   return [...keys].sort();
 }

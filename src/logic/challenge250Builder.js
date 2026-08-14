@@ -60,10 +60,19 @@ export function challengeBoardSeed(level, attempt = 0, salt = '') {
  *
  * @param {object} spec a challengeSpecForLevel result (or shape-compatible)
  * @param {string} seed full seed string for this draw
+ * @param {object} [opts]
+ * @param {boolean} [opts.contribution]  ALSO measure the gimmick-contribution
+ *   features, strip-solving from this board's own certified opener. OFF by
+ *   default and deliberately so: each measured type costs a further full solve,
+ *   and this builder serves the live play path, where that would be paid under
+ *   a player's click. Offline callers that feed the fit (the match-library
+ *   build and its backfill) turn it on; a match row is otherwise the one fit
+ *   row family that reaches the refit carrying no contribution keys, which is
+ *   why the study could never see a Challenge board.
  * @returns {null | { board, rows, cols, totalMines, firstClick, check,
  *   activeGimmicks, applied, features, par, seed, tiling? }}
  */
-export function buildChallenge250Board(spec, seed) {
+export function buildChallenge250Board(spec, seed, opts = {}) {
   const res = spec.shape === 'rect'
     ? buildRectSpec(spec, seed)
     : buildTilingSpec(spec, seed);
@@ -78,7 +87,14 @@ export function buildChallenge250Board(spec, seed) {
     features = computeDailyFeatures({
       board: res.board, rows: res.rows, cols: res.cols, totalMines,
       activeGimmicks: res.activeGimmicks, rngSeed: seed,
-    }, res.check);
+    }, res.check, opts.contribution
+      // The SAME anchor the certificate and the par features use. firstClick is
+      // a flat index here; the strip-solve wants row/col.
+      ? { contributionOpener: {
+          row: Math.floor(res.firstClick / res.cols),
+          col: res.firstClick % res.cols,
+        } }
+      : undefined);
     par = predictPar(features);
   } catch (err) {
     // Par is a display + validation aid, never a play blocker; the
