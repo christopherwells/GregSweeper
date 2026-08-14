@@ -77,7 +77,10 @@ function generateFor(spec, k) {
   for (let t = 0; t < TRIES_PER_KEEP; t++) {
     const seed = `match:${face}:${k}:${t}`;
     const t0 = Date.now();
-    const r = buildChallenge250Board({ ...spec }, seed);
+    // contribution: these rows reach the refit as `match_<hash>` fit rows, and
+    // the gimmick-contribution study can only see a board that carries the
+    // keys. Paid once here, offline, never under a player's click.
+    const r = buildChallenge250Board({ ...spec }, seed, { contribution: true });
     if (!r || !r.check || !r.par || !r.features) continue;
     const work = r.check.totalClicks - 1;
     if (work < CLIMB_MIN_DEDUCTIONS) continue;

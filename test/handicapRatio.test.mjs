@@ -9,7 +9,8 @@ import assert from 'node:assert/strict';
 import {
   estimateHandicapDetails, estimateHandicapFromHistory,
   ratioDisplaySeconds, ratioDisplayPercent,
-  HANDICAP_K_MIN, HANDICAP_K_MAX,
+  HANDICAP_K_MIN, HANDICAP_K_MAX, RATING_REF_PAR,
+  getRefPar, getHandicapSeconds,
 } from '../src/logic/handicaps.js';
 
 const pairs = (ratios, par = 100) => ratios.map((r, i) => ({ time: r * par, predictedPar: par, date: 'd' + i }));
@@ -51,16 +52,35 @@ test('REGRESSION: handicap rating sign — faster than Greg is POSITIVE, slower 
   // A player FASTER than Greg (k < 1, Kate 0.876) reads positive; a SLOWER
   // player (k > 1, Sebastien 1.579) reads negative. The rating sign was inverted
   // on first ship (Christopher, 2026-07-02: "he should have a negative par").
-  assert.ok(ratioDisplaySeconds(0.876, 81) > 0, 'faster player -> positive seconds');
-  assert.ok(ratioDisplaySeconds(1.579, 81) < 0, 'slower player -> negative seconds');
+  assert.ok(ratioDisplaySeconds(0.876, RATING_REF_PAR) > 0, 'faster player -> positive seconds');
+  assert.ok(ratioDisplaySeconds(1.579, RATING_REF_PAR) < 0, 'slower player -> negative seconds');
   assert.ok(ratioDisplayPercent(0.876) > 0, 'faster player -> positive percent');
   assert.ok(ratioDisplayPercent(1.579) < 0, 'slower player -> negative percent');
-  // Magnitudes at refPar 81: (1-0.876)*81 ≈ +10, (1-1.579)*81 ≈ -47.
-  assert.equal(Math.round(ratioDisplaySeconds(0.876, 81)), 10);
-  assert.equal(Math.round(ratioDisplaySeconds(1.579, 81)), -47);
+  // Magnitudes at the one-minute unit: (1-0.876)*60 ≈ +7, (1-1.579)*60 ≈ -35.
+  assert.equal(Math.round(ratioDisplaySeconds(0.876, RATING_REF_PAR)), 7);
+  assert.equal(Math.round(ratioDisplaySeconds(1.579, RATING_REF_PAR)), -35);
   // Neutral k=1 is exactly zero on both.
-  assert.equal(ratioDisplaySeconds(1, 81), 0);
+  assert.equal(ratioDisplaySeconds(1, RATING_REF_PAR), 0);
   assert.equal(ratioDisplayPercent(1), 0);
+});
+
+// REGRESSION (2026-08-14): the seconds rating was quoted against the refit's
+// median day-of par, shipped in handicaps.json and recomputed nightly, so the
+// same player's chip could read a different number on a morning they had not
+// played. displaySeconds is (1 - k) times a constant either way, so the fitted
+// version carried no information the percent did not, only drift. His ruling:
+// fix it at one minute, and read it as "per minute of Greg's pace".
+test('the rating reference par is a FIXED one-minute unit, not a fitted number', () => {
+  assert.equal(RATING_REF_PAR, 60, 'the unit is one minute');
+  assert.equal(getRefPar(), RATING_REF_PAR,
+    'and the accessor returns the constant, never a value read from the file');
+  // The unrated default: k=1 reads as exactly zero, not as a made-up rating.
+  assert.equal(getHandicapSeconds('nobody'), 0);
+  // The parameter survives, because "how many seconds on THIS board" is a
+  // different and still-useful question from the cross-board rating.
+  assert.equal(getHandicapSeconds('nobody', 240), 0);
+  assert.equal(Math.round(ratioDisplaySeconds(0.5, 240)), 120,
+    'an explicit board par still scales the figure');
 });
 
 test('non-positive or malformed pairs are ignored, not counted', () => {

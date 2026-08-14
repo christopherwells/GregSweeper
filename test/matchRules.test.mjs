@@ -18,6 +18,10 @@ import {
 } from '../src/logic/matchRules.js';
 import { LIB_SHAPE_INTROS, LIB_MOD_INTROS } from '../src/logic/climbLibrary.js';
 import { TILING_TYPES } from '../src/logic/tilingGeometry.js';
+import { readFileSync } from 'node:fs';
+// The real list, imported HERE and deliberately not in matchRules.js: a test
+// pays no page weight for reaching into the solver.
+import { CONTRIBUTION_FEATURE_KEYS } from '../src/logic/boardSolver.js';
 
 // ── His rulings, as numbers ─────────────────────────────────────────────
 
@@ -147,6 +151,57 @@ test('matchIndexRow and parseMatchIndex round-trip, feature vector included', ()
     // boards, and par is re-priced from the page's full-precision copy.
     features: { cellCount: 72, clueShare3: 0.1235, sonarCellCount: 3 },
   });
+});
+
+// REGRESSION (2026-08-14): match boards began carrying gimmick-contribution
+// features so the contribution study could finally see a Challenge board, and
+// the index header, which is derived blind from whatever the boards hold, took
+// them straight into the STEERING vector.
+//
+// Those keys may never steer. His ruling kept them out of `target_candidates`
+// structurally rather than by convention, the stated mechanism being that
+// "candidate vectors lack the keys, so a mission targeting one could never win
+// a day". Measuring the boards removed that mechanism by accident. Excluding
+// them here restores it, costs the study nothing (a dealt entry takes its
+// features from the PAGE, not the index) and keeps 56 KB off every deal.
+test('the index header carries NO contribution keys, so nothing can steer on one', () => {
+  const entry = {
+    par: 73.2,
+    spec: { shape: 'hex', cells: 72, mines: 12, gimmicks: ['sonar', 'liar'] },
+    features: {
+      cellCount: 72, sonarCellCount: 3,
+      sonarRequired: 1, sonarClicksSaved: 4, liarRequired: 0, liarClicksSaved: 0,
+    },
+  };
+  const keys = matchIndexFeatureKeys([entry]);
+  assert.deepEqual(keys, ['cellCount', 'sonarCellCount'],
+    'the steerable features survive and the measurements do not');
+  // The vector encodes positionally against that header, so an excluded key
+  // must be absent after a round trip, not merely zeroed.
+  const rows = parseMatchIndex({ featureKeys: keys, rows: [matchIndexRow(0, 0, entry, keys)] });
+  assert.deepEqual(Object.keys(rows[0].features).sort(), ['cellCount', 'sonarCellCount']);
+});
+
+test('the exclusion rule and CONTRIBUTION_FEATURE_KEYS agree in BOTH directions', () => {
+  // The rule is written as a suffix convention rather than as a copy of the
+  // list, to keep the solver out of this leaf. That is only safe while the two
+  // describe the same set, so this is the pin. Direction one: every real
+  // contribution key is excluded.
+  const asFeatures = Object.fromEntries(CONTRIBUTION_FEATURE_KEYS.map((k) => [k, 1]));
+  assert.ok(CONTRIBUTION_FEATURE_KEYS.length > 0, 'non-vacuous: the list must not be empty');
+  assert.deepEqual(matchIndexFeatureKeys([{ features: asFeatures }]), [],
+    'every contribution key must be excluded from the header');
+
+  // Direction two: nothing ELSE a real board carries gets caught by the suffix.
+  // Driven off the live library rather than a hand-written list, so a feature
+  // added tomorrow is covered without anyone remembering this test.
+  const page = JSON.parse(readFileSync(
+    new URL('../scripts/data/match-library/match-000.json', import.meta.url), 'utf8'));
+  const real = Object.keys(page.boards[0].features || {});
+  assert.ok(real.length > 0, 'non-vacuous: the sample board must carry features');
+  const excluded = real.filter((k) => !matchIndexFeatureKeys([{ features: { [k]: 1 } }]).length);
+  assert.deepEqual(excluded.sort(), CONTRIBUTION_FEATURE_KEYS.filter((k) => real.includes(k)).sort(),
+    'the suffix must catch the contribution keys and nothing else on a real board');
 });
 
 test('a row with NO feature vector still parses, and steers on nothing', () => {

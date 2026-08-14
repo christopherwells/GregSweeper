@@ -26,6 +26,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+// The sweep guards its own main() behind an is-this-the-entry-point check, so
+// importing it here runs nothing and reaches no network. Its per-bucket rule is
+// pure, which is what lets the match-row regression below be a behavior test
+// rather than one more grep at the source.
+import { divergenceBucketPlan } from '../scripts/verify-canonical-boards.mjs';
 
 const leaderboardSrc = readFileSync(new URL('../src/firebase/firebaseLeaderboard.js', import.meta.url), 'utf8');
 const winSrc = readFileSync(new URL('../src/game/winLossHandler.js', import.meta.url), 'utf8');
@@ -172,7 +177,12 @@ test('the nightly sweep scans for divergent rows, era-floored, and reports rathe
   // pass on a line that has nothing to do with this guard.
   const idx = sweepSrc.indexOf('DIVERGENT SCORE ROW');
   const block = sweepSrc.slice(idx - 4000, idx + 2000);
-  assert.match(block, /bucket < CANONICAL_ERA_START/,
+  // The era floor moved into divergenceBucketPlan, which is behaviour-tested
+  // below; what this still has to pin is that the SCAN consults it, since a
+  // loop that stopped calling the rule would skip nothing at all.
+  assert.match(block, /divergenceBucketPlan\(bucket\)/,
+    'the daily scan must get its per-bucket verdict from the one rule');
+  assert.match(block, /plan\.skip === 'pre-era'/,
     'the daily scan must skip pre-era dates, whose seeds disagree BY CONSTRUCTION');
   // It must not delete. The remediation is a named-rows human decision.
   assert.doesNotMatch(block, /method:\s*'DELETE'/, 'the sweep must never delete');
@@ -195,8 +205,8 @@ test('the sweep covers all THREE score families, not just the day-of daily', () 
   // line. canonicalSeedPath is the one rule that resolves it (#260).
   assert.match(sweepSrc, /from '\.\.\/src\/logic\/submitGate\.js'/,
     'the bucket-to-canonical rule must be imported, not re-implemented');
-  assert.match(block, /canonicalSeedPath\(bucket\)/,
-    'the daily scan must resolve its canonical node through it');
+  assert.match(sweepSrc, /canonicalSeedPath\(bucket\)/,
+    'and divergenceBucketPlan must resolve its canonical node through it');
   assert.doesNotMatch(block, /dbGet\(`dailyBoard\/\$\{bucket\}\/rngSeed`\)/,
     'hardcoding dailyBoard here is the bug that skipped every weekly-first row');
 });
@@ -212,6 +222,69 @@ test('the sweep reports what it could NOT check, so clean never means unlooked-a
   assert.match(block, /could not be checked either way/, 'and must say so in the output');
   assert.match(sweepSrc, /rowPlayedSeed/,
     'the played-seed rule must be the pure one, which is behaviour-tested');
+});
+
+// REGRESSION (2026-08-14): the nightly sweep threw on the first Challenge match
+// row it met and reported the ENTIRE divergence scan as "DID NOT RUN".
+//
+// Match rows submit into `daily/` under a match_<hash> key, and a match board
+// has no canonical to diverge from, so canonicalSeedPath returns null for one
+// deliberately. The submit path was taught to skip that read; this second
+// caller was not, and passed the null into a dbGet that does path.split('/').
+// 48 match buckets existed the night it first threw, so one new family under an
+// existing path silenced the alarm for the other three as well. The lesson
+// generalizes past this key: the sweep reads whatever `daily/`
+// holds, so the answer for a bucket it does not recognize must be a REASON,
+// never a read it cannot make.
+test('every bucket family under daily/ gets a verdict, and a skipped one carries no path', () => {
+  // The family that caused the incident, keyed exactly as production keys it.
+  const match = divergenceBucketPlan('match_fe307a9405101a37');
+  assert.equal(match.skip, 'no-canonical-by-rule',
+    'a match bucket must be skipped by rule, not read and found empty');
+  assert.equal(match.seedPath, null,
+    'and it must hand back NO path — the null read is the crash');
+
+  // The three families that must still be compared, unchanged.
+  assert.deepEqual(divergenceBucketPlan('2026-08-13'),
+    { seedPath: 'dailyBoard/2026-08-13/rngSeed', skip: null });
+  assert.deepEqual(divergenceBucketPlan('2026-08-03_weekly_first'),
+    { seedPath: 'weeklyBoard/2026-08-03/rngSeed', skip: null },
+    'the weekly fit row still resolves to the WEEKLY canonical (#260)');
+  assert.equal(divergenceBucketPlan('2026-04-01').skip, 'pre-era',
+    'pre-era dates disagree BY CONSTRUCTION and stay floored out');
+
+  // The invariant the crash violated, stated once over every family: a verdict
+  // either names a path to read or names a reason not to, never both and never
+  // neither. A caller that reads plan.seedPath after checking plan.skip cannot
+  // then be handed a null.
+  for (const bucket of ['match_fe307a9405101a37', '2026-08-13',
+    '2026-08-03_weekly_first', '2026-04-01', '2026-05-07_bonus']) {
+    const plan = divergenceBucketPlan(bucket);
+    if (plan.skip) {
+      assert.equal(plan.seedPath, null, `${bucket}: a skip must carry no path`);
+    } else {
+      assert.equal(typeof plan.seedPath, 'string', `${bucket}: a read must carry one`);
+      assert.ok(plan.seedPath.length > 0, `${bucket}: and it must not be empty`);
+    }
+  }
+});
+
+test('a bucket the scan could not compare is COUNTED, never dropped under a clean line', () => {
+  // Both skip reasons are silent-drop shapes, and one of them already cost 36
+  // rows: the weekly fit rows spent their whole life being looked up at a node
+  // that does not exist, and every one of them vanished under a green line
+  // (#260). The scan may decline to compare a bucket; it may not do so
+  // invisibly.
+  const idx = sweepSrc.indexOf('DIVERGENT SCORE ROW');
+  const block = sweepSrc.slice(idx - 4000, idx + 4000);
+  assert.match(block, /skipped\.byRule \+= Object\.keys\(rows\)\.length/,
+    'a by-rule skip must add its ROWS to the count, not silently continue');
+  assert.match(block, /skipped\.noNode \+= Object\.keys\(rows\)\.length/,
+    'and so must a bucket whose canonical node came back empty');
+  assert.match(block, /match row\(s\) have no canonical to diverge from/,
+    'the by-rule skip must be printed, naming what proves those boards instead');
+  assert.match(block, /canonical node is empty/,
+    'and the empty-node skip must be printed too — that is the #260 shape');
 });
 
 test('a sweep scan that could not run is not reported as clean', () => {
