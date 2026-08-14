@@ -343,9 +343,92 @@ export function parseMatchIndex(index) {
 // asserts that equality over the shipped library, which is what keeps this a
 // single definition rather than a parallel one.
 
-/** Filename for a shape's index shard, relative to the library directory. */
-export function matchShardFile(shape) {
-  return `match-index-${shape}.json`;
+// ONE FILE PER CORNER (his ruling 2026-08-14). The index was sharded by SHAPE,
+// which meant a player who picked Classic, Quick, Sparse and no modifiers
+// downloaded the metadata for every Classic board in the library to be dealt
+// ten. Measured over 13,986 rows: 89 KB gzipped for one shape, 374 KB for all
+// seven, whatever the rest of the selection said.
+//
+// Sharding on all four axes the filter tests makes the download follow the
+// CHOICE. That same selection now costs 0.7 KB, and the worst case anyone can
+// construct (every shape, every band, three modifiers) costs 77 KB, still five
+// times cheaper than today's best case. His framing: a player who picks "any"
+// is signing up for the wider download, and that is honest pricing rather than
+// everybody paying the maximum.
+//
+// The trade is REQUEST COUNT, not bytes: that worst case is 156 small files.
+// They are tiny and multiplexed, and the summary tells the client which
+// corners exist so it never asks for one that does not. If round trips ever
+// bite on a slow connection, the fix is grouping the modifier axis back up,
+// not abandoning the split.
+export const MATCH_SHARD_PREFIX = 'mx';
+
+/**
+ * Filename for one corner's index shard, relative to the library directory.
+ *
+ * Takes the corner's four parts in the same order matchCornerKey emits them,
+ * so a caller cannot accidentally transpose two of them. `mods` is the sorted
+ * '+'-joined set, or empty for a plain board.
+ */
+export function matchShardFile(shape, time, density, mods) {
+  return `${MATCH_SHARD_PREFIX}-${shape}-${time}-${density}-${mods || 'none'}.json`;
+}
+
+/** The shard file a row belongs in, straight from its own corner. */
+export function matchShardFileForRow(row) {
+  const [shape, mods, time, density] = matchCornerKey(row);
+  return matchShardFile(shape, time, density, mods);
+}
+
+/**
+ * Every subset of the player's chosen modifiers, as sorted '+'-joined keys.
+ *
+ * The modifier filter is a SUBSET test: someone who ticks walls and liar may
+ * be dealt a plain board, a walls board, a liar board or a walls+liar board.
+ * So the files they need are the subsets of their selection, and that is what
+ * makes the request count grow with how much they ticked.
+ */
+export function modSubsetKeys(mods) {
+  const list = [...new Set(mods || [])].sort();
+  let out = [[]];
+  for (const m of list) out = [...out, ...out.map((s) => [...s, m])];
+  return out.map((s) => s.slice().sort().join('+') || '');
+}
+
+/**
+ * Exactly the shard files a rules object needs, and no others.
+ *
+ * `corners` is the summary's corner list, which is what keeps this from
+ * requesting files that were never written: an empty corner has no file, and
+ * asking for one would spend a round trip to learn nothing. Pass null to get
+ * the full cross product instead, which a client without a summary must.
+ */
+export function matchShardFilesFor(rules, corners) {
+  const shapes = rules && rules.shapes && rules.shapes.length ? rules.shapes : [];
+  const times = rules && rules.time && rules.time !== 'any'
+    ? [rules.time] : MATCH_TIME_BANDS.map((b) => b.key);
+  const dens = rules && rules.density && rules.density !== 'any'
+    ? [rules.density] : MATCH_DENSITY_BANDS.map((b) => b.key);
+  const modKeys = modSubsetKeys(rules && rules.mods);
+  // parseMatchSummary hands `mods` back as an ARRAY, so it is re-joined here
+  // rather than compared as a string. Comparing the array directly matches
+  // nothing and would silently request the full cross product.
+  const live = corners
+    ? new Set(corners.map((c) => [c.shape, (c.mods || []).slice().sort().join('+'),
+      c.time, c.density].join('|')))
+    : null;
+  const out = [];
+  for (const s of shapes) {
+    for (const t of times) {
+      for (const d of dens) {
+        for (const m of modKeys) {
+          if (live && !live.has([s, m, t, d].join('|'))) continue;
+          out.push(matchShardFile(s, t, d, m));
+        }
+      }
+    }
+  }
+  return out;
 }
 
 /** The corner a row falls in: exactly the four things boardMatchesRules tests. */

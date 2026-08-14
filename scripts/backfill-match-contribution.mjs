@@ -50,7 +50,7 @@ import { computeContributionFeatures, CONTRIBUTION_FEATURE_KEYS } from '../src/l
 import { cleanSolverArtifacts } from '../src/logic/boardGenerator.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
 import { matchRowKey } from '../src/logic/matchCodes.js';
-import { OUT_DIR, writeMatchIndexFiles } from './match-index-files.mjs';
+import { OUT_DIR, writeMatchIndexFiles, matchPageNames } from './match-index-files.mjs';
 
 const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
 const CONTRIB_BACKFILL = new URL('./data/gimmick-contribution.json', import.meta.url);
@@ -101,7 +101,7 @@ export function measureStoredBoard(rec) {
 /** Every library board keyed by the fit-row key its plays submit under. */
 function libraryByRowKey() {
   const byKey = new Map();
-  for (const name of readdirSync(OUT_DIR).filter((f) => /^match-\d{3}\.json$/.test(f))) {
+  for (const name of matchPageNames()) {
     const page = JSON.parse(readFileSync(new URL(name, OUT_DIR), 'utf8'));
     for (const rec of page.boards) {
       if (rec && rec.seed) byKey.set(matchRowKey(rec.seed), rec);
@@ -170,9 +170,7 @@ function main() {
     process.exit(1);
   }
 
-  const pageNames = readdirSync(OUT_DIR)
-    .filter((f) => /^match-\d{3}\.json$/.test(f))
-    .sort();
+  const pageNames = matchPageNames();
   if (pageNames.length === 0) {
     console.error('backfill-match-contribution: no pages found, nothing to do');
     process.exit(1);

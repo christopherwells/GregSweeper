@@ -25,12 +25,13 @@
 import { state } from '../state/gameState.js';
 import { fetchLibraryJson } from './climbDeal.js';
 import {
-  parseMatchIndex, parseMatchSummary, matchShardFile, resolveMatchPicks,
+  parseMatchIndex, parseMatchSummary, matchShardFilesFor, resolveMatchPicks,
 } from '../logic/matchRules.js';
 import { planMatchDeal, currentSteerMissions } from '../logic/matchSteering.js';
 import { loadExperimentTarget } from '../logic/experimentDesign.js';
 import { getMatchSeen, setMatchSeen } from '../storage/statsStorage.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
+import { unpackPayload } from '../logic/boardPack.js';
 
 // How long the deal will wait for the experiment file before dealing without
 // steering. main.js warms that cache at startup and the service worker
@@ -47,8 +48,8 @@ export function matchSummaryUrl() {
   return `${LIB}/match-summary.json`;
 }
 
-export function matchShardUrl(shape) {
-  return `${LIB}/${matchShardFile(shape)}`;
+export function matchShardUrl(file) {
+  return `${LIB}/${file}`;
 }
 
 export function matchPageUrl(page) {
@@ -86,24 +87,38 @@ export async function fetchMatchCorners() {
  * only when nothing at all could be read, which is the same signal the whole
  * index used to give.
  */
-export async function fetchMatchIndexRows(shapes) {
-  const want = [...new Set(shapes || [])];
+export async function fetchMatchIndexRows(rules) {
+  // The corner files this selection can actually reach, and no others. The
+  // summary says which corners exist, so an empty one costs no round trip;
+  // without it the full cross product is requested and the misses come back
+  // as nothing, which is the same outcome one step slower.
+  const corners = await fetchMatchCorners();
+  const want = matchShardFilesFor(rules, corners);
   if (want.length === 0) return null;
   await Promise.all(want
-    .filter((s) => !_shardRows.has(s))
-    .map(async (shape) => {
-      const rows = parseMatchIndex(await fetchLibraryJson(matchShardUrl(shape)));
-      _shardRows.set(shape, rows || []);
+    .filter((f) => !_shardRows.has(f))
+    .map(async (file) => {
+      const rows = parseMatchIndex(await fetchLibraryJson(matchShardUrl(file)));
+      _shardRows.set(file, rows || []);
     }));
-  const rows = want.flatMap((s) => _shardRows.get(s) || []);
+  const rows = want.flatMap((f) => _shardRows.get(f) || []);
   return rows.length ? rows : null;
 }
 
-/** Fetch one page's board list, keyed by page number. Null on any failure. */
+/**
+ * Fetch one page's board list, keyed by page number. Null on any failure.
+ *
+ * UNPACKED HERE, at the edge. A page stores its cells columnar to keep the
+ * file down (boardPack.js), and everything downstream of this line expects the
+ * classic array of objects: the entry rides state and the save, and the host
+ * writes it VERBATIM into the match node, whose rules and whose guest both
+ * describe the classic shape. Unpacking at the boundary means the packing is a
+ * storage detail of these files and reaches nothing else.
+ */
 async function fetchPage(page) {
   const data = await fetchLibraryJson(matchPageUrl(page));
   if (!data || data.page !== page || !Array.isArray(data.boards)) return null;
-  return data.boards;
+  return data.boards.map((b) => (b && b.payload ? { ...b, payload: unpackPayload(b.payload) } : b));
 }
 
 /**
@@ -117,7 +132,7 @@ export async function dealMatchEntries(rules) {
   // Only the shapes the rules can reach: everything else is payload the deal
   // would filter straight back out (planMatchDeal applies eligibleRows itself,
   // and its shape test is the same one).
-  const rows = await fetchMatchIndexRows(rules.shapes);
+  const rows = await fetchMatchIndexRows(rules);
   if (!rows) return null;
 
   // Mission steering (matchSteering.js) prefers, for at most floor(N/5) of the

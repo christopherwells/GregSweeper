@@ -30,11 +30,12 @@ import assert from 'node:assert';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { OUT_DIR } from '../scripts/build-match-library.mjs';
 import {
-  matchShardFileUrl, SUMMARY_FILE, LEGACY_INDEX_FILE,
+  SUMMARY_FILE, LEGACY_INDEX_FILE, matchPageNames,
 } from '../scripts/match-index-files.mjs';
 import {
   parseMatchIndex, parseMatchSummary, countEligibleCorners, eligibleRows,
   matchIndexRow, matchIndexFeatureKeys, timeBandOf, MATCH_TIME_BANDS,
+  matchShardFileForRow,
 } from '../src/logic/matchRules.js';
 import { predictPar } from '../src/logic/dailyFeatures.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
@@ -45,16 +46,18 @@ import { isBoardSolvable } from '../src/logic/boardSolver.js';
 import { recalcAllAdjacency, recomputeDisplayedMines } from '../src/logic/gimmicks.js';
 
 const summary = JSON.parse(readFileSync(SUMMARY_FILE, 'utf8'));
-const pageNames = readdirSync(OUT_DIR).filter((f) => /^match-\d{3}\.json$/.test(f)).sort();
+const pageNames = matchPageNames(OUT_DIR);
 const pages = pageNames.map((f) => JSON.parse(readFileSync(new URL(f, OUT_DIR), 'utf8')));
 const boards = pages.flatMap((p) => p.boards);
 const SHAPES = ['rect', ...TILING_TYPES];
-const shardNames = readdirSync(OUT_DIR).filter((f) => /^match-index-.+\.json$/.test(f)).sort();
-const shards = Object.fromEntries(SHAPES
-  .filter((s) => shardNames.includes(`match-index-${s}.json`))
-  .map((s) => [s, JSON.parse(readFileSync(matchShardFileUrl(s), 'utf8'))]));
-/** Every shard's rows, parsed and concatenated: what a deal over all shapes sees. */
-const allRows = SHAPES.flatMap((s) => (shards[s] ? parseMatchIndex(shards[s]) || [] : []));
+// ONE FILE PER CORNER since 2026-08-14, so the shard set is read off the
+// directory rather than composed from SHAPES: the corner axis includes the
+// modifier SET, and there is no list of those to iterate.
+const shardNames = readdirSync(OUT_DIR).filter((f) => /^mx-.+\.json$/.test(f)).sort();
+const shards = Object.fromEntries(shardNames
+  .map((f) => [f, JSON.parse(readFileSync(new URL(f, OUT_DIR), 'utf8'))]));
+/** Every shard's rows, parsed and concatenated: what a deal over everything sees. */
+const allRows = shardNames.flatMap((f) => parseMatchIndex(shards[f]) || []);
 
 test('the match library is real, sharded, and its summary tells the truth', () => {
   assert.equal(pages.length, summary.pages, 'page files match the summary page count');
@@ -63,19 +66,22 @@ test('the match library is real, sharded, and its summary tells the truth', () =
   assert.deepEqual(summary.counts, pages.map((p) => p.boards.length));
   pages.forEach((p, i) => assert.equal(p.page, i, `page file ${i} numbers itself`));
 
-  // ONE SHARD PER SHAPE PRESENT, and every board in exactly one of them. A
-  // shape whose shard went missing would deal nothing while the summary went
-  // on advertising its corners, which is the split's own failure mode.
-  const shapesPresent = [...new Set(boards.map((b) => b.spec.shape))].sort();
-  assert.deepEqual(Object.keys(shards).sort(), shapesPresent,
-    'every shape in the pages needs a shard, and no shard may name a shape the pages lack');
-  assert.deepEqual(summary.shards, Object.fromEntries(
-    Object.entries(shards).map(([s, f]) => [s, f.rows.length])));
+  // ONE SHARD PER OCCUPIED CORNER, and every board in exactly one of them. A
+  // corner whose file went missing would deal nothing while the summary went
+  // on advertising it, which is this split's own failure mode.
+  assert.equal(shardNames.length, summary.corners.length,
+    'every occupied corner needs its own shard file, and no file may outlive its corner');
   assert.equal(allRows.length, boards.length, 'the shards together hold every board exactly once');
-  for (const [shape, file] of Object.entries(shards)) {
-    assert.equal(file.shape, shape, `${shape}'s shard must name itself`);
-    for (const r of parseMatchIndex(file)) {
-      assert.equal(r.shape, shape, `${shape}'s shard carries a ${r.shape} row`);
+  // The summary's per-shape totals still have to add up, even though nothing
+  // is stored per shape any more: the sheet's supply line reads them.
+  const byShape = {};
+  for (const r of allRows) byShape[r.shape] = (byShape[r.shape] || 0) + 1;
+  assert.deepEqual(summary.shards, byShape);
+  // A row must live in the file its own corner names. Anywhere else and the
+  // deal, which asks for files BY corner, would never find it.
+  for (const f of shardNames) {
+    for (const r of parseMatchIndex(shards[f])) {
+      assert.equal(matchShardFileForRow(r), f, `${r.page}#${r.idx} is in the wrong shard`);
     }
   }
 
@@ -151,16 +157,19 @@ test('the shard rows reproduce the page files row for row', () => {
   const keys = matchIndexFeatureKeys(boards);
   const expected = new Map();
   pages.forEach((p, pi) => p.boards.forEach((b, i) => {
-    expected.set(`${pi}:${i}`, { shape: b.spec.shape, row: matchIndexRow(pi, i, b, keys) });
+    expected.set(`${pi}:${i}`, matchIndexRow(pi, i, b, keys));
   }));
-  for (const [shape, file] of Object.entries(shards)) {
-    assert.deepEqual(file.featureKeys, keys,
-      `${shape}'s shard header must match the boards it describes`);
-    for (const row of file.rows) {
+  // Keyed by FILE now, not by shape: the corner axis includes the modifier
+  // set, so the filename is the only handle. Placement is already proven
+  // above, against each row's own corner; what this checks is that the row
+  // BYTES and the header match the pages.
+  for (const f of shardNames) {
+    assert.deepEqual(shards[f].featureKeys, keys,
+      `${f}'s shard header must match the boards it describes`);
+    for (const row of shards[f].rows) {
       const want = expected.get(`${row[0]}:${row[1]}`);
       assert.ok(want, `shard row p${row[0]}#${row[1]} names a board no page holds`);
-      assert.equal(want.shape, shape, `p${row[0]}#${row[1]} is in the wrong shard`);
-      assert.deepEqual(row, want.row);
+      assert.deepEqual(row, want);
       expected.delete(`${row[0]}:${row[1]}`);
     }
   }
