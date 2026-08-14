@@ -18,15 +18,14 @@
 
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { predictPar } from '../src/logic/dailyFeatures.js';
+import { packPayload } from '../src/logic/boardPack.js';
 import { timeBandOf } from '../src/logic/matchRules.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
-import { OUT_DIR, writeMatchIndexFiles } from './match-index-files.mjs';
+import { OUT_DIR, writeMatchIndexFiles, matchPageNames } from './match-index-files.mjs';
 
 function main() {
   const dry = process.argv.includes('--dry-run');
-  const pageNames = readdirSync(OUT_DIR)
-    .filter((f) => /^match-\d{3}\.json$/.test(f))
-    .sort();
+  const pageNames = matchPageNames();
   if (pageNames.length === 0) {
     console.error('reprice-match-library: no pages found, nothing to do');
     process.exit(1);
@@ -37,6 +36,7 @@ function main() {
   let bandMoves = 0;
   let maxShift = 0;
   let featureless = 0;
+  let packed = 0;
 
   // Two passes, because the index's feature header is the UNION over every
   // board and the rows encode against it positionally: a row written before
@@ -46,6 +46,14 @@ function main() {
     const page = JSON.parse(readFileSync(url, 'utf8'));
     for (const b of page.boards) {
       boards++;
+      // PACK ON THE WAY PAST. This pass already rewrites every page, so it is
+      // where the columnar cell form (boardPack.js) gets applied and where a
+      // page written before it shipped heals itself. Total in both directions,
+      // so a page already packed is left as it is.
+      if (b.payload && Array.isArray(b.payload.cells)) {
+        b.payload = packPayload(b.payload);
+        packed++;
+      }
       if (b.features) {
         let par = 0;
         try { par = predictPar(b.features); } catch { par = 0; }
@@ -77,6 +85,7 @@ function main() {
     + ` in ${Object.keys(written.shards).length} shards, ${written.corners} corners,`
     + ` under model ${fp}; ${bandMoves} changed time band,`
     + ` largest par shift ${maxShift.toFixed(1)}s`
+    + (packed ? `, ${packed} packed` : '')
     + (featureless ? `, ${featureless} kept their stored par (no usable features)` : '')
     + (dry ? ' (dry run: nothing written)' : ''));
 }

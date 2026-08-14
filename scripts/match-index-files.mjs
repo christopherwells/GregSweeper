@@ -36,16 +36,41 @@
 // stop paying. It is not precached by the service worker (the library is
 // runtime-cached), so no shipped client can be left asking for it.
 
-import { writeFileSync, mkdirSync, existsSync, rmSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync, rmSync, readdirSync } from 'node:fs';
 import {
-  matchIndexRow, matchIndexFeatureKeys, matchShardFile, buildMatchCorners, parseMatchIndex,
+  matchIndexRow, matchIndexFeatureKeys, matchShardFileForRow, buildMatchCorners, parseMatchIndex,
 } from '../src/logic/matchRules.js';
 
 export const OUT_DIR = new URL('./data/match-library/', import.meta.url);
 export const SUMMARY_FILE = new URL('match-summary.json', OUT_DIR);
 export const LEGACY_INDEX_FILE = new URL('match-index.json', OUT_DIR);
 export const matchPageFile = (p) => new URL(`match-${String(p).padStart(3, '0')}.json`, OUT_DIR);
-export const matchShardFileUrl = (shape) => new URL(matchShardFile(shape), OUT_DIR);
+
+// PAGE FILES ARE NUMBERED, NOT PADDED TO A FIXED WIDTH. padStart(3) stops
+// padding at 999, so page 1000 is `match-1000.json`, and the library crossed
+// that on 2026-08-14. Two things broke at once and both were silent:
+//
+//   1. every reader filtered on `match-\d{3}\.json`, exactly three digits, so
+//      183 pages written that run were invisible to the repricer, the topup
+//      and the tests, while the summary counted them;
+//   2. `.sort()` on filenames is LEXICOGRAPHIC, so `match-1000.json` sorts
+//      before `match-892.json`, and every reader takes the array index as the
+//      page number.
+//
+// Re-padding the old files to a wider name is NOT available: a board's
+// `page:idx` is the seen-cycle key on every player's device, so a page that
+// changes name resets somebody's no-repeat record. So the name stays as
+// written and the ORDER is computed from the number inside it.
+export const MATCH_PAGE_RE = /^match-(\d+)\.json$/;
+
+/** Every page file in PAGE-NUMBER order, so the array index is the page. */
+export function matchPageNames(dir = OUT_DIR) {
+  return readdirSync(dir)
+    .map((f) => { const m = MATCH_PAGE_RE.exec(f); return m ? { f, n: Number(m[1]) } : null; })
+    .filter(Boolean)
+    .sort((a, b) => a.n - b.n)
+    .map((x) => x.f);
+}
 
 /**
  * Write match-summary.json and the per-shape shards from the paged boards.
@@ -73,13 +98,22 @@ export function writeMatchIndexFiles(pages, fp, { dry = false } = {}) {
   if (!parsed) throw new Error('the rows this run just wrote do not parse back');
   const corners = buildMatchCorners(parsed);
 
-  const byShape = new Map();
+  // ONE FILE PER CORNER, not per shape (his ruling 2026-08-14). The bucket a
+  // row lands in comes from matchShardFileForRow, which reads matchCornerKey,
+  // which is the same rule boardMatchesRules filters on. Deriving the filename
+  // from the corner rather than composing it here is what stops the writer and
+  // the deal ever disagreeing about where a row lives.
+  const byShard = new Map();
   for (let i = 0; i < parsed.length; i++) {
-    if (!byShape.has(parsed[i].shape)) byShape.set(parsed[i].shape, []);
-    byShape.get(parsed[i].shape).push(rows[i]);
+    const file = matchShardFileForRow(parsed[i]);
+    if (!byShard.has(file)) byShard.set(file, []);
+    byShard.get(file).push(rows[i]);
   }
+  // Kept keyed by SHAPE for the summary, because that is what the sheet's
+  // supply line reads and it has no use for 900 per-corner counts; the corner
+  // list right below already carries the fine grain.
   const shards = {};
-  for (const [shape, shapeRows] of byShape) shards[shape] = shapeRows.length;
+  for (const p of parsed) shards[p.shape] = (shards[p.shape] || 0) + 1;
 
   const summary = {
     parModel: fp,
@@ -92,12 +126,21 @@ export function writeMatchIndexFiles(pages, fp, { dry = false } = {}) {
 
   if (!dry) {
     mkdirSync(OUT_DIR, { recursive: true });
-    for (const [shape, shapeRows] of byShape) {
-      writeFileSync(matchShardFileUrl(shape),
-        JSON.stringify({ parModel: fp, shape, featureKeys, rows: shapeRows }));
+    for (const [file, shardRows] of byShard) {
+      writeFileSync(new URL(file, OUT_DIR),
+        JSON.stringify({ parModel: fp, featureKeys, rows: shardRows }));
     }
     writeFileSync(SUMMARY_FILE, JSON.stringify(summary));
     if (existsSync(LEGACY_INDEX_FILE)) rmSync(LEGACY_INDEX_FILE);
+    // The per-SHAPE shards this replaces. Left behind they would be served
+    // forever, stale from the first re-price, and a client that still asked
+    // for one would deal boards priced under a model nobody runs any more.
+    for (const f of readdirSync(OUT_DIR)) {
+      if (/^match-index-.*\.json$/.test(f)) rmSync(new URL(f, OUT_DIR));
+    }
   }
-  return { boards: rows.length, pages: pages.length, shards, corners: corners.length };
+  return {
+    boards: rows.length, pages: pages.length, shards,
+    corners: corners.length, shardFiles: byShard.size,
+  };
 }

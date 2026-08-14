@@ -169,7 +169,10 @@ jobs:
         id: libfill
         if: steps.libreprice.outcome == 'success'
         continue-on-error: true
-        run: node scripts/topup-climb-library.mjs --fill --minutes 20
+        run: |
+          START=$(date +%s)
+          node scripts/topup-climb-library.mjs --fill --minutes 20
+          echo "LADDER_SECS=$(( $(date +%s) - START ))" >> "$GITHUB_ENV"
 
       # The Challenge match library re-prices the same night, and for a
       # sharper reason than the Climb's: its stored par is what the config
@@ -183,6 +186,40 @@ jobs:
         id: matchreprice
         continue-on-error: true
         run: node scripts/reprice-match-library.mjs
+
+      # THE LADDER HAS FIRST CLAIM ON THE 20 MINUTES, and whatever it leaves
+      # goes here (his ruling). The ladder is usually satisfied — deficits.json
+      # has been empty since the re-bin caught up — so on a quiet night that is
+      # very nearly the whole budget, and this is the first thing that has ever
+      # GROWN the match library. Depth only ever fell before: the re-price
+      # above rewrites numbers and generates nothing, and the 20-minute budget
+      # belonged entirely to the Climb.
+      #
+      # Runs AFTER the re-price so tonight's boards are born under tonight's
+      # model, and so the index it rebuilds is the last word on the directory.
+      # Bounded, resumable and append-only: existing pages keep their bytes,
+      # because page:idx is the seen-cycle key on every player's device.
+      #
+      # Not a failure when it finds nothing to do, and not a failure when the
+      # ladder took the lot. Both print and exit clean.
+      #
+      # One thing to know if this ever hits the push-conflict path: the boards
+      # it generates are NOT re-derivable by the repricer, so the "take main's
+      # copy and re-derive" remedy discards a night's generation. That costs a
+      # night, never correctness, and the next run regenerates into the same
+      # gaps.
+      - name: Fill the Challenge match library with what the ladder left
+        id: matchfill
+        continue-on-error: true
+        run: |
+          USED=${LADDER_SECS:-1200}
+          LEFT=$(( (1200 - USED) / 60 ))
+          if [ "$LEFT" -lt 1 ]; then
+            echo "ladder used ${USED}s of the 20 minute budget; no time for the match library tonight"
+            exit 0
+          fi
+          echo "ladder used ${USED}s of 1200s; match library gets ${LEFT} min"
+          node scripts/topup-match-library.mjs --minutes "$LEFT"
 
       # ── Greg's Journal, the nightly rewrite (his ask, 2026-08-11) ──
       # composeEntry's pooled beats are honest but read stitched; once a

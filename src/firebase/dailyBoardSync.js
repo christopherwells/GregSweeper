@@ -29,6 +29,7 @@ import { defineCellNeighbors } from '../logic/adjacency.js';
 import { containerIsStorable, CANONICAL_MIN_DIM, CANONICAL_MAX_DIM } from '../logic/tilingGeometry.js';
 import { etDateStringOfMs } from '../logic/seededRandom.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
+import { unpackCells } from '../logic/boardPack.js';
 
 /**
  * The #114 trust gate, applied to EVERY canonical this client is about to
@@ -284,7 +285,12 @@ export function deserializeBoard(raw) {
   if (!raw || typeof raw !== 'object') {
     throw new Error('deserializeBoard: empty payload');
   }
-  const { rows, cols, totalMines, cells, wallEdges, activeGimmicks, rngSeed } = raw;
+  const { rows, cols, totalMines, wallEdges, activeGimmicks, rngSeed } = raw;
+  // A library page stores its cells COLUMNAR to keep the file down (see
+  // boardPack.js); nothing else does, and unpackCells is total, so a canonical
+  // or a save passes straight through. Done here so every reader of a payload
+  // is covered by one line rather than each remembering.
+  const cells = unpackCells(raw.cells);
   if (!Number.isInteger(rows) || !Number.isInteger(cols) || !Array.isArray(cells)) {
     throw new Error('deserializeBoard: malformed payload');
   }

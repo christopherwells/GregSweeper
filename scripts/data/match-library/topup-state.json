@@ -1,0 +1,9650 @@
+{
+ "runs": 3,
+ "corners": {
+  "4.8.8||short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8||long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mirror+mystery+sonar|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mirror+mystery+sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mirror+mystery+sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mirror+mystery+sonar|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mirror+mystery+sonar|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex||short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex||long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mystery|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mystery|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mystery|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mystery|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|locked+walls|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|locked+walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|locked+walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|locked+walls|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|locked+walls|long|dense": {
+   "fails": 1,
+   "attempts": 12,
+   "lastRun": 3
+  },
+  "4.8.8|liar+locked+wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+locked+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+locked+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+locked+wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|mystery|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|mystery|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|mystery|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|mystery|quick|dense": {
+   "fails": 0,
+   "attempts": 21,
+   "lastRun": 2
+  },
+  "4.8.8|liar+mystery+sonar|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+mystery+sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+mystery+sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+mystery+sonar|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|walls+worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|walls+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|walls+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|walls+worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|walls+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille||short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille||long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille||long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|compass+mirror+walls|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|compass+mirror+walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|compass+mirror+walls|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|compass+mirror+walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|compass+mirror+walls|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass+locked+worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass+locked+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass+locked+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass+locked+worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass+locked+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|liar+walls+wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|liar+walls+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|liar+walls+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|liar+walls+wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|liar+walls+wormhole|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect||short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect||long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect||long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked+mirror+mystery|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked+mirror+mystery|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked+mirror+mystery|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked+mirror+mystery|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+mirror+mystery|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+mirror+mystery|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+mirror+mystery|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+mirror+mystery|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+worm|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+worm|short|dense": {
+   "fails": 0,
+   "attempts": 21,
+   "lastRun": 2
+  },
+  "hex|liar+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+sonar|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+sonar|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+sonar|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|liar|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|liar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|liar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|liar|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|liar|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|worm|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret||long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret||quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+locked+worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+locked+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+locked+worm|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+locked+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+locked+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+worm|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+worm|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|wormhole|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|compass+mirror|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|compass+mirror|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|compass+mirror|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|compass+mirror|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+walls|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+walls|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+walls|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+walls|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|sonar|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|locked+worm+wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|locked+worm+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|locked+worm+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 21,
+   "lastRun": 2
+  },
+  "rhombille|locked+worm+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|locked+worm+wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|locked+worm+wormhole|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|walls|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|walls|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|walls|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|walls|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|sonar|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|sonar|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|compass+wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|compass+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|compass+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|compass+wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|compass+wormhole|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+mystery+walls|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+mystery+walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+mystery+walls|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+mystery+walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+mystery+walls|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+mystery+walls|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|wormhole|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|wormhole|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+worm|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+worm|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|compass+locked+walls|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|compass+locked+walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|compass+locked+walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|compass+locked+walls|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|compass+locked+walls|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+mystery|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+mystery|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+mystery|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+mystery|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+mystery|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|locked+mystery+walls|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|locked+mystery+walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|locked+mystery+walls|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|locked+mystery+walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|locked+mystery+walls|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|locked+mystery+walls|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+mystery+walls|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+mystery+walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+mystery+walls|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+mystery+walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+mystery+walls|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+mystery+walls|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked+wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked+wormhole|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked+wormhole|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked+wormhole|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+liar+wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+liar+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+liar+wormhole|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+liar+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+liar+wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+liar+wormhole|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+worm|short|standard": {
+   "fails": 0,
+   "attempts": 21,
+   "lastRun": 2
+  },
+  "hex|compass+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|mirror+mystery|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|mirror+mystery|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|mirror+mystery|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|mirror+mystery|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|mirror+mystery|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|locked+mirror+sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|locked+mirror+sonar|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|locked+mirror+sonar|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|locked+mirror+sonar|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass+mystery|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass+mystery|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass+mystery|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass+mystery|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass+mystery|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+locked+wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+locked+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+locked+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+locked+wormhole|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked+mystery+wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked+mystery+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked+mystery+wormhole|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked+mystery+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked+mystery+wormhole|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|sonar+walls+worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|sonar+walls+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|sonar+walls+worm|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|sonar+walls+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|sonar+walls+worm|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|sonar+walls+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+mystery|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+mystery|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+mystery|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+mystery|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+mystery|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+mystery|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|compass+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|compass+wormhole|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|compass+wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|compass+wormhole|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+locked+mirror|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+locked+mirror|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+locked+mirror|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+locked+mirror|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+locked+mirror|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+locked+mystery|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+locked+mystery|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+locked+mystery|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+locked+mystery|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+locked+mystery|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+wormhole|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+wormhole|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+wormhole|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|liar+locked+walls|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|liar+locked+walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|liar+locked+walls|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|liar+locked+walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|liar+locked+walls|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass+worm+wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass+worm+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass+worm+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass+worm+wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass+worm+wormhole|long|dense": {
+   "fails": 0,
+   "attempts": 21,
+   "lastRun": 2
+  },
+  "deltoidal|liar+mirror|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+mirror|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+mirror|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+mirror|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+mirror|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+mirror|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+walls+worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+walls+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+walls+worm|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+walls+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+walls+worm|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+walls+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+locked+mystery|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+locked+mystery|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+locked+mystery|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+locked+mystery|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mirror|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mirror|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mirror|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mirror|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|compass|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|compass|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|compass|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|compass|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|compass|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|compass|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mystery+sonar+worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mystery+sonar+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mystery+sonar+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mystery+sonar+worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass+wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass+wormhole|quick|standard": {
+   "fails": 0,
+   "attempts": 21,
+   "lastRun": 2
+  },
+  "rect|compass+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass+wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass+wormhole|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+mirror+wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+mirror+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+mirror+wormhole|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+mirror+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+mirror+wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+mirror+wormhole|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|sonar+worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|sonar+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|sonar+worm|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|sonar+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|sonar+worm|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|sonar+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked+sonar|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked+sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked+sonar|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked+sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked+sonar|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|locked|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+mirror+walls|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+mirror+walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+mirror+walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+mirror+walls|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+wormhole|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+wormhole|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mystery+wormhole|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+mirror+sonar|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+mirror+sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+mirror+sonar|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+mirror+sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+mirror+sonar|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal||long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal||quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal||quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|walls|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|walls|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|sonar|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+locked+sonar|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+locked+sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+locked+sonar|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+locked+sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+locked+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 19,
+   "lastRun": 3
+  },
+  "hex|liar+locked+sonar|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|locked|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|locked|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|locked|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|locked|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|locked|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|locked|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+liar+mystery|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+liar+mystery|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+liar+mystery|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+liar+mystery|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+liar+mystery|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|locked+mirror+wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|locked+mirror+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|locked+mirror+wormhole|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|locked+mirror+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|locked+mirror+wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|locked+mirror+wormhole|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|walls|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|walls|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mystery+wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mystery+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mystery+wormhole|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mystery+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mystery+wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mystery+wormhole|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|walls|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|walls|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|walls|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|worm|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror+mystery|short|sparse": {
+   "fails": 1,
+   "attempts": 19,
+   "lastRun": 3
+  },
+  "deltoidal|mirror+mystery|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror+mystery|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror+mystery|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror+mystery|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror+mystery|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mystery+wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mystery+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mystery+wormhole|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mystery+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mystery+wormhole|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|walls|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|walls|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|walls|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|locked|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|locked|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|locked|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|locked|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|locked|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+mystery+sonar|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+mystery+sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+mystery+sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mystery+worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mystery+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mystery+worm|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mystery+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mystery+worm|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mystery+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+mystery+walls|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+mystery+walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+mystery+walls|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+mystery+walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+mystery+walls|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+mystery+walls|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass+sonar|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass+sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass+sonar|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass+sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|compass+sonar|quick|dense": {
+   "fails": 1,
+   "attempts": 13,
+   "lastRun": 3
+  },
+  "rhombille|compass+sonar|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|locked+mirror+sonar|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|locked+mirror+sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|locked+mirror+sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|locked+mirror+sonar|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|locked+mirror+sonar|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|locked+walls+worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|locked+walls+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|locked+walls+worm|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|locked+walls+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|locked+walls+worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+locked+mystery|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+locked+mystery|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+locked+mystery|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+locked+mystery|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+locked+mystery|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+locked+mystery|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|wormhole|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|wormhole|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|wormhole|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+mystery+worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+mystery+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+mystery+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+mystery+worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+mystery+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mystery|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mystery|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mystery|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mystery|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mystery|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mystery|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|walls+wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|walls+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|walls+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|walls+wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|walls+wormhole|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|walls+worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|walls+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|walls+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|walls+worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|walls+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+wormhole|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+wormhole|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+wormhole|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+mirror+wormhole|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+mirror+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+mirror+wormhole|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+mirror+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+mirror+wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+mirror+wormhole|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+mirror+mystery|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+mirror+mystery|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+mirror+mystery|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+mirror+mystery|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+mirror+mystery|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+mirror+mystery|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|mirror+sonar+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|mirror+sonar+worm|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|mirror+sonar+worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|mirror+sonar+worm|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror+worm|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror+worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+mystery|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+mystery|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+mystery|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+mystery|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+mystery|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+mystery|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|walls+worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|walls+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|walls+worm|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|walls+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|walls+worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+worm|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+worm|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|mystery+sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|mystery+sonar|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|mystery+sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|mystery+sonar|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|mystery+sonar|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+mirror|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+mirror|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+mirror|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+mirror|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+mirror|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+mirror|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mirror|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mirror|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mirror|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+worm|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+locked+worm|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+locked+worm|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+locked+worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+locked+worm|long|dense": {
+   "fails": 0,
+   "attempts": 16,
+   "lastRun": 3
+  },
+  "rect|locked+sonar+walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+sonar+walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|locked+worm+wormhole|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|locked+worm+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|locked+worm+wormhole|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|locked+worm+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|locked+worm+wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|locked+worm+wormhole|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass+mirror+walls|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass+mirror+walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass+mirror+walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass+mirror+walls|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mystery+sonar+walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mystery+sonar+walls|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mystery+sonar+walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mystery+sonar+walls|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+liar+mirror|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+liar+mirror|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+liar+mirror|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+liar+mirror|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+liar+mirror|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+liar+mirror|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|compass+walls+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|compass+walls+wormhole|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|compass+walls+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|compass+walls+wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|sonar|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|sonar|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|sonar|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass+walls|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass+walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass+walls|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass+walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass+walls|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass+walls|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror+walls+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror+walls+wormhole|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror+walls+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror+walls+wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror+walls+wormhole|long|dense": {
+   "fails": 0,
+   "attempts": 21,
+   "lastRun": 2
+  },
+  "4.8.8|mirror+wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|mirror+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|mirror+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|mirror+wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|mirror+wormhole|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|worm|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|worm|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|locked+mirror|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|locked+mirror|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|locked+mirror|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|locked+mirror|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|locked+mirror|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|locked+mirror|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+mystery|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+mystery|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+mystery|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+mystery|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+mystery|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|locked+sonar|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|locked+sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|locked+sonar|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|locked+sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|locked+sonar|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+walls|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+walls|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+mystery|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+mystery|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+mystery|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+mystery|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+mystery|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+mystery|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+sonar|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+sonar|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+sonar|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+sonar|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mystery+sonar|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mystery+sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mystery+sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mystery+sonar|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mystery+sonar|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|sonar+worm|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|sonar+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|sonar+worm|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|sonar+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|sonar+worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|sonar+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|compass+liar+walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|compass+liar+walls|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|compass+liar+walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|compass+liar+walls|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror+worm+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 21,
+   "lastRun": 2
+  },
+  "deltoidal|mirror+worm+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror+worm+wormhole|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror+worm+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|mirror+worm+wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mirror+sonar|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mirror+sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mirror+sonar|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mirror+sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mirror+sonar|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mirror+sonar|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|locked+sonar+walls|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|locked+sonar+walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|locked+sonar+walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|locked+sonar+walls|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|locked+sonar+walls|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mystery+sonar|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mystery+sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mystery+sonar|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mystery+sonar|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mystery+sonar|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|compass+locked+worm|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|compass+locked+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|compass+locked+worm|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|compass+locked+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|compass+locked+worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|compass+locked+worm|short|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+mirror+walls|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+mirror+walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+mirror+walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+mirror+walls|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|locked+mirror+walls|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+wormhole|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+wormhole|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+wormhole|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|compass+mystery+sonar|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|compass+mystery+sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|compass+mystery+sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|compass+mystery+sonar|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|compass+mystery+sonar|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+locked|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+locked|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+locked|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+locked|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|liar+locked|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|sonar+worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|sonar+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|sonar+worm|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|sonar+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|sonar+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|sonar|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|sonar|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|sonar|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|sonar|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+mirror+sonar|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+mirror+sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+mirror+sonar|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+mirror+sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+mirror+sonar|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|liar+mirror+sonar|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|compass+locked|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|compass+locked|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|compass+locked|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|compass+locked|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|compass+locked|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "floret|compass+locked|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+walls+worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+walls+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+walls+worm|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+walls+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+walls+worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+locked|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+locked|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+locked|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+locked|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+locked+sonar|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+locked+sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+locked+sonar|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+locked+sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|compass+locked+sonar|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+locked+worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+locked+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+locked+worm|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+locked+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+locked+worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+locked+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mirror+worm|quick|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mirror+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mirror+worm|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mirror+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mirror+worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "cairo|mirror+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+mystery+worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+mystery+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+mystery+worm|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+mystery+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+mystery+worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|liar+mystery+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+walls+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+walls+worm|quick|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+walls+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+walls+worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "deltoidal|liar+walls+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+worm|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+worm|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+worm|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+worm|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+worm|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "4.8.8|liar+worm|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mirror+wormhole|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mirror+wormhole|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mirror+wormhole|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|mirror+wormhole|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+sonar|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|mirror+sonar|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass+sonar+walls|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass+sonar+walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass+sonar+walls|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass+sonar+walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rect|compass+sonar+walls|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+sonar+walls|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+sonar+walls|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+sonar+walls|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+sonar+walls|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "hex|compass+sonar+walls|long|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mystery|short|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mystery|long|sparse": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mystery|short|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mystery|long|standard": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mystery|quick|dense": {
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 2
+  },
+  "rhombille|mystery|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|mirror+mystery+worm|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|mirror+mystery+worm|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|mirror+mystery+worm|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|mirror+mystery+worm|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|mirror+mystery+worm|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|mirror|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|mirror|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|mirror|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|mirror|short|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|compass+mystery+worm|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|compass+mystery+worm|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|compass+mystery+worm|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|compass+mystery+worm|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|compass+mystery+worm|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|liar+mirror+worm|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|liar+mirror+worm|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|liar+mirror+worm|short|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|liar+mirror+worm|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|liar+mirror+worm|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|locked+walls+wormhole|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|locked+walls+wormhole|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|locked+walls+wormhole|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|locked+walls+wormhole|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|sonar+worm|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|sonar+worm|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|sonar+worm|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|sonar+worm|short|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|liar+sonar|quick|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|liar+sonar|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|liar+sonar|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|liar+sonar|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|liar+sonar|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|liar+sonar|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|liar+locked+walls|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|liar+locked+walls|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|liar+locked+walls|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|liar+locked+walls|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|liar+locked+walls|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|locked+walls|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|locked+walls|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|locked+walls|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|locked+walls|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|locked+walls|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|liar+mirror|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|liar+mirror|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|liar+mirror|short|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|liar+mirror|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|liar+mirror|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|liar+mirror|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "4.8.8|locked+mystery|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "4.8.8|locked+mystery|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "4.8.8|locked+mystery|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "4.8.8|locked+mystery|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rhombille|walls+worm|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rhombille|walls+worm|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rhombille|walls+worm|short|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rhombille|walls+worm|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rhombille|walls+worm|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|walls+worm|quick|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|walls+worm|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|walls+worm|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|walls+worm|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|walls+worm|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|walls+worm|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|compass|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|compass|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|compass|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|compass|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|liar+worm|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|liar+worm|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|liar+worm|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|liar+worm|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|liar+worm|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|liar|quick|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|liar|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|liar|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|liar|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|liar|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|liar|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|mirror+mystery+wormhole|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|mirror+mystery+wormhole|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|mirror+mystery+wormhole|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|mirror+mystery+wormhole|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|mirror+mystery+wormhole|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|mirror+mystery+wormhole|short|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|mystery+wormhole|quick|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|mystery+wormhole|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|mystery+wormhole|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|mystery+wormhole|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|mystery+wormhole|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|mystery+wormhole|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rhombille|sonar+walls|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rhombille|sonar+walls|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rhombille|sonar+walls|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rhombille|sonar+walls|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rhombille|sonar+walls|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|locked+sonar+worm|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|locked+sonar+worm|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|locked+sonar+worm|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|locked+sonar+worm|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|locked+sonar+worm|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "4.8.8|locked+sonar|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "4.8.8|locked+sonar|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "4.8.8|locked+sonar|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|sonar+walls|quick|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|sonar+walls|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|sonar+walls|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|sonar+walls|short|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|sonar+walls|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|sonar+walls|short|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "4.8.8|liar|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "4.8.8|liar|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "4.8.8|liar|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "4.8.8|liar|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|compass+liar|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|compass+liar|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|compass+liar|short|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|compass+liar|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|compass+liar|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|compass+liar|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|sonar+wormhole|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|sonar+wormhole|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|sonar+wormhole|short|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|sonar+wormhole|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|sonar+wormhole|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|compass+sonar|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|compass+sonar|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|compass+sonar|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|compass+sonar|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|compass+sonar|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|compass+sonar|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|liar+mirror+mystery|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|liar+mirror+mystery|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|liar+mirror+mystery|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|liar+mirror+mystery|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|liar+mirror+mystery|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|sonar+walls|quick|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|sonar+walls|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|sonar+walls|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|sonar+walls|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|compass+locked+wormhole|quick|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|compass+locked+wormhole|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|compass+locked+wormhole|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|compass+locked+wormhole|short|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|compass+locked+wormhole|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "deltoidal|mirror+sonar+worm|quick|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "deltoidal|mirror+sonar+worm|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "deltoidal|mirror+sonar+worm|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "deltoidal|mirror+sonar+worm|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "deltoidal|mirror+sonar+worm|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "deltoidal|mirror+sonar+worm|short|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|compass+locked|quick|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|compass+locked|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|compass+locked|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|compass+locked|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|compass+locked|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|sonar+wormhole|quick|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|sonar+wormhole|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|sonar+wormhole|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|sonar+wormhole|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|mirror+sonar|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|mirror+sonar|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|mirror+sonar|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|mirror+sonar|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|mirror+sonar|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|mirror+sonar|short|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|locked+walls+worm|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|locked+walls+worm|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|locked+walls+worm|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|locked+walls+worm|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rect|locked+walls+worm|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|locked+wormhole|quick|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|locked+wormhole|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|locked+wormhole|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|locked+wormhole|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|compass+mirror+mystery|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|compass+mirror+mystery|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|compass+mirror+mystery|short|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|compass+mirror+mystery|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|compass+mirror+mystery|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|compass+mirror+mystery|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|compass+liar+sonar|quick|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|compass+liar+sonar|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|compass+liar+sonar|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|compass+liar+sonar|short|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|compass+liar+sonar|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|sonar|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|sonar|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|sonar|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|sonar|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|sonar|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "deltoidal|liar+sonar+walls|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "deltoidal|liar+sonar+walls|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "deltoidal|liar+sonar+walls|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "deltoidal|liar+sonar+walls|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "deltoidal|liar+sonar+walls|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "4.8.8|liar+walls|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "4.8.8|liar+walls|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "4.8.8|liar+walls|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "4.8.8|liar+walls|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|liar+mirror|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|liar+mirror|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|liar+mirror|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|liar+mirror|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|mystery|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|mystery|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "floret|mystery|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rhombille|locked+mirror|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rhombille|locked+mirror|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rhombille|locked+mirror|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rhombille|locked+mirror|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rhombille|locked+mirror|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|liar+locked+sonar|quick|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|liar+locked+sonar|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|liar+locked+sonar|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|liar+locked+sonar|short|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "cairo|liar+locked+sonar|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rhombille|liar+mirror|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rhombille|liar+mirror|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rhombille|liar+mirror|short|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rhombille|liar+mirror|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "rhombille|liar+mirror|quick|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 1
+  },
+  "hex|mirror+mystery+sonar|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|mirror+mystery+sonar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|mirror+mystery+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|mystery|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|mystery|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|mystery|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|mystery|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|locked+walls|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|locked+walls|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+locked+wormhole|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+locked+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+locked+wormhole|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|mystery|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|mystery|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|mystery|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+mystery+sonar|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+mystery+sonar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+mystery+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+mystery+sonar|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|walls+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|walls+worm|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille||quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille||long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|compass+mirror+walls|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|compass+mirror+walls|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|compass+mirror+walls|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|compass+locked+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|compass+locked+worm|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|compass+locked+worm|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|liar+walls+wormhole|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|liar+walls+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|locked+mirror+mystery|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|locked+mirror+mystery|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+mirror+mystery|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+mirror+mystery|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+mirror+mystery|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+mirror+mystery|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+worm|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mystery|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mystery|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|liar|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|liar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|liar|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|worm|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret||quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+locked+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+locked+worm|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+locked+worm|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mystery+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mystery+worm|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|wormhole|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|compass+mirror|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|compass+mirror|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mirror|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mirror|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mirror|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mystery+walls|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mystery+walls|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|sonar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|sonar|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|locked+worm+wormhole|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|locked+worm+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|walls|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|walls|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|sonar|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|sonar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|compass+wormhole|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|compass+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|compass+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mirror+mystery+walls|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mirror+mystery+walls|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|wormhole|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|wormhole|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mirror+worm|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|compass+locked+walls|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|compass+locked+walls|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|compass+locked+walls|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+mystery|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+mystery|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|locked+mystery+walls|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|locked+mystery+walls|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+mystery+walls|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+mystery+walls|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|locked+wormhole|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|locked+wormhole|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|compass+liar+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|compass+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|compass+worm|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|mirror+mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|mirror+mystery|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|mirror+mystery|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|locked+mirror+sonar|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|locked+mirror+sonar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|locked+mirror+sonar|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|compass+mystery|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|compass+mystery|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+locked+wormhole|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+locked+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|locked+mystery+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|locked+mystery+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|sonar+walls+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+mystery|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+mystery|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|compass+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|compass+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|compass+wormhole|long|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|compass+wormhole|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+locked+mirror|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+locked+mirror|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|compass+locked+mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|compass+locked+mystery|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|compass+locked+mystery|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+wormhole|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+wormhole|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|liar+locked+walls|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|liar+locked+walls|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|liar+locked+walls|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|compass+worm+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|compass+worm+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|liar+mirror|long|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|liar+mirror|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mystery+walls+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mystery+walls+worm|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+locked+mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+locked+mystery|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+locked+mystery|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|mirror|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|mirror|short|standard": {
+   "fails": 0,
+   "attempts": 19,
+   "lastRun": 1
+  },
+  "rhombille|mirror|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|compass|long|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|compass|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|mystery+sonar+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|mystery+sonar+worm|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|compass+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|compass+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+mirror+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+mirror+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|sonar+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|sonar+worm|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|locked+sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|locked+sonar|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|locked+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|locked|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|locked|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|locked|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|locked|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+mirror+walls|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+mirror+walls|short|standard": {
+   "fails": 1,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|liar+mirror+walls|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|compass|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|compass|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mystery+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mystery+wormhole|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+mirror+sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+mirror+sonar|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal||long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|walls|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|walls|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|worm|short|sparse": {
+   "fails": 1,
+   "attempts": 4,
+   "lastRun": 3
+  },
+  "rect|worm|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|worm|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|sonar|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|sonar|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|sonar|long|dense": {
+   "fails": 0,
+   "attempts": 19,
+   "lastRun": 3
+  },
+  "deltoidal|mirror|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|mirror|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|mirror|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+locked+sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+locked+sonar|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|compass|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|compass|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|locked|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|locked|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|compass+liar+mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|compass+liar+mystery|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|compass+liar+mystery|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|locked+mirror+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|locked+mirror+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|walls|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|walls|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|mystery+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|mystery+wormhole|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|walls|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|walls|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|worm|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo||quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|mirror+mystery|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|mirror+mystery|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|mystery+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|mystery+wormhole|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|mystery+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|walls|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|walls|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|walls|long|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|walls|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|locked|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|locked|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|locked|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+mystery+sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+mystery+sonar|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+mystery+sonar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|mystery+worm|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|liar+mystery+walls|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|liar+mystery+walls|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|compass+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|locked+mirror+sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|locked+walls+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|locked+walls+worm|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|locked+walls+worm|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|compass+locked+mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|compass+locked+mystery|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|wormhole|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+mystery+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+mystery+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+mystery+worm|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|mystery|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|walls+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|walls+wormhole|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|walls+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|walls+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|walls+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|walls+worm|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|liar+wormhole|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|liar+wormhole|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|liar+mirror+wormhole|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|liar+mirror+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|compass+mirror+mystery|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|mirror+sonar+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|mirror+sonar+worm|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|mirror+sonar+worm|long|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|mirror+sonar+worm|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|mirror+worm|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|mirror+worm|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|mirror+worm|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|liar+mystery|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|liar+mystery|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|walls+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|walls+worm|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|liar+worm|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|liar+worm|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|liar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|liar|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|mystery+sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|mystery+sonar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|mystery+sonar|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|compass+mirror|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|compass+mirror|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|mirror|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|mirror|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|mirror|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|mirror|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|worm|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|liar+worm|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|liar+worm|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|liar+locked+worm|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|liar+locked+worm|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+sonar+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+sonar+walls|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+sonar+walls|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|locked+worm+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|locked+worm+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|compass+mirror+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|compass+mirror+walls|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|mystery+sonar+walls|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|mystery+sonar+walls|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|mystery+sonar+walls|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|compass+liar+mirror|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|compass+walls+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|compass+walls+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|compass+walls+wormhole|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|sonar|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|compass+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|compass+walls|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|mirror+walls+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|mirror+walls+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|mirror+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|mirror+wormhole|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|mirror+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|worm|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|worm|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|locked+mirror|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|locked+mirror|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+mystery|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|compass|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|locked+sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|locked+sonar|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mirror+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mirror+walls|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|compass+mystery|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|compass+mystery|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|liar+sonar|long|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|liar+sonar|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|mystery+sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|mystery+sonar|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|mystery+sonar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|sonar+worm|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|sonar+worm|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|compass+liar+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|compass+liar+walls|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|compass+liar+walls|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|compass+liar+walls|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|locked+sonar|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|locked+sonar|long|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|locked+sonar|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|locked+sonar|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|mirror+worm+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|mirror+worm+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|mirror+sonar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|mirror+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|locked+sonar+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|locked+sonar+walls|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|mystery+sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|mystery+sonar|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|compass+locked+worm|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+mirror+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+mirror+walls|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|liar+wormhole|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|liar+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|compass+mystery+sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|compass+mystery+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+locked|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+locked|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+locked|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|sonar+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|sonar+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|sonar+worm|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|sonar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|sonar|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|liar+mirror+sonar|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|compass+locked|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|compass+locked|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mirror+walls+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mirror+walls+worm|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+locked|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+locked|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+locked|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|compass+locked+sonar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|compass+locked+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|wormhole|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|wormhole|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+locked+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+locked+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|mirror+worm|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|mirror+worm|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+mystery+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+mystery+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|liar+walls+worm|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|liar+walls+worm|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|liar+walls+worm|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|mirror+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|mirror+wormhole|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|mirror+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|mirror+wormhole|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mirror+sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mirror+sonar|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mirror+sonar|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mirror+sonar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|compass+sonar+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|compass+sonar+walls|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|compass+sonar+walls|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|compass+sonar+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|compass+sonar+walls|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|compass+sonar+walls|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|mystery|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|mirror+mystery+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|mirror+mystery+worm|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|mirror|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|mirror|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|mirror|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|compass+mystery+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|compass+mystery+worm|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+mirror+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+mirror+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+mirror+worm|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+walls+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+walls+wormhole|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+walls+wormhole|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|sonar+worm|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|sonar+worm|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|liar+sonar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|liar+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+locked+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+locked+walls|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+walls|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+walls|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+mirror|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+mirror|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|locked+mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|locked+mystery|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|locked+mystery|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|walls+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|walls+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|walls+worm|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|walls+worm|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|compass|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|compass|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|compass|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|compass|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|liar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|liar|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|mirror+mystery+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|mirror+mystery+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|mystery+wormhole|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|mystery+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|sonar+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|sonar+walls|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|locked+sonar+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|locked+sonar+worm|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|locked+sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|locked+sonar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|locked+sonar|long|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|sonar+walls|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|sonar+walls|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|compass+liar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|compass+liar|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|sonar+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|sonar+wormhole|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|sonar+wormhole|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|compass+sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+mirror+mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+mirror+mystery|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+mirror+mystery|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|compass+locked+wormhole|long|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|compass+locked+wormhole|long|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|mirror+sonar+worm|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|compass+locked|long|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|compass+locked|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|sonar+wormhole|long|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|sonar+wormhole|long|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|mirror+sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|mirror+sonar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+walls+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+walls+worm|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+walls+worm|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|locked+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|compass+mirror+mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|compass+mirror+mystery|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|compass+liar+sonar|long|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|compass+liar+sonar|long|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|liar+sonar+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|liar+sonar+walls|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|liar+sonar+walls|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+walls|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+walls|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+walls|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+mirror|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+mirror|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+mirror|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+mirror|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|mystery|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|mystery|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|mystery|long|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|locked+mirror|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|locked+mirror|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|liar+locked+sonar|long|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|liar+locked+sonar|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|liar+mirror|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|liar+mirror|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|liar+walls+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|liar+sonar|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|sonar|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "hex|locked+mystery+wormhole|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|worm|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|mystery+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|compass+sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|compass+mirror+mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|liar+mystery|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mirror+walls|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|mirror+worm+wormhole|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+mirror+walls|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|compass+mystery+sonar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "4.8.8|liar+locked|quick|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|sonar+walls|long|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|sonar+walls|short|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|liar+sonar|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|locked+sonar|short|standard": {
+   "fails": 0,
+   "attempts": 19,
+   "lastRun": 3
+  },
+  "cairo|compass+locked+sonar|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|mirror+sonar|quick|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rect|locked+walls+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|sonar+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|sonar+walls|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|locked+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|locked+wormhole|long|dense": {
+   "fails": 1,
+   "attempts": 16,
+   "lastRun": 3
+  },
+  "rect|locked+sonar+walls|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|sonar+walls|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "rhombille|locked+mirror|short|standard": {
+   "fails": 1,
+   "attempts": 11,
+   "lastRun": 3
+  },
+  "cairo|liar+locked+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 19,
+   "lastRun": 3
+  },
+  "cairo|liar+locked+worm|long|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "cairo|liar+wormhole|long|standard": {
+   "fails": 1,
+   "attempts": 7,
+   "lastRun": 3
+  },
+  "rect|liar+worm|short|standard": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "deltoidal|mirror+sonar+worm|long|dense": {
+   "fails": 0,
+   "attempts": 19,
+   "lastRun": 1
+  },
+  "cairo|locked+wormhole|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|locked+sonar+worm|short|sparse": {
+   "fails": 0,
+   "attempts": 19,
+   "lastRun": 3
+  },
+  "rect|locked|short|standard": {
+   "fails": 0,
+   "attempts": 19,
+   "lastRun": 3
+  },
+  "deltoidal|compass+locked+worm|long|dense": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 1
+  },
+  "floret|locked+mirror+sonar|long|standard": {
+   "fails": 0,
+   "attempts": 19,
+   "lastRun": 3
+  },
+  "rect||short|standard": {
+   "fails": 0,
+   "attempts": 19,
+   "lastRun": 3
+  },
+  "rect|liar+locked+wormhole|short|standard": {
+   "fails": 1,
+   "attempts": 4,
+   "lastRun": 3
+  },
+  "cairo|sonar+wormhole|short|standard": {
+   "fails": 1,
+   "attempts": 9,
+   "lastRun": 3
+  },
+  "rect|liar+locked+walls|short|standard": {
+   "fails": 1,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "rhombille|mystery+sonar+worm|long|dense": {
+   "fails": 0,
+   "attempts": 19,
+   "lastRun": 3
+  },
+  "rect|compass+mirror+walls|quick|dense": {
+   "fails": 1,
+   "attempts": 6,
+   "lastRun": 3
+  },
+  "cairo|locked+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 19,
+   "lastRun": 3
+  },
+  "cairo|liar+wormhole|long|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|compass|long|sparse": {
+   "fails": 1,
+   "attempts": 5,
+   "lastRun": 3
+  },
+  "4.8.8|locked+sonar|short|sparse": {
+   "fails": 1,
+   "attempts": 4,
+   "lastRun": 3
+  },
+  "floret|mirror+mystery+worm|quick|standard": {
+   "fails": 1,
+   "attempts": 2,
+   "lastRun": 3
+  },
+  "rect|compass+mirror+walls|short|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "rect|mirror+walls|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "cairo|locked+sonar|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "4.8.8|locked+sonar+walls|short|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "floret|sonar|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "rhombille|sonar+wormhole|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "4.8.8||long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "deltoidal|liar+wormhole|short|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "floret|sonar+worm|short|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "cairo|compass+locked+wormhole|short|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "deltoidal|compass+sonar|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "hex|worm|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "cairo|liar+locked+worm|long|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "rect|sonar|short|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "rect|mirror+walls+worm|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "floret|compass+mystery+worm|short|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "rect|liar+mystery+sonar|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "rect|walls+worm|short|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "cairo|sonar+walls|short|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "rhombille|compass+worm+wormhole|quick|standard": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "deltoidal|liar+worm|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "rect|wormhole|short|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "rect|sonar+worm|short|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "rect|compass+sonar+walls|short|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "rect|liar+mirror+mystery|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "4.8.8|liar+walls|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "4.8.8|mirror|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "rhombille|liar+mirror|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "deltoidal|mirror+sonar+wormhole|quick|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "deltoidal|mirror+sonar+wormhole|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 3
+  },
+  "deltoidal|mirror+sonar+wormhole|short|sparse": {
+   "fails": 0,
+   "attempts": 20,
+   "lastRun": 3
+  },
+  "rect|liar+locked+mystery|long|standard": {
+   "fails": 0,
+   "attempts": 19,
+   "lastRun": 3
+  },
+  "deltoidal|mirror+worm|short|sparse": {
+   "fails": 0,
+   "attempts": 19,
+   "lastRun": 3
+  },
+  "4.8.8|worm|short|dense": {
+   "fails": 0,
+   "attempts": 19,
+   "lastRun": 3
+  },
+  "hex|worm|short|standard": {
+   "fails": 0,
+   "attempts": 18,
+   "lastRun": 3
+  },
+  "rhombille|mystery+sonar+worm|short|standard": {
+   "fails": 0,
+   "attempts": 18,
+   "lastRun": 3
+  },
+  "rect|liar+mystery+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 18,
+   "lastRun": 3
+  },
+  "rect|walls+worm|long|dense": {
+   "fails": 0,
+   "attempts": 18,
+   "lastRun": 3
+  },
+  "rect|locked+sonar+walls|long|dense": {
+   "fails": 0,
+   "attempts": 18,
+   "lastRun": 3
+  },
+  "deltoidal|mirror+walls+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 18,
+   "lastRun": 3
+  },
+  "floret|mirror|long|standard": {
+   "fails": 0,
+   "attempts": 18,
+   "lastRun": 3
+  },
+  "deltoidal|compass+sonar|short|standard": {
+   "fails": 0,
+   "attempts": 18,
+   "lastRun": 3
+  },
+  "rhombille|sonar|quick|dense": {
+   "fails": 0,
+   "attempts": 17,
+   "lastRun": 3
+  },
+  "deltoidal||short|sparse": {
+   "fails": 0,
+   "attempts": 17,
+   "lastRun": 3
+  },
+  "deltoidal|mystery+sonar+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 17,
+   "lastRun": 3
+  },
+  "deltoidal|mystery+sonar+walls|short|sparse": {
+   "fails": 0,
+   "attempts": 17,
+   "lastRun": 3
+  },
+  "rect|sonar|quick|dense": {
+   "fails": 0,
+   "attempts": 17,
+   "lastRun": 3
+  },
+  "rect|mirror+walls+worm|short|dense": {
+   "fails": 0,
+   "attempts": 17,
+   "lastRun": 3
+  },
+  "floret|mirror|short|standard": {
+   "fails": 0,
+   "attempts": 17,
+   "lastRun": 3
+  },
+  "floret|compass+mystery+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 17,
+   "lastRun": 3
+  },
+  "rhombille||short|standard": {
+   "fails": 0,
+   "attempts": 16,
+   "lastRun": 3
+  },
+  "rect|mystery|long|dense": {
+   "fails": 0,
+   "attempts": 16,
+   "lastRun": 3
+  },
+  "rect|mirror+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 16,
+   "lastRun": 3
+  },
+  "hex|locked|short|standard": {
+   "fails": 0,
+   "attempts": 16,
+   "lastRun": 3
+  },
+  "rhombille|locked+mirror+sonar|quick|standard": {
+   "fails": 0,
+   "attempts": 16,
+   "lastRun": 3
+  },
+  "deltoidal|liar+wormhole|long|standard": {
+   "fails": 0,
+   "attempts": 16,
+   "lastRun": 3
+  },
+  "deltoidal|mirror+walls+wormhole|short|sparse": {
+   "fails": 0,
+   "attempts": 16,
+   "lastRun": 3
+  },
+  "floret|sonar+worm|long|standard": {
+   "fails": 0,
+   "attempts": 16,
+   "lastRun": 3
+  },
+  "4.8.8|locked+mystery|long|dense": {
+   "fails": 0,
+   "attempts": 16,
+   "lastRun": 3
+  },
+  "cairo|compass+locked+wormhole|long|dense": {
+   "fails": 0,
+   "attempts": 16,
+   "lastRun": 3
+  },
+  "hex||long|standard": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "rect|mystery+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "rect|mirror+mystery+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "hex|compass+liar+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "rect|locked+mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "rect|liar+locked+mirror|short|standard": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "rect|locked+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "rect|liar+locked+mystery|short|standard": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "rect|liar+mirror+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "rhombille|compass|quick|standard": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "hex|compass+liar+mystery|short|standard": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "floret|walls|short|standard": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "cairo|liar+mirror+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "deltoidal|mirror+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "deltoidal|compass+walls+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "cairo|locked+sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "4.8.8|locked+sonar+walls|quick|standard": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "hex|mystery+sonar|short|standard": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "cairo|liar+mirror+sonar|short|standard": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "floret|compass+locked|short|standard": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "rect|mirror+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "rect|mirror+sonar|long|dense": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "hex|compass|short|dense": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "hex|mirror+mystery+wormhole|long|dense": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "cairo|mystery+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "floret|locked+sonar+worm|short|standard": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "4.8.8|liar|long|dense": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "cairo|compass+liar+sonar|long|dense": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "floret|sonar|short|dense": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "floret|compass|long|dense": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "4.8.8||quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8||quick|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|mirror+mystery+sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|locked+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|locked+walls|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|liar+locked+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|liar+locked+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|mystery|short|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|liar+mystery+sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|walls+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|walls+worm|short|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|compass+mirror+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|compass+locked+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|liar+walls+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|liar|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect||quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|liar|quick|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|liar|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|locked+mirror+mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|locked+mirror+mystery|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|locked+mirror+mystery|short|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|liar+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|mystery|quick|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|liar+sonar|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|liar|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "floret||short|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|liar+locked+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|compass+mirror|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|compass+mirror|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|mirror|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|sonar|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|locked+worm+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|compass+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|mirror+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|compass+locked+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|liar+mystery|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|locked+mystery+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|locked+mystery+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|locked+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|compass+liar+wormhole|long|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|compass+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|compass+worm|quick|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|mirror+mystery|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "floret|locked+mirror+sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|compass+mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|compass+mystery|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|liar+locked+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|locked+mystery+wormhole|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|sonar+walls+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|sonar+walls+worm|quick|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "floret|compass+wormhole|short|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|liar+locked+mirror|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|compass+locked+mystery|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|locked|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|liar+locked+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "deltoidal|liar+mirror|short|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|mystery+walls+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|mirror|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "deltoidal|compass|short|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|liar+mirror+wormhole|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|sonar+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|locked+sonar|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|liar+mirror+walls|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|compass|quick|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|mystery+wormhole|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|liar+mirror+sonar|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|liar+mirror+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "deltoidal||short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|walls|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|sonar|short|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|liar+locked+sonar|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|compass|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|compass|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|locked|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "floret|locked+mirror+wormhole|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|walls|quick|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|walls|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|mystery+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|worm|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "deltoidal|mirror+mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|mystery+wormhole|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "deltoidal|locked|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|liar+mystery+sonar|quick|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|mystery+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "deltoidal|liar+mystery+walls|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|compass+sonar|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|locked+mirror+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|locked+walls+worm|short|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|compass+locked+mystery|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|liar+mystery+worm|short|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|mystery|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|walls+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|walls+worm|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|compass+mirror+mystery|quick|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "floret|mirror+sonar+worm|short|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "deltoidal|liar+mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|liar+worm|short|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "deltoidal|liar|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "floret|mystery+sonar|short|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|compass+mirror|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|mirror|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|mirror|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|worm|short|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|locked+sonar+walls|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|locked+worm+wormhole|short|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|compass+mirror+walls|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|compass+liar+mirror|short|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|compass+liar+mirror|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|sonar|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|compass+walls|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|mirror+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|liar+mystery|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|compass|short|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|compass|short|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|locked+sonar|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|locked+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|compass+mystery|short|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "deltoidal|liar+sonar|short|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|sonar+worm|short|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "deltoidal|compass+liar+walls|short|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|locked+sonar|long|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "deltoidal|mirror+worm+wormhole|short|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|mirror+sonar|short|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "deltoidal|compass+locked+worm|short|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|locked+mirror+walls|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "floret|compass+mystery+sonar|quick|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|sonar|short|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|liar+mirror+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|liar+locked|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|compass+locked+sonar|short|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|liar+locked+worm|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|mirror+worm|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|liar+mystery+worm|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "deltoidal|liar+walls+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|liar+worm|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|mirror+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|compass+sonar+walls|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|mystery|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "floret|mirror+mystery+worm|short|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|liar+mirror+worm|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|liar+sonar|short|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|liar+locked+walls|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|locked+walls|long|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|liar+mirror|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|walls+worm|quick|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|walls+worm|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|walls+worm|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|liar+worm|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|liar|short|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|sonar+walls|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|locked+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "floret|sonar+walls|long|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|liar|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|compass+liar|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "floret|compass+sonar|short|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "floret|compass+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|mirror+sonar|long|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rect|locked+walls+worm|long|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|locked+wormhole|long|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|compass+mirror+mystery|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "floret|sonar|short|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "deltoidal|liar+sonar+walls|short|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|liar+mirror|long|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "floret|mystery|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "floret|mystery|long|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|liar+locked+sonar|long|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|liar+mirror|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "deltoidal|mirror+sonar+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "floret|worm+wormhole|long|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|locked|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|liar+locked+mirror|long|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "rhombille|locked+worm|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|sonar+worm|long|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "floret|liar+worm|long|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|compass|long|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "floret|compass+locked+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "floret|worm|long|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "floret|locked+sonar|long|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "deltoidal|liar+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 13,
+   "lastRun": 3
+  },
+  "4.8.8|locked+mystery|short|dense": {
+   "fails": 0,
+   "attempts": 12,
+   "lastRun": 3
+  },
+  "rhombille|sonar|short|dense": {
+   "fails": 0,
+   "attempts": 11,
+   "lastRun": 3
+  },
+  "deltoidal||quick|sparse": {
+   "fails": 0,
+   "attempts": 11,
+   "lastRun": 3
+  },
+  "rect|worm|short|dense": {
+   "fails": 0,
+   "attempts": 11,
+   "lastRun": 3
+  },
+  "cairo|liar+locked+worm|short|standard": {
+   "fails": 0,
+   "attempts": 11,
+   "lastRun": 3
+  },
+  "hex||short|standard": {
+   "fails": 0,
+   "attempts": 10,
+   "lastRun": 3
+  },
+  "rect|mirror|short|dense": {
+   "fails": 0,
+   "attempts": 10,
+   "lastRun": 3
+  },
+  "deltoidal|mirror|quick|sparse": {
+   "fails": 0,
+   "attempts": 10,
+   "lastRun": 3
+  },
+  "rect|locked+sonar+walls|short|dense": {
+   "fails": 0,
+   "attempts": 10,
+   "lastRun": 3
+  },
+  "cairo|liar+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 10,
+   "lastRun": 3
+  },
+  "hex|wormhole|long|dense": {
+   "fails": 0,
+   "attempts": 10,
+   "lastRun": 3
+  },
+  "rect|mystery+worm|quick|sparse": {
+   "fails": 0,
+   "attempts": 9,
+   "lastRun": 3
+  },
+  "hex|sonar|short|dense": {
+   "fails": 0,
+   "attempts": 9,
+   "lastRun": 3
+  },
+  "cairo||long|sparse": {
+   "fails": 0,
+   "attempts": 9,
+   "lastRun": 3
+  },
+  "4.8.8|worm|long|dense": {
+   "fails": 0,
+   "attempts": 9,
+   "lastRun": 3
+  },
+  "cairo|worm|short|standard": {
+   "fails": 0,
+   "attempts": 9,
+   "lastRun": 3
+  },
+  "rect|mirror+walls|short|dense": {
+   "fails": 0,
+   "attempts": 9,
+   "lastRun": 3
+  },
+  "rhombille|sonar+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 9,
+   "lastRun": 3
+  },
+  "hex|liar|quick|standard": {
+   "fails": 0,
+   "attempts": 8,
+   "lastRun": 3
+  },
+  "4.8.8|liar+mirror+mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 8,
+   "lastRun": 3
+  },
+  "rect|mystery|short|dense": {
+   "fails": 0,
+   "attempts": 8,
+   "lastRun": 3
+  },
+  "4.8.8|sonar|short|dense": {
+   "fails": 0,
+   "attempts": 8,
+   "lastRun": 3
+  },
+  "rect|locked|quick|sparse": {
+   "fails": 0,
+   "attempts": 8,
+   "lastRun": 3
+  },
+  "rhombille|mirror|quick|standard": {
+   "fails": 0,
+   "attempts": 8,
+   "lastRun": 3
+  },
+  "deltoidal||long|standard": {
+   "fails": 0,
+   "attempts": 8,
+   "lastRun": 3
+  },
+  "hex|walls|short|standard": {
+   "fails": 0,
+   "attempts": 8,
+   "lastRun": 3
+  },
+  "cairo||short|sparse": {
+   "fails": 0,
+   "attempts": 8,
+   "lastRun": 3
+  },
+  "cairo||quick|standard": {
+   "fails": 0,
+   "attempts": 8,
+   "lastRun": 3
+  },
+  "cairo||quick|dense": {
+   "fails": 0,
+   "attempts": 8,
+   "lastRun": 3
+  },
+  "cairo|walls|long|sparse": {
+   "fails": 0,
+   "attempts": 8,
+   "lastRun": 3
+  },
+  "rhombille|mystery+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 8,
+   "lastRun": 3
+  },
+  "4.8.8|locked+sonar|long|dense": {
+   "fails": 0,
+   "attempts": 8,
+   "lastRun": 3
+  },
+  "rhombille|locked+mirror|short|dense": {
+   "fails": 0,
+   "attempts": 8,
+   "lastRun": 3
+  },
+  "floret||short|standard": {
+   "fails": 0,
+   "attempts": 4,
+   "lastRun": 3
+  },
+  "cairo||long|standard": {
+   "fails": 0,
+   "attempts": 4,
+   "lastRun": 3
+  },
+  "rhombille||quick|standard": {
+   "fails": 0,
+   "attempts": 3,
+   "lastRun": 3
+  },
+  "cairo||long|dense": {
+   "fails": 0,
+   "attempts": 3,
+   "lastRun": 3
+  },
+  "hex||quick|sparse": {
+   "fails": 0,
+   "attempts": 2,
+   "lastRun": 3
+  },
+  "hex||quick|dense": {
+   "fails": 0,
+   "attempts": 2,
+   "lastRun": 3
+  },
+  "4.8.8|mystery|quick|sparse": {
+   "fails": 0,
+   "attempts": 2,
+   "lastRun": 3
+  },
+  "rhombille||quick|sparse": {
+   "fails": 0,
+   "attempts": 2,
+   "lastRun": 3
+  },
+  "floret||quick|sparse": {
+   "fails": 0,
+   "attempts": 2,
+   "lastRun": 3
+  },
+  "floret||long|dense": {
+   "fails": 0,
+   "attempts": 2,
+   "lastRun": 3
+  },
+  "rect|liar+locked+wormhole|quick|standard": {
+   "fails": 0,
+   "attempts": 2,
+   "lastRun": 3
+  },
+  "cairo|walls|short|dense": {
+   "fails": 0,
+   "attempts": 2,
+   "lastRun": 3
+  },
+  "deltoidal|compass+walls+wormhole|short|sparse": {
+   "fails": 0,
+   "attempts": 17,
+   "lastRun": 3
+  },
+  "deltoidal|mirror|short|sparse": {
+   "fails": 0,
+   "attempts": 18,
+   "lastRun": 3
+  },
+  "cairo|compass+locked|long|standard": {
+   "fails": 0,
+   "attempts": 17,
+   "lastRun": 3
+  },
+  "cairo|compass+locked|short|standard": {
+   "fails": 0,
+   "attempts": 16,
+   "lastRun": 3
+  },
+  "rect|liar|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "4.8.8|compass+mirror|short|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|locked|quick|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|locked+mirror|quick|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "deltoidal|mirror+sonar+worm|short|sparse": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|sonar+wormhole|long|dense": {
+   "fails": 0,
+   "attempts": 18,
+   "lastRun": 3
+  },
+  "rect|compass+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|sonar+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "cairo|sonar+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 16,
+   "lastRun": 3
+  },
+  "rhombille|mystery+sonar+worm|quick|standard": {
+   "fails": 0,
+   "attempts": 10,
+   "lastRun": 3
+  },
+  "cairo|compass+liar+sonar|short|dense": {
+   "fails": 0,
+   "attempts": 19,
+   "lastRun": 3
+  },
+  "cairo|sonar+walls|long|standard": {
+   "fails": 0,
+   "attempts": 18,
+   "lastRun": 3
+  },
+  "rect|liar+locked|short|dense": {
+   "fails": 0,
+   "attempts": 14,
+   "lastRun": 3
+  },
+  "hex|mystery+sonar|long|standard": {
+   "fails": 0,
+   "attempts": 12,
+   "lastRun": 3
+  },
+  "rect|worm|long|dense": {
+   "fails": 0,
+   "attempts": 10,
+   "lastRun": 3
+  },
+  "rhombille|compass+worm+wormhole|short|standard": {
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 3
+  },
+  "rhombille|locked+mirror+sonar|short|standard": {
+   "fails": 0,
+   "attempts": 2,
+   "lastRun": 3
+  },
+  "rect|locked+walls+wormhole|short|dense": {
+   "fails": 0,
+   "attempts": 8,
+   "lastRun": 3
+  }
+ }
+}
