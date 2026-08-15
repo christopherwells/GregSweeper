@@ -1,0 +1,85 @@
+name: Nightly-pipeline smoke
+
+# The pre-merge exercise of the nightly refit's R script, over a committed
+# production sample (test/fixtures/refit-db/). Five nightly failures in eight
+# days (2026-08-09..14) were first-time DATA regimes hitting shaping or
+# emission code no PR had ever run: the first match_ rows under daily/, a
+# fully saturated coverage list emptying a sort, a one-row shape moving an
+# equation 62%. Each fix was verified by hand-reproducing in R; this workflow
+# is that reproduction, automated and pinned to the regimes production
+# actually holds, so the NEXT script change meets them at PR time instead of
+# at 2 AM.
+#
+# The sweep's own smoke (verify-canonical-boards --fixture) does not live
+# here: it is node-only and runs inside the ordinary unit-test workflow via
+# test/canonicalSweepSmoke.test.mjs on every push and PR.
+#
+# Path-filtered: the smoke re-runs when the R script, its fixtures, or the
+# refit workflow change. It deliberately does NOT run on every PR — the toy
+# fit still compiles a Stan model, and minutes per unrelated PR is how a
+# gate gets deleted. The nightly itself remains the backstop for couplings
+# outside these paths.
+#
+# The R setup mirrors refit-par-model.yml, SAME cache key included, so this
+# job restores the nightly's warm package cache instead of building its own.
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/refit-par-model.R'
+      - 'scripts/build-refit-fixture.mjs'
+      - 'test/fixtures/refit-db/**'
+      - '.github/workflows/pipeline-smoke.yml'
+      - '.github/workflows/refit-par-model.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/refit-par-model.R'
+      - 'scripts/build-refit-fixture.mjs'
+      - 'test/fixtures/refit-db/**'
+      - '.github/workflows/pipeline-smoke.yml'
+      - '.github/workflows/refit-par-model.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+
+      - name: Cache R packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.R_LIBS_USER }}
+          # Deliberately the refit workflow's own key: restoring the nightly's
+          # warm cache is what keeps this job to minutes. Bump BOTH in step.
+          key: r-pkgs-${{ runner.os }}-noble-brms-v2
+          restore-keys: r-pkgs-${{ runner.os }}-noble-
+
+      - name: Install R packages
+        shell: Rscript {0}
+        run: |
+          rspm <- Sys.getenv("RSPM")
+          if (nzchar(rspm)) options(repos = c(CRAN = rspm))
+          pkgs <- c("jsonlite", "dplyr", "tidyr", "purrr", "stringr",
+                    "brms", "posterior", "rstan", "StanHeaders")
+          need <- setdiff(pkgs, rownames(installed.packages()))
+          if (length(need)) install.packages(need)
+
+      - name: Refit smoke over the committed fixture
+        env:
+          REFIT_SMOKE: '1'
+          REFIT_DB_URL: 'test/fixtures/refit-db'
+        # The toy fit's outputs land in the workspace and are thrown away
+        # with it; a green run means the shaping and emission machinery
+        # survived the fixture's regimes, nothing about coefficients.
+        run: Rscript scripts/refit-par-model.R

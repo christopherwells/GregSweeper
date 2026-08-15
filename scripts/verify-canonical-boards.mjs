@@ -30,7 +30,21 @@
 //      safe cell, and the claimed answer (when present) is among them
 //
 // Usage: node scripts/verify-canonical-boards.mjs   (exit 1 on any failure)
+//        node scripts/verify-canonical-boards.mjs --fixture <snapshot.json>
+//
+// FIXTURE MODE is the pre-merge smoke for the ORCHESTRATION in main(). The
+// pure verdict functions are exported and unit-tested, but both times this
+// workflow died in production (2026-08-13/14, the first match_ row under
+// daily/; #260 before it, the weekly-first rows) the crash was in the loop
+// that feeds them, and nothing ran that loop before 2 AM. A fixture run
+// replays main() over a committed snapshot (test/fixtures/canonical-sweep.json,
+// rebuilt by scripts/build-sweep-fixture.mjs) with the clock anchored INSIDE
+// the snapshot, so the dataset stays "future" forever and every daily/ key
+// family the scan must survive is exercised at PR time. The snapshot carries a
+// planted divergent row, so the smoke also proves detection rather than only
+// completion.
 
+import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { deserializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { recomputeDisplayedMines, recalcAllAdjacency } from '../src/logic/gimmicks.js';
@@ -71,6 +85,32 @@ export async function verifyFutureSignature(raw, key) {
 }
 
 const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
+
+const _args = process.argv.slice(2);
+const _fxAt = _args.indexOf('--fixture');
+const FIXTURE = _fxAt >= 0 && _args[_fxAt + 1]
+  ? JSON.parse(readFileSync(_args[_fxAt + 1], 'utf8'))
+  : null;
+
+/**
+ * Resolve one dbGet path against a fixture snapshot the way Firebase would:
+ * segment walk, null for anything absent, and `shallow=true` returning a
+ * key map. Exported so the smoke test can pin the resolution rules
+ * themselves.
+ */
+export function fixtureGet(db, path) {
+  const [node, query] = String(path).split('?');
+  let cur = db;
+  for (const seg of node.split('/')) {
+    if (cur == null || typeof cur !== 'object') return null;
+    cur = cur[seg];
+  }
+  if (cur === undefined || cur === null) return null;
+  if (query && query.includes('shallow=true') && typeof cur === 'object') {
+    return Object.fromEntries(Object.keys(cur).map((k) => [k, true]));
+  }
+  return cur;
+}
 
 // A feature key is STRUCTURAL — identical under any solver version, so a
 // mismatch can only be tampering or a real generator bug — unless
@@ -321,6 +361,7 @@ export function verifyCruxPayload(crux) {
 }
 
 async function dbGet(path) {
+  if (FIXTURE) return fixtureGet(FIXTURE.db || {}, path);
   const [node, query] = path.split('?');
   const r = await fetch(`${DB_BASE}/${node}.json${query ? `?${query}` : ''}`);
   if (!r.ok) throw new Error(`GET ${path} -> ${r.status}`);
@@ -363,8 +404,15 @@ export function divergenceBucketPlan(bucket) {
 }
 
 async function main() {
-  const today = getLocalDateString();
-  const thisWeek = getWeekStart();
+  // In fixture mode the clock comes from the snapshot, never the wall: a
+  // committed dataset with real dates would silently age out of "future" and
+  // the smoke would pass while sweeping nothing (the vacuity class).
+  const today = FIXTURE ? FIXTURE.today : getLocalDateString();
+  const thisWeek = FIXTURE ? FIXTURE.thisWeek : getWeekStart();
+  if (FIXTURE) {
+    console.log('FIXTURE MODE: sweeping a committed snapshot, not production. '
+      + 'A pass here says the machinery runs, nothing about live boards.');
+  }
   console.log(`Sweeping canonicals after ${today} (ET) and weeks >= ${thisWeek}...\n`);
 
   const [dailyKeys, weeklyKeys] = await Promise.all([

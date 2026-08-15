@@ -1,0 +1,1423 @@
+{
+ "builtAt": "2026-08-15T20:40:34.174Z",
+ "note": "Frozen production snapshot for verify-canonical-boards.mjs --fixture. Rebuild with scripts/build-sweep-fixture.mjs; the clock below is part of the data.",
+ "today": "2026-08-15",
+ "thisWeek": "2026-08-10",
+ "db": {
+  "dailyBoard": {
+   "2026-08-16": {
+    "activeGimmicks": [
+     "worm"
+    ],
+    "cellNeighbors": [
+     [
+      1,
+      7,
+      42
+     ],
+     [
+      0,
+      2,
+      8,
+      42,
+      43
+     ],
+     [
+      1,
+      3,
+      9,
+      43,
+      44
+     ],
+     [
+      2,
+      4,
+      10,
+      44,
+      45
+     ],
+     [
+      3,
+      5,
+      11,
+      45,
+      46
+     ],
+     [
+      4,
+      6,
+      12,
+      46,
+      47
+     ],
+     [
+      5,
+      13,
+      47
+     ],
+     [
+      0,
+      8,
+      14,
+      42,
+      48
+     ],
+     [
+      1,
+      7,
+      9,
+      15,
+      42,
+      43,
+      48,
+      49
+     ],
+     [
+      2,
+      8,
+      10,
+      16,
+      43,
+      44,
+      49,
+      50
+     ],
+     [
+      3,
+      9,
+      11,
+      17,
+      44,
+      45,
+      50,
+      51
+     ],
+     [
+      4,
+      10,
+      12,
+      18,
+      45,
+      46,
+      51,
+      52
+     ],
+     [
+      5,
+      11,
+      13,
+      19,
+      46,
+      47,
+      52,
+      53
+     ],
+     [
+      6,
+      12,
+      20,
+      47,
+      53
+     ],
+     [
+      7,
+      15,
+      21,
+      48,
+      54
+     ],
+     [
+      8,
+      14,
+      16,
+      22,
+      48,
+      49,
+      54,
+      55
+     ],
+     [
+      9,
+      15,
+      17,
+      23,
+      49,
+      50,
+      55,
+      56
+     ],
+     [
+      10,
+      16,
+      18,
+      24,
+      50,
+      51,
+      56,
+      57
+     ],
+     [
+      11,
+      17,
+      19,
+      25,
+      51,
+      52,
+      57,
+      58
+     ],
+     [
+      12,
+      18,
+      20,
+      26,
+      52,
+      53,
+      58,
+      59
+     ],
+     [
+      13,
+      19,
+      27,
+      53,
+      59
+     ],
+     [
+      14,
+      22,
+      28,
+      54,
+      60
+     ],
+     [
+      15,
+      21,
+      23,
+      29,
+      54,
+      55,
+      60,
+      61
+     ],
+     [
+      16,
+      22,
+      24,
+      30,
+      55,
+      56,
+      61,
+      62
+     ],
+     [
+      17,
+      23,
+      25,
+      31,
+      56,
+      57,
+      62,
+      63
+     ],
+     [
+      18,
+      24,
+      26,
+      32,
+      57,
+      58,
+      63,
+      64
+     ],
+     [
+      19,
+      25,
+      27,
+      33,
+      58,
+      59,
+      64,
+      65
+     ],
+     [
+      20,
+      26,
+      34,
+      59,
+      65
+     ],
+     [
+      21,
+      29,
+      35,
+      60,
+      66
+     ],
+     [
+      22,
+      28,
+      30,
+      36,
+      60,
+      61,
+      66,
+      67
+     ],
+     [
+      23,
+      29,
+      31,
+      37,
+      61,
+      62,
+      67,
+      68
+     ],
+     [
+      24,
+      30,
+      32,
+      38,
+      62,
+      63,
+      68,
+      69
+     ],
+     [
+      25,
+      31,
+      33,
+      39,
+      63,
+      64,
+      69,
+      70
+     ],
+     [
+      26,
+      32,
+      34,
+      40,
+      64,
+      65,
+      70,
+      71
+     ],
+     [
+      27,
+      33,
+      41,
+      65,
+      71
+     ],
+     [
+      28,
+      36,
+      66
+     ],
+     [
+      29,
+      35,
+      37,
+      66,
+      67
+     ],
+     [
+      30,
+      36,
+      38,
+      67,
+      68
+     ],
+     [
+      31,
+      37,
+      39,
+      68,
+      69
+     ],
+     [
+      32,
+      38,
+      40,
+      69,
+      70
+     ],
+     [
+      33,
+      39,
+      41,
+      70,
+      71
+     ],
+     [
+      34,
+      40,
+      71
+     ],
+     [
+      0,
+      1,
+      7,
+      8
+     ],
+     [
+      1,
+      2,
+      8,
+      9
+     ],
+     [
+      2,
+      3,
+      9,
+      10
+     ],
+     [
+      3,
+      4,
+      10,
+      11
+     ],
+     [
+      4,
+      5,
+      11,
+      12
+     ],
+     [
+      5,
+      6,
+      12,
+      13
+     ],
+     [
+      7,
+      8,
+      14,
+      15
+     ],
+     [
+      8,
+      9,
+      15,
+      16
+     ],
+     [
+      9,
+      10,
+      16,
+      17
+     ],
+     [
+      10,
+      11,
+      17,
+      18
+     ],
+     [
+      11,
+      12,
+      18,
+      19
+     ],
+     [
+      12,
+      13,
+      19,
+      20
+     ],
+     [
+      14,
+      15,
+      21,
+      22
+     ],
+     [
+      15,
+      16,
+      22,
+      23
+     ],
+     [
+      16,
+      17,
+      23,
+      24
+     ],
+     [
+      17,
+      18,
+      24,
+      25
+     ],
+     [
+      18,
+      19,
+      25,
+      26
+     ],
+     [
+      19,
+      20,
+      26,
+      27
+     ],
+     [
+      21,
+      22,
+      28,
+      29
+     ],
+     [
+      22,
+      23,
+      29,
+      30
+     ],
+     [
+      23,
+      24,
+      30,
+      31
+     ],
+     [
+      24,
+      25,
+      31,
+      32
+     ],
+     [
+      25,
+      26,
+      32,
+      33
+     ],
+     [
+      26,
+      27,
+      33,
+      34
+     ],
+     [
+      28,
+      29,
+      35,
+      36
+     ],
+     [
+      29,
+      30,
+      36,
+      37
+     ],
+     [
+      30,
+      31,
+      37,
+      38
+     ],
+     [
+      31,
+      32,
+      38,
+      39
+     ],
+     [
+      32,
+      33,
+      39,
+      40
+     ],
+     [
+      33,
+      34,
+      40,
+      41
+     ]
+    ],
+    "cellPos": [
+     {
+      "cx": 0.5,
+      "cy": 0.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 1.5,
+      "cy": 0.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 2.5,
+      "cy": 0.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 3.5,
+      "cy": 0.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 4.5,
+      "cy": 0.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 5.5,
+      "cy": 0.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 6.5,
+      "cy": 0.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 0.5,
+      "cy": 1.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 1.5,
+      "cy": 1.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 2.5,
+      "cy": 1.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 3.5,
+      "cy": 1.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 4.5,
+      "cy": 1.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 5.5,
+      "cy": 1.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 6.5,
+      "cy": 1.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 0.5,
+      "cy": 2.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 1.5,
+      "cy": 2.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 2.5,
+      "cy": 2.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 3.5,
+      "cy": 2.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 4.5,
+      "cy": 2.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 5.5,
+      "cy": 2.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 6.5,
+      "cy": 2.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 0.5,
+      "cy": 3.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 1.5,
+      "cy": 3.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 2.5,
+      "cy": 3.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 3.5,
+      "cy": 3.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 4.5,
+      "cy": 3.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 5.5,
+      "cy": 3.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 6.5,
+      "cy": 3.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 0.5,
+      "cy": 4.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 1.5,
+      "cy": 4.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 2.5,
+      "cy": 4.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 3.5,
+      "cy": 4.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 4.5,
+      "cy": 4.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 5.5,
+      "cy": 4.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 6.5,
+      "cy": 4.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 0.5,
+      "cy": 5.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 1.5,
+      "cy": 5.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 2.5,
+      "cy": 5.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 3.5,
+      "cy": 5.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 4.5,
+      "cy": 5.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 5.5,
+      "cy": 5.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 6.5,
+      "cy": 5.5,
+      "shape": "oct"
+     },
+     {
+      "cx": 1,
+      "cy": 1,
+      "shape": "sq"
+     },
+     {
+      "cx": 2,
+      "cy": 1,
+      "shape": "sq"
+     },
+     {
+      "cx": 3,
+      "cy": 1,
+      "shape": "sq"
+     },
+     {
+      "cx": 4,
+      "cy": 1,
+      "shape": "sq"
+     },
+     {
+      "cx": 5,
+      "cy": 1,
+      "shape": "sq"
+     },
+     {
+      "cx": 6,
+      "cy": 1,
+      "shape": "sq"
+     },
+     {
+      "cx": 1,
+      "cy": 2,
+      "shape": "sq"
+     },
+     {
+      "cx": 2,
+      "cy": 2,
+      "shape": "sq"
+     },
+     {
+      "cx": 3,
+      "cy": 2,
+      "shape": "sq"
+     },
+     {
+      "cx": 4,
+      "cy": 2,
+      "shape": "sq"
+     },
+     {
+      "cx": 5,
+      "cy": 2,
+      "shape": "sq"
+     },
+     {
+      "cx": 6,
+      "cy": 2,
+      "shape": "sq"
+     },
+     {
+      "cx": 1,
+      "cy": 3,
+      "shape": "sq"
+     },
+     {
+      "cx": 2,
+      "cy": 3,
+      "shape": "sq"
+     },
+     {
+      "cx": 3,
+      "cy": 3,
+      "shape": "sq"
+     },
+     {
+      "cx": 4,
+      "cy": 3,
+      "shape": "sq"
+     },
+     {
+      "cx": 5,
+      "cy": 3,
+      "shape": "sq"
+     },
+     {
+      "cx": 6,
+      "cy": 3,
+      "shape": "sq"
+     },
+     {
+      "cx": 1,
+      "cy": 4,
+      "shape": "sq"
+     },
+     {
+      "cx": 2,
+      "cy": 4,
+      "shape": "sq"
+     },
+     {
+      "cx": 3,
+      "cy": 4,
+      "shape": "sq"
+     },
+     {
+      "cx": 4,
+      "cy": 4,
+      "shape": "sq"
+     },
+     {
+      "cx": 5,
+      "cy": 4,
+      "shape": "sq"
+     },
+     {
+      "cx": 6,
+      "cy": 4,
+      "shape": "sq"
+     },
+     {
+      "cx": 1,
+      "cy": 5,
+      "shape": "sq"
+     },
+     {
+      "cx": 2,
+      "cy": 5,
+      "shape": "sq"
+     },
+     {
+      "cx": 3,
+      "cy": 5,
+      "shape": "sq"
+     },
+     {
+      "cx": 4,
+      "cy": 5,
+      "shape": "sq"
+     },
+     {
+      "cx": 5,
+      "cy": 5,
+      "shape": "sq"
+     },
+     {
+      "cx": 6,
+      "cy": 5,
+      "shape": "sq"
+     }
+    ],
+    "cells": [
+     {
+      "adjacentMines": 1
+     },
+     {
+      "adjacentMines": 2
+     },
+     {
+      "adjacentMines": 0,
+      "isMine": true
+     },
+     {
+      "adjacentMines": 0,
+      "isMine": true
+     },
+     {
+      "adjacentMines": 2
+     },
+     {
+      "adjacentMines": 2
+     },
+     {
+      "adjacentMines": 0,
+      "isMine": true
+     },
+     {
+      "adjacentMines": 0,
+      "isMine": true
+     },
+     {
+      "adjacentMines": 3,
+      "isWormEgg": true
+     },
+     {
+      "adjacentMines": 3
+     },
+     {
+      "adjacentMines": 2
+     },
+     {
+      "adjacentMines": 1
+     },
+     {
+      "adjacentMines": 2
+     },
+     {
+      "adjacentMines": 3
+     },
+     {
+      "adjacentMines": 1
+     },
+     {
+      "adjacentMines": 1
+     },
+     {
+      "adjacentMines": 1
+     },
+     {
+      "adjacentMines": 0
+     },
+     {
+      "adjacentMines": 0
+     },
+     {
+      "adjacentMines": 1
+     },
+     {
+      "adjacentMines": 1
+     },
+     {
+      "adjacentMines": 1
+     },
+     {
+      "adjacentMines": 0
+     },
+     {
+      "adjacentMines": 0
+     },
+     {
+      "adjacentMines": 0
+     },
+     {
+      "adjacentMines": 1
+     },
+     {
+      "adjacentMines": 1,
+      "isWormEgg": true
+     },
+     {
+      "adjacentMines": 1
+     },
+     {
+      "adjacentMines": 0,
+      "isMine": true
+     },
+     {
+      "adjacentMines": 2
+     },
+     {
+      "adjacentMines": 0
+     },
+     {
+      "adjacentMines": 2
+     },
+     {
+      "adjacentMines": 3
+     },
+     {
+      "adjacentMines": 2
+     },
+     {
+      "adjacentMines": 0,
+      "isMine": true
+     },
+     {
+      "adjacentMines": 2
+     },
+     {
+      "adjacentMines": 0,
+      "isMine": true
+     },
+     {
+      "adjacentMines": 2
+     },
+     {
+      "adjacentMines": 0,
+      "isMine": true
+     },
+     {
+      "adjacentMines": 0,
+      "isMine": true
+     },
+     {
+      "adjacentMines": 1
+     },
+     {
+      "adjacentMines": 1
+     },
+     {
+      "adjacentMines": 1
+     },
+     {
+      "adjacentMines": 0,
+      "isMine": true
+     },
+     {
+      "adjacentMines": 2
+     },
+     {
+      "adjacentMines": 0,
+      "isMine": true
+     },
+     {
+      "adjacentMines": 0
+     },
+     {
+      "adjacentMines": 0,
+      "isMine": true
+     },
+     {
+      "adjacentMines": 1
+     },
+     {
+      "adjacentMines": 0,
+      "isMine": true
+     },
+     {
+      "adjacentMines": 0
+     },
+     {
+      "adjacentMines": 0
+     },
+     {
+      "adjacentMines": 0
+     },
+     {
+      "adjacentMines": 0,
+      "isMine": true
+     },
+     {
+      "adjacentMines": 0
+     },
+     {
+      "adjacentMines": 0
+     },
+     {
+      "adjacentMines": 0
+     },
+     {
+      "adjacentMines": 0
+     },
+     {
+      "adjacentMines": 0
+     },
+     {
+      "adjacentMines": 0
+     },
+     {
+      "adjacentMines": 1
+     },
+     {
+      "adjacentMines": 0
+     },
+     {
+      "adjacentMines": 0
+     },
+     {
+      "adjacentMines": 0
+     },
+     {
+      "adjacentMines": 0,
+      "isMine": true
+     },
+     {
+      "adjacentMines": 1
+     },
+     {
+      "adjacentMines": 2
+     },
+     {
+      "adjacentMines": 1
+     },
+     {
+      "adjacentMines": 1
+     },
+     {
+      "adjacentMines": 0,
+      "isMine": true
+     },
+     {
+      "adjacentMines": 1
+     },
+     {
+      "adjacentMines": 1
+     }
+    ],
+    "codeVersion": "gregsweeper-v1.10.18",
+    "cols": 9,
+    "firstClick": 17,
+    "gatedCert": true,
+    "missionIsPrimary": false,
+    "missionTarget": "wormLoad",
+    "rngSeed": "2026-08-16:trial1",
+    "rows": 8,
+    "sig": "pLYWwZ3tQfYSGDnPz3BW9pUmIrwmaQ6tLJ08GKWetkWynYPfJAzTu69Ubqfd+kP4f++vGLb+5661/iM6ZNjV0Q==",
+    "tiling": {
+     "M": 6,
+     "N": 7,
+     "hUnits": 6,
+     "type": "4.8.8",
+     "wUnits": 7
+    },
+    "totalMines": 16,
+    "writtenAt": 1786248705656
+   },
+   "2026-08-14": {
+    "rngSeed": "2026-08-14:trial0"
+   }
+  },
+  "dailyMeta": {
+   "2026-08-16": {
+    "features": {
+     "advancedLogicMoves": 0,
+     "canonicalSubsetMoves": 0,
+     "cellCount": 72,
+     "clueShare2": 3.2432432432432434,
+     "clueShare3": 1.0810810810810811,
+     "clueShare4": 0,
+     "clueShare5plus": 0,
+     "cols": 9,
+     "compassCellCount": 0,
+     "compassClicksSaved": 0,
+     "compassRequired": 0,
+     "density": 0.2222222222222222,
+     "disjunctiveMoves": 0,
+     "genericSubsetMoves": 0,
+     "gimmickTypeCount": 1,
+     "liarCellCount": 0,
+     "liarClicksSaved": 0,
+     "liarRequired": 0,
+     "lockedCellCount": 0,
+     "lockedMineCount": 0,
+     "lockedNumberCount": 0,
+     "mirrorClicksSaved": 0,
+     "mirrorPairCount": 0,
+     "mirrorRequired": 0,
+     "mysteryCellCount": 0,
+     "nonZeroSafeCellCount": 37,
+     "passAMoves": 19,
+     "remainingUnknowns": 0,
+     "rows": 8,
+     "sonarCellCount": 0,
+     "sonarClicksSaved": 0,
+     "sonarRequired": 0,
+     "techniqueLevel": 0,
+     "tilingType": "4.8.8",
+     "totalClicks": 20,
+     "totalMines": 16,
+     "wallEdgeCount": 0,
+     "wormLoad": 5.762981711815577,
+     "wormholeClicksSaved": 0,
+     "wormholePairCount": 0,
+     "wormholeRequired": 0,
+     "zeroClusterCount": 3
+    },
+    "writtenAt": 1786248705729
+   }
+  },
+  "weeklyBoard": {
+   "2026-08-10": {
+    "rngSeed": "2026-08-10"
+   },
+   "2026-08-03": {
+    "rngSeed": "2026-08-03:trial2"
+   }
+  },
+  "daily": {
+   "2026-08-14": {
+    "-P--G2CgdWHw0c51cF9v": {
+     "bombHitEvents": [
+      {
+       "col": 5,
+       "infoValue": 0,
+       "penalty": 3,
+       "row": 1,
+       "t": 71
+      },
+      {
+       "col": 0,
+       "infoValue": 0,
+       "penalty": 4.5,
+       "row": 3,
+       "t": 84
+      }
+     ],
+     "bombHits": 2,
+     "name": "Anonymous",
+     "par": 175,
+     "rngSeed": "2026-08-14:trial0",
+     "time": 147.8,
+     "timestamp": 1786710864886,
+     "totalBombPenalty": 7.5,
+     "uid": "l0szSlaOvVb67aYrDzNU7j687BC3"
+    },
+    "-P--i0G93hir6xy7Cx1U": {
+     "bombHitEvents": [
+      {
+       "col": 1,
+       "infoValue": 0,
+       "penalty": 3,
+       "row": 1,
+       "t": 34
+      },
+      {
+       "col": 5,
+       "infoValue": 17.4,
+       "penalty": 21.9,
+       "row": 1,
+       "t": 34
+      }
+     ],
+     "bombHits": 2,
+     "name": "Anonymous",
+     "par": 175,
+     "rngSeed": "2026-08-14:trial0",
+     "time": 94.2,
+     "timestamp": 1786718459004,
+     "totalBombPenalty": 24.9,
+     "uid": "V07QPXYaICOOcP5ev6DXa2yG9y92"
+    },
+    "-P--j84tnCFbJj0O12mE": {
+     "bombHitEvents": [
+      {
+       "col": 5,
+       "infoValue": 0,
+       "penalty": 3,
+       "row": 1,
+       "t": 95
+      },
+      {
+       "col": 1,
+       "infoValue": 17.4,
+       "penalty": 21.9,
+       "row": 1,
+       "t": 106
+      }
+     ],
+     "bombHits": 2,
+     "name": "Anonymous",
+     "par": 175,
+     "rngSeed": "2026-08-14:trial0",
+     "time": 138,
+     "timestamp": 1786718753198,
+     "totalBombPenalty": 24.9,
+     "uid": "F8UjG44sGhXWFmqtKbd3h4Vpvcx1"
+    },
+    "plantedDivergent": {
+     "bombHitEvents": [
+      {
+       "col": 5,
+       "infoValue": 0,
+       "penalty": 3,
+       "row": 1,
+       "t": 71
+      },
+      {
+       "col": 0,
+       "infoValue": 0,
+       "penalty": 4.5,
+       "row": 3,
+       "t": 84
+      }
+     ],
+     "bombHits": 2,
+     "name": "Anonymous",
+     "par": 175,
+     "rngSeed": "planted-divergent-seed",
+     "time": 147.8,
+     "timestamp": 1786710864886,
+     "totalBombPenalty": 7.5,
+     "uid": "l0szSlaOvVb67aYrDzNU7j687BC3"
+    }
+   },
+   "match_fe307a9405101a37": {
+    "-OztUDIV3xrH_rs2hxve": {
+     "bombHits": 0,
+     "name": "Anonymous",
+     "par": 153.5,
+     "time": 110.3,
+     "timestamp": 1786597139766,
+     "uid": "F8UjG44sGhXWFmqtKbd3h4Vpvcx1"
+    },
+    "-OztUo0WUeoEjirq42H6": {
+     "bombHitEvents": [
+      {
+       "col": 3,
+       "infoValue": 0,
+       "penalty": 3,
+       "row": 5,
+       "t": 34
+      }
+     ],
+     "bombHits": 1,
+     "name": "Anonymous",
+     "par": 153.5,
+     "time": 100.6,
+     "timestamp": 1786597294265,
+     "totalBombPenalty": 3,
+     "uid": "V07QPXYaICOOcP5ev6DXa2yG9y92"
+    }
+   },
+   "2026-08-10_weekly_first": {
+    "-Ozfs2-M0MSgtckqPTCB": {
+     "bombHits": 0,
+     "name": "Anonymous",
+     "rngSeed": "2026-08-10",
+     "time": 57.5,
+     "timestamp": 1786368766076,
+     "uid": "V07QPXYaICOOcP5ev6DXa2yG9y92"
+    },
+    "-Ozfsies9Ei8cALq_paw": {
+     "bombHits": 0,
+     "name": "Anonymous",
+     "rngSeed": "2026-08-10",
+     "time": 79.3,
+     "timestamp": 1786368944889,
+     "uid": "F8UjG44sGhXWFmqtKbd3h4Vpvcx1"
+    }
+   },
+   "zz9_unknown_family": {
+    "r1": {
+     "time": 42,
+     "name": "Anonymous"
+    }
+   }
+  },
+  "weekly": {
+   "2026-08-03": {
+    "F8UjG44sGhXWFmqtKbd3h4Vpvcx1": {
+     "bestTime": 36.3,
+     "dayBombHits": [
+      1,
+      1,
+      0,
+      1,
+      1,
+      0,
+      1
+     ],
+     "dayTimes": [
+      85.5,
+      68.1,
+      51.3,
+      55.4,
+      49.2,
+      43.8,
+      36.3
+     ],
+     "name": "Anonymous",
+     "rngSeed": "2026-08-03:trial2",
+     "timestamp": 1786304209789,
+     "totalMoves": 33
+    },
+    "QOuNZDDHapRxOf6KDd9fSQ0uNc62": {
+     "bestTime": 149.8,
+     "dayBombHits": {
+      "2": 0,
+      "4": 4
+     },
+     "dayTimes": {
+      "2": 201.1,
+      "4": 149.8
+     },
+     "name": "Anonymous",
+     "rngSeed": "2026-08-03:trial2",
+     "timestamp": 1786130314998,
+     "totalMoves": 33
+    }
+   }
+  }
+ }
+}

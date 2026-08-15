@@ -38,7 +38,10 @@ set.seed(20260422)
 
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
-DB_URL          <- "https://gregsweeper-66d02-default-rtdb.firebaseio.com"
+# REFIT_DB_URL exists for the pre-merge smoke, which points it at the
+# committed fixture directory (jsonlite::fromJSON reads local paths through
+# the same string paste). Unset, this is the production database, verbatim.
+DB_URL          <- Sys.getenv("REFIT_DB_URL", "https://gregsweeper-66d02-default-rtdb.firebaseio.com")
 DIFFICULTY_PATH <- "src/logic/difficulty.js"
 HANDICAPS_PATH  <- "src/logic/handicaps.json"
 
@@ -299,6 +302,26 @@ ADAPT_DELTA <- 0.99   # tight step-size adaptation: coefficients near the
 # below that. A nonzero but small count is common near boundaries and does
 # not invalidate the posterior means we care about.
 MAX_DIVERGENT_FRAC <- 0.0025
+
+# SMOKE MODE (REFIT_SMOKE=1): the pre-merge exercise of this script's data
+# shaping and emission, run in CI over the committed fixture snapshot
+# (test/fixtures/refit-db/, reached via REFIT_DB_URL). Twice in one week the
+# nightly died on a data regime no code path had ever met (the first match_
+# rows under daily/, then the first fully saturated coverage list), and both
+# crashes were in shaping or emission, not in the sampler, so the smoke runs
+# everything, with the fit shrunk to a toy. Toy-fit diagnostics are LOGGED
+# but never gate acceptance (see the convergence check), because a toy
+# posterior's convergence says nothing and the smoke ships no coefficients;
+# what a green run proves is that every branch downstream of the fit still
+# runs on the data regimes production actually holds. With the variable
+# unset, every value in this file is exactly what it was.
+REFIT_SMOKE <- nzchar(Sys.getenv("REFIT_SMOKE"))
+if (REFIT_SMOKE) {
+  N_CHAINS    <- 2
+  N_ITER      <- 500
+  N_WARMUP    <- 250
+  ADAPT_DELTA <- 0.9
+}
 
 # NOTE (log-model migration, 2026-07): the model response is now
 # log(pure_time), so every slope is a log-MULTIPLIER, not seconds. The LIVE
@@ -1650,7 +1673,11 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
                        diverge, total_draws)
   message("  diagnostics: ", diag_note)
 
-  if (rhat_bad || ess_bad || diverge_bad) {
+  if (REFIT_SMOKE && (rhat_bad || ess_bad || diverge_bad)) {
+    message("  smoke mode: toy-fit diagnostics ignored (", diag_note, "); proceeding as accepted, ",
+            "because the smoke tests the machinery downstream of the fit, never the posterior.")
+  }
+  if (!REFIT_SMOKE && (rhat_bad || ess_bad || diverge_bad)) {
     message("Fit diagnostics failed — keeping previous PAR_MODEL and handicaps.")
     message("  Rerun scripts/fit-par-model.qmd for a closer look at why.")
     fit_method <- "seed-residuals"   # trigger residual fallback below
