@@ -31,7 +31,7 @@
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { buildChallenge250Board } from '../src/logic/challenge250Builder.js';
 import { buildTiling, containerIsStorable, containerFor, TILING_TYPES } from '../src/logic/tilingGeometry.js';
-import { boardFitsPhone } from '../src/logic/boardFit.js';
+import { boardFitsPhone, rectFitsPhone } from '../src/logic/boardFit.js';
 import { serializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { TILING_SAFE_GIMMICKS } from '../src/logic/tilingGenerator.js';
 import {
@@ -397,9 +397,17 @@ function fnv(str) {
   return h >>> 0;
 }
 
-/** Rect legality reads the SHIPPED width cap (the emit-legality lesson). */
+/**
+ * Rect legality reads the SHIPPED rules (the emit-legality lesson).
+ *
+ * `a <= 20` was the whole vertical rule, and it is how the too-tall boards got
+ * built: twenty rows is far past what a phone shows once its own URL bar and
+ * toolbar are counted, and nothing here was aiming at that number. rectFitsPhone
+ * is the rule now, the same one the lattices get through boardFitsPhone, so
+ * both branches of this function ask the same question.
+ */
 function endlessDimsLegal(shape, a, b) {
-  if (shape === 'rect') return b <= BOARD_WIDTH_CAP && a <= 20 && a >= 5 && b >= 5;
+  if (shape === 'rect') return a >= 5 && b >= 5 && rectFitsPhone(a, b);
   try { return boardFitsPhone(shape, a, b) && containerIsStorable(buildTiling(shape, a, b).total); } catch { return false; }
 }
 

@@ -58,6 +58,8 @@
 // cell count instead of authoring them.
 
 import { buildTiling, containerIsStorable } from './tilingGeometry.js';
+// The rectangular WIDTH rule, kept in difficulty.js where the search reads it.
+import { BOARD_WIDTH_CAP } from './difficulty.js';
 
 /**
  * The phone the caps are sized for: the modal Android width, which also covers
@@ -279,6 +281,67 @@ export function boardFitsPhone(type, M, N, viewport = FIT_REFERENCE) {
 // browser-UI allowance, so it is not a figure to enforce to the pixel. A board
 // a hair over is not what anyone is complaining about; one 10% over is.
 const HEIGHT_SLACK_PX = 12;
+
+// The renderer's own cell-size clamp and gap, from global.css. Mirrored here
+// so a rect board's delivered cell size is computed the way boardRenderer's
+// _fitCellSize computes it, rather than approximated.
+const RECT_GAP_PX = 2;
+const RECT_CELL_MIN = 18;
+const RECT_CELL_MAX = 50;
+
+/**
+ * The cell size (px) a rect board would actually be given, mirroring
+ * boardRenderer._fitCellSize: fit to width AND height, then clamp.
+ *
+ * Fitting to the RENDER height (70vh) rather than the comfort height on
+ * purpose, because that is what the renderer really does. The rule below is
+ * what compares the result against what a phone can actually show.
+ */
+export function rectCellSizeAt(rows, cols, viewport = FIT_REFERENCE) {
+  const wb = widthBudget(viewport.width ?? FIT_REFERENCE.width);
+  const hb = heightBudget(viewport.height ?? FIT_REFERENCE.height) - BOARD_BORDER_PAD;
+  const widthFit = Math.floor((wb - (cols - 1) * RECT_GAP_PX) / cols);
+  const heightFit = Math.floor((hb - (rows - 1) * RECT_GAP_PX) / rows);
+  return Math.min(RECT_CELL_MAX, Math.max(RECT_CELL_MIN, Math.min(widthFit, heightFit)));
+}
+
+/**
+ * Does a RECT board fit a phone, on the same terms boardFitsPhone holds the
+ * lattices to?
+ *
+ * THIS DID NOT EXIST UNTIL 2026-08-14, and its absence is a bug players saw.
+ * `BOARD_WIDTH_CAP` caps COLUMNS and nothing capped rows, so rect specs aimed
+ * at nothing vertically. Two budgets are in play and the gap between them is
+ * exactly where those boards landed: the renderer sizes cells to 70vh (502px
+ * at the reference) while a phone showing its own URL bar and toolbar displays
+ * 462px. Measured on the shipped Climb library: 299 of 767 rect boards, 39%,
+ * stood 1.1 to 1.6 cells taller than the visible area, which is his report
+ * ("one cell too long, maybe 2") to within a cell.
+ *
+ * boardFit's own note already says 70vh is more than a phone can show and that
+ * the CHOOSER should work to the tighter number. The lattices obey it through
+ * boardFitsPhone. This is the same rule, for the shape that never got one.
+ *
+ * WIDTH is his column cap, not the tap floor (his ruling 2026-08-14: eleven
+ * columns max). The two disagree and he chose: 314px of width over 11 columns
+ * delivers 26px cells, under the 28px floor every lattice is held to. That
+ * asymmetry is deliberate. Rect is the shape people know, its cells are square
+ * so the whole 26px is tappable where a hexagon's inscribed circle is not, and
+ * capping rect at the tap floor would mean 10 columns and a Classic board
+ * smaller than the one the game shipped with. `BOARD_WIDTH_CAP` carries the
+ * number; this reads it rather than keeping a second copy.
+ *
+ * HEIGHT is the rule that was missing entirely, and it is enforced against
+ * what a phone SHOWS rather than what the renderer sizes to.
+ */
+export function rectFitsPhone(rows, cols, viewport = FIT_REFERENCE) {
+  if (!Number.isInteger(rows) || !Number.isInteger(cols) || rows < 1 || cols < 1) return false;
+  if (cols > BOARD_WIDTH_CAP) return false;
+  const cell = rectCellSizeAt(rows, cols, viewport);
+  const height = rows * cell + (rows - 1) * RECT_GAP_PX;
+  const comfort = comfortHeightBudget(viewport.height ?? FIT_REFERENCE.height);
+  return height <= comfort + HEIGHT_SLACK_PX;
+}
 
 /**
  * The tap diameter (px) a board would actually deliver at a viewport, the

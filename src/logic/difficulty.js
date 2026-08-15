@@ -37,11 +37,22 @@ export function plateSeconds(est) {
 // 44pt tap target. With width=12 and the existing --cell-size of 28px on
 // mobile (≤480px viewport), a board fits 12 × 28 = 336 px plus gaps inside
 // the 390 px iPhone portrait viewport without scrolling. Rows are NOT
-// capped, taller boards (weekly samples up to 14 rows) are allowed because
-// the renderer fits cells to BOTH width and height, shrinking the cell so the
-// whole board stays inside the 70vh scroll wrapper (_fitCellSize in
-// boardRenderer.js). Mines are rescaled to preserve density.
-export const BOARD_WIDTH_CAP = 12;
+// capped. HEIGHT IS NO LONGER UNBOUNDED: the claim that the renderer's
+// fit-to-height made tall boards safe was half true and hid a real bug. The
+// renderer does shrink cells to 70vh, but a phone showing its own URL bar and
+// toolbar displays LESS than 70vh, and rect had no rule aiming at the smaller
+// number the way the lattices do. 299 of 767 rect boards in the shipped Climb
+// library stood 1.1 to 1.6 cells taller than the visible area (his report:
+// "one cell too long, maybe 2"). `rectFitsPhone` in boardFit.js is the rule
+// now, and it reads the cap below rather than keeping a second copy.
+//
+// ELEVEN, not twelve (his ruling 2026-08-14). Twelve columns delivers 24px
+// cells at the 360px reference and eleven delivers 26px, both under the 28px
+// tap floor the lattices honor; he chose eleven knowing that, because rect's
+// cells are square so the whole width is tappable, and capping at the floor
+// would mean ten columns and a Classic board smaller than the game shipped
+// with. Mines are rescaled to preserve density.
+export const BOARD_WIDTH_CAP = 11;
 
 export function applyWidthCap(rows, cols, mines) {
   if (cols <= BOARD_WIDTH_CAP) return { rows, cols, mines };

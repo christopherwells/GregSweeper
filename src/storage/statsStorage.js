@@ -60,6 +60,11 @@ export function setEndlessSeen(map) {
 // nightly reprice (boards never move between pages); a full library rebuild
 // resets the cycle, which is self-healing and worth no bookkeeping. Same
 // practice gate as the ladder's (matchDeal checks isLevelPractice).
+// Bumped when stored board POSITIONS change under players, which makes every
+// position-keyed seen record name a different board. Read by
+// applyChallenge250Reset, which clears the two affected cycles once.
+export const BOARD_FIT_EPOCH = 1;
+
 const MATCH_SEEN_KEY = 'minesweeper_match_seen';
 
 export function getMatchSeen() {
@@ -994,6 +999,31 @@ export function applyChallenge250Reset() {
   // have built since. The shape cards are untouched: that set was born with
   // this ladder, so nothing in it is stale.
   let changed = false;
+
+  // THE POSITION-KEYED SEEN-CYCLES, reset on their own marker (2026-08-14).
+  //
+  // The rect boards a phone cannot show were DELETED from both libraries and
+  // the survivors renumbered (his ruling; see scripts/evict-unfit-rect-boards
+  // .mjs). Two seen-cycles are keyed by POSITION rather than by identity: the
+  // match library's by `page:idx`, and the Climb ENDLESS library's by page.
+  // Renumbering does not invalidate those records, it makes them WRONG: every
+  // key survives and now names a different board, so a player's no-repeat
+  // history would quietly start lying and the deal would skip boards they had
+  // never seen while offering ones they had.
+  //
+  // Clearing is the honest answer, and it is cheap exactly now: about 70 match
+  // boards had been played across everyone when this ran. The Climb's LEVEL
+  // bins are deliberately NOT cleared, because they key by SEED and a seed
+  // survives renumbering untouched.
+  if (stats.boardFitEpoch !== BOARD_FIT_EPOCH) {
+    setMatchSeen([]);
+    setEndlessSeen({});
+    stats.boardFitEpoch = BOARD_FIT_EPOCH;
+    setJSON(STATS_KEY, stats);
+    _statsCache = stats;
+    changed = true;
+  }
+
   if (stats.challengeSeenEpoch !== CHALLENGE_250_EPOCH) {
     clearSeenGimmicks();
     stats.challengeSeenEpoch = CHALLENGE_250_EPOCH;
