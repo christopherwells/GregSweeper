@@ -13,6 +13,7 @@ import {
   densityPhrase, matchUnlocks, matchUnlockLevel,
   defaultMatchRules, sanitizeMatchRules,
   matchIndexRow, matchIndexFeatureKeys, parseMatchIndex, boardMatchesRules, eligibleRows,
+  MATCH_PAR_CEILING_SECONDS,
   pickMatchBoards, matchAdvance, matchTotals, resolveMatchPicks,
   matchRulesForLaunch, unmetMatchRules,
 } from '../src/logic/matchRules.js';
@@ -74,13 +75,22 @@ test('a crowned player has all seven shapes and all nine daily-safe modifiers', 
 
 // ── Bands ───────────────────────────────────────────────────────────────
 
-test('time bands split at 60 and 150 with an open top', () => {
+test('time bands split at two and four minutes, with an open top', () => {
+  // His cutoffs, 2026-08-15, replacing 60/150: Quick under two minutes,
+  // Standard two to four, Long past four. The old split sold a two-and-a-half
+  // minute board as "Standard", which he called wrong the moment the
+  // distribution was in front of him.
   assert.equal(MATCH_TIME_BANDS.length, 3);
-  assert.equal(timeBandOf(59.9), 'quick');
-  assert.equal(timeBandOf(60), 'short');
-  assert.equal(timeBandOf(149.9), 'short');
-  assert.equal(timeBandOf(150), 'long');
+  assert.equal(timeBandOf(119.9), 'quick');
+  assert.equal(timeBandOf(120), 'short');
+  assert.equal(timeBandOf(239.9), 'short');
+  assert.equal(timeBandOf(240), 'long');
   assert.equal(timeBandOf(9999), 'long');
+  // The top stays OPEN while the ceiling is an admission rule: a board past it
+  // must never be un-bandable, or a re-price that nudged one over would leave
+  // it in no corner at all.
+  assert.equal(timeBandOf(MATCH_PAR_CEILING_SECONDS + 1), 'long');
+  assert.equal(MATCH_PAR_CEILING_SECONDS, 600, 'his ceiling: ten minutes, for now');
 });
 
 test('density bands split at 0.16 and 0.26', () => {
@@ -251,7 +261,12 @@ test('shape, time band, and density band all filter', () => {
   const rules = { shapes: ['hex'], mods: [], time: 'quick', density: 'standard' };
   assert.ok(boardMatchesRules(row({ shape: 'hex' }), rules));
   assert.ok(!boardMatchesRules(row(), rules), 'wrong shape');
-  assert.ok(!boardMatchesRules(row({ shape: 'hex', par: 80 }), rules), 'wrong time band');
+  // 200s is Standard under the two-and-four-minute cutoffs. It was 80s while
+  // the split was 60/150, which stopped discriminating the moment Quick
+  // widened to two minutes: the assertion passed on a board the filter now
+  // (correctly) accepts.
+  assert.ok(!boardMatchesRules(row({ shape: 'hex', par: 200 }), rules), 'wrong time band');
+  assert.equal(timeBandOf(200), 'short', 'the par above must sit outside the quick band');
   assert.ok(!boardMatchesRules(row({ shape: 'hex', mines: 30 }), rules), 'wrong density band');
   assert.equal(eligibleRows([row(), row({ shape: 'hex' })], rules).length, 1);
 });
