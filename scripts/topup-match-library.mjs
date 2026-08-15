@@ -1,8 +1,8 @@
 // Top up the match library where a corner runs thin, and spend the effort
 // where it buys the most.
 //
-//   node scripts/topup-match-library.mjs [--minutes 20] [--buffer 20]
-//     [--dry-run] [--no-network]
+//   node scripts/topup-match-library.mjs [--minutes 20] [--buffer N]
+//     [--corners <file.json>] [--dry-run] [--no-network]
 //
 // WHY THIS EXISTS. Nothing has ever grown this library. The nightly refit
 // re-prices it (reprice-match-library.mjs) and generates nothing, while the
@@ -81,10 +81,17 @@ const argVal = (n, d) => { const i = args.indexOf(n); return i >= 0 && i + 1 < a
 const DRY = args.includes('--dry-run');
 const NO_NET = args.includes('--no-network');
 const BUDGET_MS = Number(argVal('--minutes', 20)) * 60000;
+// A TARGETED run: a JSON array of corner keys ("shape|mods|time|density"),
+// generated for exactly those corners and nothing else. The scalpel for a
+// known hole, where the nightly is the sweep; a manual burst of sweeps mostly
+// buys backoff-parity misses (measured 2026-08-15), so aiming is the lever a
+// human actually has.
+const CORNERS_FILE = argVal('--corners', null);
 // HOW MANY BOARDS A CORNER SHOULD HOLD, given how many of them somebody has
-// already played (his ruling 2026-08-14). The GOAL is a buffer of 20 unplayed
-// boards; the 100 is a CEILING, not a target, and it stops the search dead in
-// a corner that has already been dug deep enough.
+// already played (his ruling 2026-08-14) and how many hosts can reach the
+// corner at all (his ruling 2026-08-15). The 100 is a CEILING, not a target,
+// and it stops the search dead in a corner that has already been dug deep
+// enough.
 //
 // The buffer SHRINKS as a corner gets played out rather than growing with it,
 // which is the whole point: by the time somebody has played a hundred boards
@@ -92,29 +99,47 @@ const BUDGET_MS = Number(argVal('--minutes', 20)) * 60000;
 // nothing except not repeating tomorrow. Ten ahead past a hundred played, five
 // past two hundred and fifty.
 //
-// TODAY THIS MEANS 20, essentially everywhere: 81 boards have been played
-// across every corner in the library's life, so `played` is 0 or 1 nearly
-// always and the ceiling will not bind for a very long time. Storage is why
-// the distinction matters. A board costs ~6.6 KB on disk unpacked, so a
-// literal 100 per corner is a 572 MB library where 20 is 114 MB.
+// THE BUFFER ALSO SCALES BY MODIFIER ARITY, because the deal's modifier
+// filter is a SUBSET test: a three-modifier board is drawable only by a host
+// who can also draw every simpler board in the same cell. Measured 2026-08-15
+// with shape, length and density fixed, one host configuration sees a median
+// of 21 eligible boards with no modifiers allowed, 42 with one, 57 with two,
+// 79 with three. A flat buffer therefore over-serves exactly the hosts who
+// already have the most, which is how three-modifier corners came to hold 35%
+// of the library. Plain and single-modifier corners keep the full 20; stacked
+// corners taper.
 export const CORNER_CEILING = 100;
-// The dial: --buffer overrides it, which is how a run can be told to dig
-// deeper without editing the rule.
-export const BUFFER = Number(argVal('--buffer', 20));
+// The dial: --buffer overrides the whole arity table, which is how a run can
+// be told to dig deeper without editing the rule.
+const BUFFER_OVERRIDE = argVal('--buffer', null);
+export const ARITY_BUFFERS = [20, 15, 10, 8];
 export const DEEP_PLAY = 100;
 export const VERY_DEEP_PLAY = 250;
 
+/** Buffer for a corner with this many modifiers on its set. */
+export function bufferForArity(arity) {
+  if (BUFFER_OVERRIDE != null) return Number(BUFFER_OVERRIDE);
+  return ARITY_BUFFERS[Math.min(ARITY_BUFFERS.length - 1, Math.max(0, arity))];
+}
+
 /**
- * Total boards a corner should hold. Subtract what has been played to get
- * what still needs generating.
+ * Total boards a corner should hold. Subtract what it holds to get what
+ * still needs generating.
  *
  * @param {number} played  boards in this corner somebody has finished
+ * @param {number} arity   modifiers on the corner's set (0 for plain)
  */
-export function cornerTotalTarget(played) {
+export function cornerTotalTarget(played, arity = 0) {
   if (played > VERY_DEEP_PLAY) return played + 5;
   if (played > DEEP_PLAY) return played + 10;
-  return Math.min(CORNER_CEILING, played + BUFFER);
+  return Math.min(CORNER_CEILING, played + bufferForArity(arity));
 }
+
+/** Modifier count of a "shape|mods|time|density" corner key. */
+export const arityOfKey = (k) => {
+  const mods = String(k).split('|')[1] || '';
+  return mods ? mods.split('+').length : 0;
+};
 
 /** Every page in order. The array index IS the page number. */
 function loadPages() {
@@ -203,6 +228,38 @@ function loadState() {
     const s = JSON.parse(readFileSync(STATE_FILE, 'utf8'));
     return { runs: Number(s.runs) || 0, corners: s.corners || {} };
   } catch { return { runs: 0, corners: {} }; }
+}
+
+/**
+ * Validate a targeted-run corner list. A typo'd key would otherwise read as
+ * "unbuildable" and quietly spend the run on nothing, so a key that names a
+ * shape or band this library cannot hold throws before any generation starts.
+ * An unsorted modifier set throws too, because matchCornerKey sorts, so the
+ * unsorted form would match no corner ever.
+ */
+export function validateTargetCorners(list, label = '--corners') {
+  if (!Array.isArray(list) || list.length === 0) {
+    throw new Error(`${label}: expected a non-empty JSON array of "shape|mods|time|density" keys`);
+  }
+  const shapes = new Set(CHALLENGE_POOL.map((s) => s.shape));
+  const times = new Set(MATCH_TIME_BANDS.map((b) => b.key));
+  const dens = new Set(MATCH_DENSITY_BANDS.map((b) => b.key));
+  for (const key of list) {
+    const parts = String(key).split('|');
+    const [shape, mods, time, d] = parts;
+    const modList = (mods || '').split('+').filter(Boolean);
+    const sortedOk = (mods || '') === modList.slice().sort().join('+');
+    if (parts.length !== 4 || !shapes.has(shape) || !times.has(time) || !dens.has(d) || !sortedOk) {
+      throw new Error(`${label}: not a corner key this library can hold: "${key}"`);
+    }
+  }
+  return list.map(String);
+}
+
+/** The corner list for a targeted run, read and validated up front. */
+export function loadTargetCorners(file) {
+  if (!file) return null;
+  return validateTargetCorners(JSON.parse(readFileSync(file, 'utf8')), `--corners ${file}`);
 }
 
 /**
@@ -322,37 +379,54 @@ async function main() {
     if (played.set.has(matchRowKey(b.seed))) playedIn.set(k, (playedIn.get(k) || 0) + 1);
   }
   /** Boards still owed in this corner: its target total, less what it holds. */
-  const needOf = (k) => cornerTotalTarget(playedIn.get(k) || 0) - (total.get(k) || 0);
+  const needOf = (k) => cornerTotalTarget(playedIn.get(k) || 0, arityOfKey(k)) - (total.get(k) || 0);
 
   const space = featureSpace(existing);
   const corpus = existing.map((b) => vecOf(space, b.features));
 
-  // The addressable corner space: every (shape, modifier set) the proven pool
-  // can build, crossed with the nine bands. A corner outside this is not a gap
-  // in the library, it is a board nothing knows how to make.
-  const pairs = new Map();
-  for (const s of CHALLENGE_POOL) {
-    const mods = (s.gimmicks || []).slice().sort().join('+') || '(none)';
-    pairs.set(`${s.shape}|${mods}`, { shape: s.shape, mods });
-  }
+  const targeted = loadTargetCorners(CORNERS_FILE);
   const wanted = [];
-  for (const { shape, mods } of pairs.values()) {
-    for (const d of MATCH_DENSITY_BANDS) {
-      for (const t of MATCH_TIME_BANDS) {
-        const key = [shape, mods === '(none)' ? '' : mods, t.key, d.key].join('|');
-        const need = needOf(key);
-        if (need > 0) wanted.push({ key, shape, mods, dens: d.key, time: t.key, have: total.get(key) || 0, need });
+  if (targeted) {
+    // A targeted run generates for exactly the listed corners. No backoff
+    // filter: the caller chose them deliberately. Failures still record,
+    // because a corner that resisted a targeted run resisted, and tonight's
+    // nightly deserves to know that.
+    for (const key of targeted) {
+      const [shape, mods, time, dens] = key.split('|');
+      const need = needOf(key);
+      if (need <= 0) { console.log(`  targeted corner already at target, skipped: ${key}`); continue; }
+      wanted.push({ key, shape, mods: mods || '(none)', dens, time, have: total.get(key) || 0, need });
+    }
+  } else {
+    // The addressable corner space: every (shape, modifier set) the proven pool
+    // can build, crossed with the nine bands. A corner outside this is not a gap
+    // in the library, it is a board nothing knows how to make.
+    const pairs = new Map();
+    for (const s of CHALLENGE_POOL) {
+      const mods = (s.gimmicks || []).slice().sort().join('+') || '(none)';
+      pairs.set(`${s.shape}|${mods}`, { shape: s.shape, mods });
+    }
+    for (const { shape, mods } of pairs.values()) {
+      for (const d of MATCH_DENSITY_BANDS) {
+        for (const t of MATCH_TIME_BANDS) {
+          const key = [shape, mods === '(none)' ? '' : mods, t.key, d.key].join('|');
+          const need = needOf(key);
+          if (need > 0) wanted.push({ key, shape, mods, dens: d.key, time: t.key, have: total.get(key) || 0, need });
+        }
       }
     }
   }
 
   const state = loadState();
-  const runNo = state.runs + 1;
-  const due = wanted.filter((w) => corner_isDue(state.corners[w.key], runNo));
+  // A targeted run leaves the run counter alone, so a manual scalpel pass
+  // does not shift which corners the nightly's backoff parity makes due.
+  const runNo = targeted ? state.runs : state.runs + 1;
+  const due = targeted ? wanted : wanted.filter((w) => corner_isDue(state.corners[w.key], runNo));
 
+  const bufferDesc = BUFFER_OVERRIDE != null ? `flat ${Number(BUFFER_OVERRIDE)}` : `${ARITY_BUFFERS.join('/')} by arity`;
   console.log(`topup-match-library: ${existing.length} boards on ${pages.length} pages;`
-    + ` ${total.size} corners occupied, ${wanted.length} below target (buffer ${BUFFER}, ceiling ${CORNER_CEILING}),`
-    + ` ${due.length} due this run (run #${runNo}); budget ${BUDGET_MS / 60000} min`);
+    + ` ${total.size} corners occupied, ${wanted.length} below target (buffer ${bufferDesc}, ceiling ${CORNER_CEILING}),`
+    + ` ${due.length} due this run (${targeted ? 'targeted' : `run #${runNo}`}); budget ${BUDGET_MS / 60000} min`);
   if (due.length === 0) {
     console.log('  nothing due; library is at target or every gap is backing off.');
     if (!DRY) writeFileSync(STATE_FILE, JSON.stringify({ runs: runNo, corners: state.corners }, null, 1));
@@ -443,9 +517,11 @@ async function main() {
     + ` ${unbuildable} unbuildable (no spec of that shape and modifier set),`
     + ` ${due.length - probed - unbuildable} not reached before the census clock ran out`);
 
-  // ── Mine: spend what is left on the reachable corners, ranked by
-  // need x leverage. Leverage is recomputed against the corpus AS IT GROWS, so
-  // the second board into a corner is worth less than the first was.
+  // ── Mine: spend what is left on the reachable corners, ranked by need.
+  // Leverage is computed against the corpus AS IT GROWS and STORED on each
+  // board (`lev`), a durable record of how novel the board was the moment it
+  // joined; the deal scores live missions from the feature vector, so the
+  // ranking here stays supply-driven.
   const deadline = t0 + BUDGET_MS;
   let round = 0;
   let lastFlush = Date.now();

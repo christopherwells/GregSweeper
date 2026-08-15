@@ -44,6 +44,10 @@ import { TILING_TYPES } from '../src/logic/tilingGeometry.js';
 import { deserializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
 import { recalcAllAdjacency, recomputeDisplayedMines } from '../src/logic/gimmicks.js';
+import {
+  cornerTotalTarget, ARITY_BUFFERS, arityOfKey, validateTargetCorners,
+} from '../scripts/topup-match-library.mjs';
+import { narrowHoles } from '../scripts/match-narrow-holes.mjs';
 
 const summary = JSON.parse(readFileSync(SUMMARY_FILE, 'utf8'));
 const pageNames = matchPageNames(OUT_DIR);
@@ -294,4 +298,63 @@ test('the nightly refit re-prices the match library and commits it', () => {
     'a failed re-price would abort the workflow before the model is committed');
   assert.match(wf, /steps\.matchreprice\.outcome == 'failure'/,
     'nothing checks the re-price outcome, so a failure would pass silently');
+});
+
+// ---- The top-up's aim: arity-scaled depth, and the targeted scalpel ----
+//
+// His ruling 2026-08-15: the modifier filter is a SUBSET test, so depth on a
+// stacked corner serves hosts who already see the most boards (median 21
+// eligible at zero modifiers allowed, 79 at three, measured with shape,
+// length and density fixed). The buffer scales 20/15/10/8 by arity so
+// generation lands where an audience can actually be short.
+
+test('cornerTotalTarget scales its buffer by modifier arity (his 20/15/10/8 ruling)', () => {
+  assert.equal(cornerTotalTarget(0, 0), 20);
+  assert.equal(cornerTotalTarget(0, 1), 15);
+  assert.equal(cornerTotalTarget(0, 2), 10);
+  assert.equal(cornerTotalTarget(0, 3), 8);
+  // Arity past the table's end holds at the deepest taper.
+  assert.equal(cornerTotalTarget(0, 6), 8);
+  assert.deepEqual(ARITY_BUFFERS, [20, 15, 10, 8]);
+  // The played taper and the 100 ceiling are untouched by arity.
+  assert.equal(cornerTotalTarget(90, 0), 100);
+  assert.equal(cornerTotalTarget(150, 3), 160);
+  assert.equal(cornerTotalTarget(300, 0), 305);
+});
+
+test('arityOfKey reads the corner key, plain corners included', () => {
+  assert.equal(arityOfKey('rect||short|sparse'), 0);
+  assert.equal(arityOfKey('cairo|sonar|long|dense'), 1);
+  assert.equal(arityOfKey('hex|liar+walls|quick|standard'), 2);
+});
+
+test('validateTargetCorners refuses a key the library cannot hold', () => {
+  assert.throws(() => validateTargetCorners([]), /non-empty/);
+  assert.throws(() => validateTargetCorners(['nonsense|sonar|quick|dense']));
+  assert.throws(() => validateTargetCorners(['rect|sonar|someday|dense']));
+  // An unsorted modifier set would match no corner ever (matchCornerKey
+  // sorts), so it throws rather than silently generating for nothing.
+  assert.throws(() => validateTargetCorners(['rect|walls+liar|quick|dense']));
+  const ok = validateTargetCorners(['rect||quick|dense', 'rect|liar+walls|quick|dense']);
+  assert.equal(ok.length, 2);
+});
+
+test('narrowHoles: pooled supply cannot hide an empty narrow floor', () => {
+  const rows = [
+    // hex short sparse holds ONLY a stacked board, so a host permitting
+    // exactly sonar (or exactly walls) there draws nothing.
+    { shape: 'hex', mods: ['sonar', 'walls'], time: 'short', dens: 'sparse' },
+    // The same modifier single elsewhere must not mask the hole above.
+    { shape: 'hex', mods: ['sonar'], time: 'quick', dens: 'sparse' },
+    // A plain board floors every modifier at its own cell.
+    { shape: 'rect', mods: [], time: 'short', dens: 'sparse' },
+    { shape: 'rect', mods: ['sonar', 'walls'], time: 'short', dens: 'sparse' },
+  ];
+  const corners = narrowHoles(rows).map((h) => h.corner);
+  assert.ok(corners.includes('hex|sonar|short|sparse'));
+  assert.ok(corners.includes('hex|walls|short|sparse'));
+  assert.ok(!corners.some((c) => c.startsWith('rect|')), 'plain supply floors the rect cell');
+  // A cell with no pooled boards at all is a band question, not a hole:
+  // nothing lists it, because generation cannot be sent there usefully.
+  assert.ok(!corners.includes('hex|sonar|long|sparse'));
 });

@@ -1707,9 +1707,9 @@
    "lastRun": 2
   },
   "rhombille|compass|long|dense": {
-   "fails": 2,
-   "attempts": 2,
-   "lastRun": 2
+   "fails": 3,
+   "attempts": 3,
+   "lastRun": 10
   },
   "rect|mystery+wormhole|short|sparse": {
    "fails": 2,
@@ -2072,9 +2072,9 @@
    "lastRun": 2
   },
   "rhombille|worm|short|standard": {
-   "fails": 2,
-   "attempts": 2,
-   "lastRun": 2
+   "fails": 3,
+   "attempts": 3,
+   "lastRun": 10
   },
   "rhombille|worm|long|standard": {
    "fails": 2,
@@ -2087,9 +2087,9 @@
    "lastRun": 2
   },
   "rhombille|worm|long|dense": {
-   "fails": 2,
-   "attempts": 2,
-   "lastRun": 2
+   "fails": 3,
+   "attempts": 3,
+   "lastRun": 10
   },
   "deltoidal|mirror+mystery|short|sparse": {
    "fails": 2,
@@ -2717,9 +2717,9 @@
    "lastRun": 2
   },
   "deltoidal|liar|short|sparse": {
-   "fails": 2,
-   "attempts": 2,
-   "lastRun": 2
+   "fails": 3,
+   "attempts": 3,
+   "lastRun": 10
   },
   "deltoidal|liar|long|sparse": {
    "fails": 2,
@@ -4067,9 +4067,9 @@
    "lastRun": 2
   },
   "rhombille|mystery|short|standard": {
-   "fails": 2,
-   "attempts": 2,
-   "lastRun": 2
+   "fails": 3,
+   "attempts": 3,
+   "lastRun": 10
   },
   "rhombille|mystery|long|standard": {
    "fails": 2,
@@ -5017,8 +5017,8 @@
    "lastRun": 10
   },
   "floret|sonar|short|sparse": {
-   "fails": 2,
-   "attempts": 2,
+   "fails": 3,
+   "attempts": 3,
    "lastRun": 10
   },
   "floret|sonar|long|sparse": {
@@ -5307,9 +5307,9 @@
    "lastRun": 1
   },
   "rhombille||long|dense": {
-   "fails": 3,
-   "attempts": 23,
-   "lastRun": 8
+   "fails": 4,
+   "attempts": 24,
+   "lastRun": 10
   },
   "4.8.8|compass+mirror+walls|short|standard": {
    "fails": 0,
@@ -5547,9 +5547,9 @@
    "lastRun": 1
   },
   "rhombille|sonar|short|standard": {
-   "fails": 3,
-   "attempts": 23,
-   "lastRun": 8
+   "fails": 4,
+   "attempts": 24,
+   "lastRun": 10
   },
   "rhombille|sonar|long|dense": {
    "fails": 3,
@@ -5907,9 +5907,9 @@
    "lastRun": 1
   },
   "rhombille|mirror|short|standard": {
-   "fails": 2,
-   "attempts": 21,
-   "lastRun": 6
+   "fails": 3,
+   "attempts": 22,
+   "lastRun": 10
   },
   "rhombille|mirror|quick|dense": {
    "fails": 0,
@@ -7177,8 +7177,8 @@
    "lastRun": 1
   },
   "floret|mirror|short|sparse": {
-   "fails": 2,
-   "attempts": 22,
+   "fails": 3,
+   "attempts": 23,
    "lastRun": 10
   },
   "floret|mirror|long|dense": {
@@ -8142,9 +8142,9 @@
    "lastRun": 3
   },
   "deltoidal||short|sparse": {
-   "fails": 2,
-   "attempts": 19,
-   "lastRun": 6
+   "fails": 3,
+   "attempts": 20,
+   "lastRun": 10
   },
   "deltoidal|mystery+sonar+walls|quick|sparse": {
    "fails": 0,
@@ -8177,9 +8177,9 @@
    "lastRun": 3
   },
   "rhombille||short|standard": {
-   "fails": 3,
-   "attempts": 19,
-   "lastRun": 8
+   "fails": 4,
+   "attempts": 20,
+   "lastRun": 10
   },
   "rect|mystery|long|dense": {
    "fails": 0,
@@ -8512,9 +8512,9 @@
    "lastRun": 3
   },
   "floret||short|sparse": {
-   "fails": 3,
-   "attempts": 17,
-   "lastRun": 8
+   "fails": 4,
+   "attempts": 18,
+   "lastRun": 10
   },
   "hex|liar+locked+worm|quick|sparse": {
    "fails": 0,
@@ -9757,9 +9757,9 @@
    "lastRun": 7
   },
   "rhombille|locked|short|standard": {
-   "fails": 1,
-   "attempts": 1,
-   "lastRun": 7
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 10
   },
   "rhombille|locked|long|standard": {
    "fails": 1,
@@ -9842,9 +9842,9 @@
    "lastRun": 7
   },
   "floret|compass|short|sparse": {
-   "fails": 1,
-   "attempts": 1,
-   "lastRun": 7
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 10
   },
   "floret|compass|long|sparse": {
    "fails": 1,
@@ -9897,9 +9897,9 @@
    "lastRun": 7
   },
   "floret|worm|short|sparse": {
-   "fails": 1,
-   "attempts": 1,
-   "lastRun": 7
+   "fails": 2,
+   "attempts": 2,
+   "lastRun": 10
   },
   "floret|worm|long|sparse": {
    "fails": 1,
@@ -10235,6 +10235,36 @@
    "fails": 0,
    "attempts": 19,
    "lastRun": 8
+  },
+  "deltoidal|mystery|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 10
+  },
+  "deltoidal|worm|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 10
+  },
+  "floret|locked|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 10
+  },
+  "rhombille|wormhole|long|dense": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 10
+  },
+  "deltoidal|sonar|short|sparse": {
+   "fails": 0,
+   "attempts": 10,
+   "lastRun": 10
+  },
+  "deltoidal|wormhole|short|sparse": {
+   "fails": 0,
+   "attempts": 5,
+   "lastRun": 10
   }
  }
 }
