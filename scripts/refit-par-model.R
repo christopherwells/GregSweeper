@@ -2145,9 +2145,22 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
                       n_before_throttle - length(coverage_targets), COVERAGE_SATURATION_BOARDS))
     }
     # Sort descending by deficit_weight (most undersampled first).
-    coverage_targets <- coverage_targets[order(
-      -sapply(coverage_targets, function(x) x$deficit_weight)
-    )]
+    #
+    # vapply, not sapply, and the length guard, because EVERY GIMMICK CAN BE
+    # SATURATED AT ONCE and on 2026-08-14 all eight were: the match library's
+    # first top-up added 11,227 boards in a night and took every modifier past
+    # the 20-board line together. sapply over an empty list returns list(),
+    # unary minus on a list is an error rather than an empty vector, and the
+    # refit died at exactly the moment its coverage question had been fully
+    # answered. An empty coverage_targets is a SUCCESS state: nothing is
+    # undersampled, so the daily emits no coverage missions and its slots fall
+    # through to the primary target and the lottery, which experimentDesign
+    # already handles.
+    if (length(coverage_targets) > 0) {
+      coverage_targets <- coverage_targets[order(
+        -vapply(coverage_targets, function(x) as.numeric(x$deficit_weight), numeric(1))
+      )]
+    }
 
     # Shape coverage: the coverage question again, asked about the board
     # LATTICE rather than the modifiers on it, and emitted for the Challenge
@@ -2188,9 +2201,16 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
         deficit_weight = round(1 / (cnt + 1), 4)
       )
     })
-    shape_coverage <- shape_coverage[order(
-      -sapply(shape_coverage, function(x) x$deficit_weight)
-    )]
+    # Same guard, same reason (see coverage_targets above): a sort over an
+    # empty list must not be an error. shape_coverage cannot empty today, since
+    # rect is always present and always gets a row, but the two blocks are read
+    # together and one of them silently lacking the guard is how the next
+    # version of this bug ships.
+    if (length(shape_coverage) > 0) {
+      shape_coverage <- shape_coverage[order(
+        -vapply(shape_coverage, function(x) as.numeric(x$deficit_weight), numeric(1))
+      )]
+    }
     message(sprintf("  shape coverage: %s",
                     paste(sapply(shape_coverage, function(x)
                       sprintf("%s %d", x$shape, x$n_boards)), collapse = ", ")))
