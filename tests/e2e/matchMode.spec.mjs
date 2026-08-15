@@ -11,19 +11,18 @@
 
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { prepareInteractionSpec } from './helpers.mjs';
+import { prepareInteractionSpec, firstLiveMatchPin } from './helpers.mjs';
 import { CHALLENGE_250_EPOCH } from '../../src/logic/challenge250.js';
 
 const summary = JSON.parse(readFileSync(new URL(
   '../../scripts/data/match-library/match-summary.json', import.meta.url), 'utf8'));
 
-// A pinned rectangular board on page 0 (pages are shape-grouped, rect first),
-// so ?matchboard= has a deterministic target whose dims the spec can assert.
-const PIN = { page: 0, idx: 0 };
-const pinnedPage = JSON.parse(readFileSync(new URL(
-  `../../scripts/data/match-library/match-${String(PIN.page).padStart(3, '0')}.json`,
-  import.meta.url), 'utf8'));
-const pinned = pinnedPage.boards[PIN.idx];
+// A pinned board with a deterministic ?matchboard= target whose dims the
+// spec can assert. FOUND, not assumed at 0:0: since the tombstone eviction a
+// slot may hold `{ evicted, seed }`, and a spec pinned to a stub waits
+// forever for a board the deal correctly refuses to install.
+const { page: PIN_PAGE, idx: PIN_IDX, board: pinned } = firstLiveMatchPin();
+const PIN = { page: PIN_PAGE, idx: PIN_IDX };
 
 // A player who has met everything, so the sheet offers every chip. The
 // unlock derivation reads maxLevelReached off the Climb's stored stats.

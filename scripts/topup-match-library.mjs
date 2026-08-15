@@ -360,7 +360,10 @@ const cornerOf = (b) => matchCornerKey({
 async function main() {
   const t0 = Date.now();
   const pages = loadPages();
-  const existing = pages.flat();
+  // Tombstoned slots hold no board: they never count toward a corner's
+  // depth (or the corner would read full while dealing thin), and the
+  // arity-scaled targets are what stop the trimmed surplus regrowing.
+  const existing = pages.flat().filter((b) => b && !b.evicted);
   const played = await fetchPlayed();
   if (!played.ok) {
     console.log(`  WARNING: played set unavailable (${played.why}); every board counts as unplayed,`

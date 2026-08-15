@@ -56,6 +56,7 @@ function main() {
   for (const name of matchPageNames()) {
     const { boards } = JSON.parse(readFileSync(new URL(name, OUT_DIR), 'utf8'));
     for (const b of boards) {
+      if (!b || b.evicted) continue;   // a tombstone is not supply
       rows.push({
         shape: b.spec.shape,
         mods: (b.spec.gimmicks || []).slice().sort(),

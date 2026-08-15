@@ -52,7 +52,13 @@ import { narrowHoles } from '../scripts/match-narrow-holes.mjs';
 const summary = JSON.parse(readFileSync(SUMMARY_FILE, 'utf8'));
 const pageNames = matchPageNames(OUT_DIR);
 const pages = pageNames.map((f) => JSON.parse(readFileSync(new URL(f, OUT_DIR), 'utf8')));
-const boards = pages.flatMap((p) => p.boards);
+// SLOTS vs BOARDS, since the tombstone eviction (2026-08-15): an evicted
+// board's slot holds `{ evicted, seed }` so every survivor keeps its
+// page:idx, the seen-cycle key. The library's DEALABLE population is the
+// survivors; the pages' slot counts include the stubs.
+const slots = pages.flatMap((p) => p.boards);
+const stubs = slots.filter((b) => b && b.evicted);
+const boards = slots.filter((b) => b && !b.evicted);
 const SHAPES = ['rect', ...TILING_TYPES];
 // ONE FILE PER CORNER since 2026-08-14, so the shard set is read off the
 // directory rather than composed from SHAPES: the corner axis includes the
@@ -66,9 +72,20 @@ const allRows = shardNames.flatMap((f) => parseMatchIndex(shards[f]) || []);
 test('the match library is real, sharded, and its summary tells the truth', () => {
   assert.equal(pages.length, summary.pages, 'page files match the summary page count');
   assert.ok(boards.length >= 800, `${boards.length} boards is too few to be the real library`);
-  assert.equal(boards.length, summary.boards);
-  assert.deepEqual(summary.counts, pages.map((p) => p.boards.length));
+  assert.equal(boards.length, summary.boards, 'summary.boards counts DEALABLE boards, stubs excluded');
+  assert.deepEqual(summary.counts, pages.map((p) => p.boards.length),
+    'summary.counts are SLOT counts per page file, stubs included');
   pages.forEach((p, i) => assert.equal(p.page, i, `page file ${i} numbers itself`));
+
+  // A tombstone holds a slot and nothing more: exactly its seed for audit,
+  // never a payload the deal could resurrect, and never a missing seed that
+  // would make the eviction unauditable.
+  for (const s of stubs) {
+    assert.deepEqual(Object.keys(s).sort(), ['evicted', 'seed'],
+      'a tombstone must carry exactly { evicted, seed }');
+    assert.equal(s.evicted, true);
+    assert.ok(typeof s.seed === 'string' && s.seed.length > 0);
+  }
 
   // ONE SHARD PER OCCUPIED CORNER, and every board in exactly one of them. A
   // corner whose file went missing would deal nothing while the summary went
@@ -161,6 +178,10 @@ test('the shard rows reproduce the page files row for row', () => {
   const keys = matchIndexFeatureKeys(boards);
   const expected = new Map();
   pages.forEach((p, pi) => p.boards.forEach((b, i) => {
+    // A tombstoned slot yields no expected row, at its ORIGINAL index: a
+    // shard row still pointing at one then fails below as "a board no page
+    // holds", which is the failure an eviction must produce rather than mask.
+    if (!b || b.evicted) return;
     expected.set(`${pi}:${i}`, matchIndexRow(pi, i, b, keys));
   }));
   // Keyed by FILE now, not by shape: the corner axis includes the modifier

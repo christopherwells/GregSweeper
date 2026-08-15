@@ -17,7 +17,7 @@ import { matchPageNames } from '../scripts/match-index-files.mjs';
 
 const pageNames = matchPageNames(OUT_DIR);
 const pages = pageNames.map((f) => JSON.parse(readFileSync(new URL(f, OUT_DIR), 'utf8')));
-const boards = pages.flatMap((p) => p.boards);
+const boards = pages.flatMap((p) => p.boards).filter((b) => b && !b.evicted);
 
 test('every board in the library round-trips through the packing byte for byte', () => {
   assert.ok(boards.length > 500, `${boards.length} boards is too few to be the real library`);

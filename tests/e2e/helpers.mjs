@@ -9,6 +9,8 @@
 // therefore neutralize SW registration; the boot smoke spec deliberately does
 // NOT use this helper, so booting WITH the service worker stays covered.
 
+import { readFileSync } from 'node:fs';
+
 export async function prepareInteractionSpec(page) {
   await page.addInitScript(() => {
     // Onboarded user lands straight on the title (skips the tutorial overlay).
@@ -54,4 +56,29 @@ export async function settleAnimations(page) {
     await Promise.all(finite.map((a) => a.finished.catch(() => {})));
     await new Promise((resolve) => requestAnimationFrame(() => resolve()));
   });
+}
+
+/**
+ * The first LIVE board in the match library, in page order, as the
+ * `?matchboard=P:I` pin plus the stored entry itself for assertions.
+ *
+ * FOUND rather than assumed at 0:0: since the tombstone eviction
+ * (2026-08-15) a slot may hold `{ evicted, seed }` with no payload, and a
+ * spec pinned to a stub waits forever for a board the deal correctly
+ * refuses to install.
+ */
+export function firstLiveMatchPin() {
+  for (let p = 0; p < 5000; p++) {
+    let page;
+    try {
+      page = JSON.parse(readFileSync(new URL(
+        `../../scripts/data/match-library/match-${String(p).padStart(3, '0')}.json`,
+        import.meta.url), 'utf8'));
+    } catch {
+      break;
+    }
+    const idx = page.boards.findIndex((b) => b && !b.evicted);
+    if (idx >= 0) return { page: p, idx, board: page.boards[idx] };
+  }
+  throw new Error('no live board found in the match library');
 }

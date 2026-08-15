@@ -37,6 +37,7 @@ function main() {
   let maxShift = 0;
   let featureless = 0;
   let packed = 0;
+  let tombstones = 0;
 
   // Two passes, because the index's feature header is the UNION over every
   // board and the rows encode against it positionally: a row written before
@@ -45,6 +46,9 @@ function main() {
     const url = new URL(name, OUT_DIR);
     const page = JSON.parse(readFileSync(url, 'utf8'));
     for (const b of page.boards) {
+      // A tombstone holds a slot, carries no payload and no price; there is
+      // nothing to re-price and it must not count as featureless.
+      if (b && b.evicted) { tombstones++; continue; }
       boards++;
       // PACK ON THE WAY PAST. This pass already rewrites every page, so it is
       // where the columnar cell form (boardPack.js) gets applied and where a
@@ -87,6 +91,7 @@ function main() {
     + ` largest par shift ${maxShift.toFixed(1)}s`
     + (packed ? `, ${packed} packed` : '')
     + (featureless ? `, ${featureless} kept their stored par (no usable features)` : '')
+    + (tombstones ? `, ${tombstones} tombstone(s) skipped` : '')
     + (dry ? ' (dry run: nothing written)' : ''));
 }
 

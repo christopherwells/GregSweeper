@@ -72,6 +72,7 @@ function readBoards() {
   for (const file of matchPageNames()) {
     const page = JSON.parse(fs.readFileSync(path.join(MATCH_DIR, file), 'utf8'));
     for (const b of page.boards) {
+      if (!b || b.evicted) continue;   // a tombstone is not supply
       rows.push({
         lib: 'm', shape: b.spec.shape,
         mods: (b.spec.gimmicks || []).slice().sort(),
