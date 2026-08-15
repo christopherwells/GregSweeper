@@ -207,7 +207,11 @@ test('the exclusion rule and CONTRIBUTION_FEATURE_KEYS agree in BOTH directions'
   // added tomorrow is covered without anyone remembering this test.
   const page = JSON.parse(readFileSync(
     new URL('../scripts/data/match-library/match-000.json', import.meta.url), 'utf8'));
-  const real = Object.keys(page.boards[0].features || {});
+  // The first LIVE board, not slot 0: since the tombstone eviction a slot may
+  // hold `{ evicted, seed }`, which carries no features by design.
+  const sample = page.boards.find((b) => b && !b.evicted);
+  assert.ok(sample, 'non-vacuous: page 0 must hold at least one dealable board');
+  const real = Object.keys(sample.features || {});
   assert.ok(real.length > 0, 'non-vacuous: the sample board must carry features');
   const excluded = real.filter((k) => !matchIndexFeatureKeys([{ features: { [k]: 1 } }]).length);
   assert.deepEqual(excluded.sort(), CONTRIBUTION_FEATURE_KEYS.filter((k) => real.includes(k)).sort(),

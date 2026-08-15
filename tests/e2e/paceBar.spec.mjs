@@ -5,7 +5,7 @@
 // a CSS/DOM claim the pure test cannot make.
 
 import { test, expect } from '@playwright/test';
-import { prepareInteractionSpec, settleAnimations } from './helpers.mjs';
+import { prepareInteractionSpec, settleAnimations, firstLiveMatchPin } from './helpers.mjs';
 
 // Waiting for `#board .cell` is not enough: it matches the DEFAULT level's
 // board too, and under parallel load this spec measured a Level 1 board and
@@ -105,7 +105,10 @@ test('the pace bar stays absent outside the challenge ladder', async ({ page }) 
 
   // A Challenge match: it reports each board against par at the END, where
   // the comparison belongs, and shows no pace cue mid-board.
-  await page.goto('/?isTest=1&matchboard=0:0');
+  // The first LIVE board, found rather than assumed at 0:0 (a tombstoned
+  // slot deals nothing, and this spec needs a real match board on screen).
+  const pin = firstLiveMatchPin();
+  await page.goto(`/?isTest=1&matchboard=${pin.page}:${pin.idx}`);
   await page.waitForSelector('#boot-overlay', { state: 'detached', timeout: 20_000 });
   await page.waitForSelector('#board .cell', { timeout: 20_000 });
   await expect(page.locator('#pace-bar')).toBeHidden();
