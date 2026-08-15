@@ -44,11 +44,45 @@ export function steeredSlotCap(boardCount) {
 // exists. An empty (shape x band) combo is the pool's structural truth
 // (rhombille tops out near 130s, the same cap its daily rungs have), and
 // the sheet's live count is what says so.
+// HIS CUTOFFS, 2026-08-15: Quick is under two minutes, Standard two to four,
+// Long past four. They replace 60/150, which he called wrong on sight once the
+// distribution was in front of him ("I didn't realize we were so off").
+//
+// The old numbers sold a two-and-a-half minute board as "Standard" and put
+// everything past that in one bucket. Measured over 17,434 boards, the move
+// re-sorts the library to 13,679 Quick / 3,327 Standard / 428 Long: heavily
+// front-loaded, which is honest about what the library actually holds rather
+// than about what its labels used to claim.
+//
+// A BOARD'S BAND IS ITS PAR, ABSOLUTELY, not relative to its shape. Relative
+// per-shape boundaries were the standing proposal, because sparse boards price
+// long and dense ones price quick, so some shape-by-band cells looked
+// unreachable. Probed at each shape's largest phone-legal size with modifier
+// stacks, every one of the seven clears 240s, including 3D Cubes, whose
+// apparent ceiling of 208s was an artifact of never having been searched above
+// 75 cells when 135 are legal. So absolute bands are FILLABLE and the relative
+// design is not needed. What the probe does not establish is where each ceiling
+// really sits: those predictions run far outside the data the par model was fit
+// on, and no board over ~144 cells has ever been played.
 export const MATCH_TIME_BANDS = [
-  { key: 'quick', label: 'Quick', max: 60 },
-  { key: 'short', label: 'Standard', max: 150 },
+  { key: 'quick', label: 'Quick', max: 120 },
+  { key: 'short', label: 'Standard', max: 240 },
   { key: 'long', label: 'Long', max: Infinity },
 ];
+
+/**
+ * The longest board the match library will ADMIT (his ruling: "limit to 600
+ * seconds for now").
+ *
+ * An admission rule for generation, deliberately not a membership bound: the
+ * endless library learned that lesson already, where a shape's ceiling is
+ * honored when a board is built and a later re-price is never allowed to evict
+ * over it. Non-binding today, since no stored match board reaches 600s and
+ * only seven pass 480s, so this is a gate on what the top-up may keep.
+ *
+ * A MARATHON set above this is his idea and explicitly deferred.
+ */
+export const MATCH_PAR_CEILING_SECONDS = 600;
 
 // Density in plain language (his design-sheet ruling: "the density numbers
 // don't really mean anything to the normal player"): the sheet renders each

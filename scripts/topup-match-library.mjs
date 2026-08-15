@@ -58,7 +58,7 @@ import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
 import { specFace, CLIMB_MIN_DEDUCTIONS } from '../src/logic/challengeRules.js';
 import {
   timeBandOf, densityBandOf, matchCornerKey,
-  MATCH_TIME_BANDS, MATCH_DENSITY_BANDS,
+  MATCH_TIME_BANDS, MATCH_DENSITY_BANDS, MATCH_PAR_CEILING_SECONDS,
 } from '../src/logic/matchRules.js';
 import { OUT_DIR, writeMatchIndexFiles, matchPageFile, matchPageNames } from './match-index-files.mjs';
 
@@ -72,6 +72,9 @@ const TRIES_PER_DRAW = 3;
 // Backoff: a corner that failed its last N consecutive attempts is skipped
 // on all but every 2^N-th run, capped so it always comes back eventually.
 const BACKOFF_CAP = 5;
+// How often a long run commits what it has. Ten minutes bounds the loss from a
+// crash without rewriting the index constantly.
+const FLUSH_EVERY_MS = 10 * 60000;
 
 const args = process.argv.slice(2);
 const argVal = (n, d) => { const i = args.indexOf(n); return i >= 0 && i + 1 < args.length ? args[i + 1] : d; };
@@ -89,7 +92,7 @@ const BUDGET_MS = Number(argVal('--minutes', 20)) * 60000;
 // nothing except not repeating tomorrow. Ten ahead past a hundred played, five
 // past two hundred and fifty.
 //
-// TODAY THIS MEANS 20, essentially everywhere: 70 boards have been played
+// TODAY THIS MEANS 20, essentially everywhere: 81 boards have been played
 // across every corner in the library's life, so `played` is 0 or 1 nearly
 // always and the ceiling will not bind for a very long time. Storage is why
 // the distinction matters. A board costs ~6.6 KB on disk unpacked, so a
@@ -219,10 +222,29 @@ export function corner_isDue(rec, runNo) {
  * emergent and cannot be dialled at all, which is why reaching a time band is
  * a search rather than a construction.
  */
-export function specsForCorner(pool, shape, mods) {
+export function specsForCorner(pool, shape, mods, timeBand) {
   const want = mods === '(none)' ? '' : mods;
-  const base = pool.filter((s) => s.shape === shape
-    && ((s.gimmicks || []).slice().sort().join('+') || '') === want);
+  const wantList = want ? want.split('+') : [];
+  // EVERY PROVEN GEOMETRY OF THIS SHAPE, wearing the corner's modifier set,
+  // rather than only the specs that already carried it (his insight
+  // 2026-08-15: "Multi-challenge boards might get some of our sparse but long
+  // boards too"). Modifiers add time without adding mines, so a large SPARSE
+  // board with three of them is how a sparse-and-long corner gets filled at
+  // all, and the old filter could not form that combination: it demanded a
+  // pool spec that already paired this shape with exactly these modifiers, so
+  // a corner was reachable only where the search had happened to look.
+  //
+  // The dimensions are still PROVEN ones, taken from specs that generate, so
+  // this widens which modifier sets are tried on them rather than inventing
+  // geometry nobody has certified.
+  const base = pool
+    .filter((s) => s.shape === shape)
+    .map((s) => ({ ...s, gimmicks: wantList.slice() }));
+  // Ordered by SIZE toward the target band, because size is the lever par
+  // actually responds to and the budget is spent in this order. A long corner
+  // gets the big geometries first; a quick corner gets the small ones, where
+  // its boards live and where generation is cheapest.
+  base.sort((a, b) => (timeBand === 'long' ? b.cells - a.cells : a.cells - b.cells));
   const out = [];
   for (const s of base) {
     for (const band of MATCH_DENSITY_BANDS) {
@@ -246,6 +268,11 @@ function drawBoard(spec, salt) {
   for (let t = 0; t < TRIES_PER_DRAW; t++) {
     const r = buildChallenge250Board({ ...spec }, `${seed}:${t}`, { contribution: true });
     if (!r || !r.check || !r.par || !r.features) continue;
+    // His ceiling (2026-08-15): nothing past ten minutes joins this library.
+    // Applied at ADMISSION, so a board already stored never gets evicted by a
+    // later re-price that nudges it over, which is the endless library's rule
+    // for its own ceiling and for the same reason.
+    if (r.par > MATCH_PAR_CEILING_SECONDS) continue;
     const work = r.check.totalClicks - 1;
     if (work < CLIMB_MIN_DEDUCTIONS) continue;
     return {
@@ -335,6 +362,32 @@ async function main() {
   // ── Census: one draw per corner, cheapest-first, to learn what is even
   // reachable before any corner gets a second attempt. Deliberately ordered by
   // NEED so the emptiest corners are probed first if the budget is short.
+  // Everything written so far, so an interrupted long run keeps its work. A
+  // page is only written once it is FULL (or once `final` says no more boards
+  // are coming), because a page rewritten at a different length would move the
+  // `page:idx` of every board after it, and that pair is the seen-cycle key on
+  // every player's device.
+  let flushed = 0;
+  const fp = modelFingerprint();
+  const newPages = [];
+  function flushKept(final = false) {
+    while (kept.length - flushed >= PAGE_SIZE || (final && kept.length > flushed)) {
+      const slice = kept.slice(flushed, flushed + PAGE_SIZE);
+      const p = pages.length + newPages.length;
+      newPages.push(slice);
+      flushed += slice.length;
+      if (!DRY) {
+        // Packed at the SOURCE, not left for the next re-price to heal: the
+        // nightly runs the re-price BEFORE this step, so a page written plain
+        // here would sit at full size for a whole day.
+        const packed = slice.map((b) => ({ ...b, payload: packPayload(b.payload) }));
+        writeFileSync(matchPageFile(p), JSON.stringify({ page: p, parModel: fp, boards: packed }));
+      }
+    }
+    if (newPages.length === 0) return { corners: total.size, shards: {} };
+    return writeMatchIndexFiles([...pages, ...newPages], fp, { dry: DRY });
+  }
+
   const censusEnd = t0 + BUDGET_MS * CENSUS_FRACTION;
   const kept = [];
   const reachable = [];
@@ -354,7 +407,7 @@ async function main() {
   let unbuildable = 0;
   for (const w of due) {
     if (Date.now() > censusEnd) break;
-    const specs = specsForCorner(CHALLENGE_POOL, w.shape, w.mods);
+    const specs = specsForCorner(CHALLENGE_POOL, w.shape, w.mods, w.time);
     // No spec of that shape and modifier set exists, so this is not a gap in
     // the library at all: nothing knows how to build the board. Not a failure,
     // and deliberately NOT counted as one, or the backoff record would fill
@@ -395,6 +448,7 @@ async function main() {
   // the second board into a corner is worth less than the first was.
   const deadline = t0 + BUDGET_MS;
   let round = 0;
+  let lastFlush = Date.now();
   while (Date.now() < deadline && reachable.length > 0) {
     round++;
     const ranked = reachable
@@ -418,6 +472,7 @@ async function main() {
       progressed = true;
     }
     if (!progressed) break;
+    if (Date.now() - lastFlush > FLUSH_EVERY_MS) { flushKept(); lastFlush = Date.now(); }
   }
 
   // Leverage for the census boards too, against the corpus they joined.
@@ -426,22 +481,14 @@ async function main() {
   }
 
   // ── Append. New pages only; every existing page keeps its bytes and every
-  // board keeps its `page:idx`.
-  const newPages = [];
-  for (let i = 0; i < kept.length; i += PAGE_SIZE) newPages.push(kept.slice(i, i + PAGE_SIZE));
-  const fp = modelFingerprint();
-  if (!DRY && newPages.length) {
-    newPages.forEach((boards, i) => {
-      const p = pages.length + i;
-      // Packed at the SOURCE, not left for the next re-price to heal: the
-      // nightly runs the re-price BEFORE this step, so a page written plain
-      // here would sit at full size for a whole day.
-      const packedBoards = boards.map((b) => ({ ...b, payload: packPayload(b.payload) }));
-      writeFileSync(matchPageFile(p), JSON.stringify({ page: p, parModel: fp, boards: packedBoards }));
-    });
-  }
-  const all = [...pages, ...newPages];
-  const written = newPages.length ? writeMatchIndexFiles(all, fp, { dry: DRY }) : { corners: total.size, shards: {} };
+  // board keeps its `page:idx`. flushKept() is called periodically as well as
+  // at the end (see the mine loop): the tool used to write nothing until it
+  // finished, which is tolerable for twenty minutes and reckless for four
+  // hours, where a crash or a stray Ctrl-C would throw away everything
+  // generated. Only WHOLE pages flush, so a partial page waits for its
+  // sixteenth board rather than being rewritten with a different length later,
+  // which would move `page:idx` under a device that had already seen it.
+  const written = flushKept(true);
   if (!DRY) writeFileSync(STATE_FILE, JSON.stringify({ runs: runNo, corners: state.corners }, null, 1));
 
   const atTarget = [...total.keys()].filter((k) => needOf(k) <= 0).length;
