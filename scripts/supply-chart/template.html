@@ -1,0 +1,232 @@
+<title>Match Library Supply</title>
+<style>
+:root{
+  --ink:#12191c; --ink-2:#42555c; --ink-3:#6d848c;
+  --ground:#f4f6f5; --card:#ffffff; --line:#dae1e0; --line-2:#e9edec;
+  --brand:#0f5e63; --void:#c9d3d2;
+  --heat-0:#a32a1e; --heat-4:#1f7a3d;
+  --chip-bad:#a32a1e; --chip-ok:#1f7a3d;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --sans:"Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){
+  --ink:#e8efee; --ink-2:#a3b6bb; --ink-3:#788f95;
+  --ground:#0d1315; --card:#141c1f; --line:#26343a; --line-2:#1d282c;
+  --brand:#4fb3ac; --void:#2b383d;
+  --heat-0:#e0553f; --heat-4:#3fae65;
+  --chip-bad:#e0553f; --chip-ok:#3fae65;
+}}
+:root[data-theme=dark]{
+  --ink:#e8efee; --ink-2:#a3b6bb; --ink-3:#788f95;
+  --ground:#0d1315; --card:#141c1f; --line:#26343a; --line-2:#1d282c;
+  --brand:#4fb3ac; --void:#2b383d;
+  --heat-0:#e0553f; --heat-4:#3fae65;
+  --chip-bad:#e0553f; --chip-ok:#3fae65;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);line-height:1.55;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:40px 22px 72px;display:flex;flex-direction:column;gap:30px}
+header h1{font-size:clamp(26px,3.4vw,38px);line-height:1.1;margin:0 0 10px;letter-spacing:-.02em;text-wrap:balance}
+header p{margin:0;color:var(--ink-2);max-width:64ch}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--brand);margin:0 0 10px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(156px,1fr));gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.stat{background:var(--card);padding:15px 16px}
+.stat b{display:block;font-family:var(--mono);font-size:26px;font-variant-numeric:tabular-nums;
+  letter-spacing:-.02em;line-height:1.15}
+.stat span{display:block;font-size:12px;color:var(--ink-3);margin-top:3px}
+.stat.bad b{color:var(--chip-bad)}
+.stat.ok b{color:var(--chip-ok)}
+.note{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--brand);
+  border-radius:3px;padding:16px 18px}
+.note h2{margin:0 0 7px;font-size:15px;letter-spacing:-.01em}
+.note p{margin:0 0 8px;color:var(--ink-2);font-size:14px;max-width:76ch}
+.note p:last-child{margin-bottom:0}
+.note code{font-family:var(--mono);font-size:12.5px;background:var(--line-2);padding:1px 5px;border-radius:2px}
+.note.alt{border-left-color:var(--heat-4)}
+.decisions{background:var(--card);border:1px solid var(--line);border-radius:3px;padding:16px 18px}
+.decisions h2{margin:0 0 12px;font-size:11px;font-family:var(--mono);letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-3)}
+.decisions dl{margin:0;display:flex;flex-direction:column;gap:10px}
+.decisions div{display:grid;grid-template-columns:118px 1fr;gap:14px;align-items:baseline}
+.decisions dt{font-size:12px;font-weight:600;color:var(--brand);letter-spacing:.01em}
+.decisions dd{margin:0;font-size:14px;color:var(--ink-2);max-width:70ch}
+.decisions code{font-family:var(--mono);font-size:12.5px;background:var(--line-2);padding:1px 5px;border-radius:2px}
+.build{background:var(--card);border:1px solid var(--line);border-radius:3px;padding:16px 18px}
+.build h2{margin:0 0 12px;font-size:11px;font-family:var(--mono);letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-3)}
+.build ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.build li{display:grid;grid-template-columns:74px 1fr;gap:14px;align-items:baseline;font-size:14px;color:var(--ink-2)}
+.build .s{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  padding:2px 7px;border-radius:2px;text-align:center;white-space:nowrap}
+.build .done{background:color-mix(in oklab,var(--heat-4),transparent 82%);color:var(--chip-ok)}
+.build .now{background:color-mix(in oklab,var(--brand),transparent 82%);color:var(--brand)}
+.build .next{background:var(--line-2);color:var(--ink-3)}
+@media (max-width:560px){.decisions div,.build li{grid-template-columns:1fr;gap:3px}}
+.legend{display:flex;flex-wrap:wrap;align-items:center;gap:9px;font-size:12px;color:var(--ink-2)}
+.ramp{display:flex;border:1px solid var(--line);border-radius:2px;overflow:hidden}
+.ramp i{width:26px;height:13px;display:block}
+.swatch{display:inline-block;width:15px;height:11px;vertical-align:-1px;border:1px dashed var(--void);
+  background:repeating-linear-gradient(45deg,transparent,transparent 3px,var(--void) 3px,var(--void) 4px)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(332px,1fr));gap:14px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:3px;padding:13px 13px 8px;min-width:0}
+.panel h3{margin:0 0 9px;font-size:11px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-2);display:flex;gap:7px;align-items:baseline}
+.panel h3 .d{color:var(--ink)}
+.panel h3 .sep{color:var(--void)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%}
+th,td{font-size:11px}
+th.corner{width:84px}
+th.gh{padding:0 0 6px;vertical-align:bottom;font-weight:500;color:var(--ink-3);font-size:9.5px;
+  letter-spacing:.04em;text-align:center}
+th.gh span{display:block;writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;margin:0 auto}
+th[scope=row]{text-align:left;font-weight:500;color:var(--ink-2);padding:0 8px 0 0;white-space:nowrap}
+td.c{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:center;height:21px;
+  border:1px solid var(--card);border-radius:2px;color:#fff;
+  background:color-mix(in oklab, var(--heat-0), var(--heat-4) calc(var(--f) * 100%))}
+td.c.void{background:repeating-linear-gradient(45deg,transparent,transparent 3px,var(--void) 3px,var(--void) 4px);
+  border:1px dashed var(--void);color:transparent}
+.switch{display:inline-flex;border:1px solid var(--line);border-radius:3px;overflow:hidden;align-self:flex-start}
+.switches{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.switches .lab{font-size:12px;color:var(--ink-3);letter-spacing:.02em}
+.switch button{font:inherit;font-size:12.5px;padding:7px 15px;border:0;cursor:pointer;
+  background:var(--card);color:var(--ink-2)}
+.switch button+button{border-left:1px solid var(--line)}
+.switch button[aria-pressed=true]{background:var(--brand);color:#fff}
+.switch button:focus-visible{outline:2px solid var(--brand);outline-offset:-2px}
+footer{color:var(--ink-3);font-size:12.5px;border-top:1px solid var(--line);padding-top:16px;max-width:76ch}
+footer p{margin:0 0 7px}
+footer p:last-child{margin:0}
+footer code{font-family:var(--mono);font-size:12px}
+@media (max-width:560px){.wrap{padding:26px 13px 50px} th.corner{width:66px}}
+</style>
+<div class="wrap">
+<header>
+  <p class="eyebrow">Challenge &middot; board supply &middot; 15 Aug 2026, after the overnight fill</p>
+  <h1>Nearly every reachable corner is stocked; what is left cannot be built</h1>
+  <p>An overnight batch of seven 20-minute runs took the match library from 17,434 boards to <strong>30,069</strong>, and corners at target from 613 to 1,272 of 1,290. Under the two-and-four-minute cutoffs it now reads 16,239 Quick, 9,700 Standard and 4,130 Long, where Long held 428 yesterday. Target depth stays 20 unplayed boards per cell, and no corner exceeded its ceiling of 100: the largest holds 66.</p>
+</header>
+
+<div class="switches">
+  <div class="switch" role="group" aria-label="Which libraries to count">
+    <button type="button" id="b-match" aria-pressed="false">Match library only</button>
+    <button type="button" id="b-both" aria-pressed="true">Both libraries</button>
+  </div>
+  <div class="switch" role="group" aria-label="How to count a modifier">
+    <button type="button" id="b-pool" aria-pressed="true">Any set containing it</button>
+    <button type="button" id="b-narrow" aria-pressed="false">Only this modifier</button>
+  </div>
+</div>
+
+<!--STATS-->
+
+<div class="note">
+  <h2>What is left is structural, and it is sparse and long</h2>
+  <p>Every shape can reach four minutes, probed at its largest phone-legal size with modifier stacks: 3D Cubes clears at 1,324s where its shipped boards topped out at 208s. So the <em>time</em> axis is fillable and absolute cutoffs survive.</p>
+  <p>The <strong>density</strong> axis is a different answer. Of 789 corners still below target, <strong>771 hold no board at all</strong>, and every one has now been attempted. They concentrate in <strong>long (492) and sparse (389)</strong>, and the hardest are almost entirely sparse. A board with few mines does not take four minutes at any size, so those cells cannot exist under absolute-seconds cutoffs and no generation budget reaches them.</p>
+  <p>That is the case for per-shape <em>relative</em> bands, narrowed: not for time in general, but for the sparse end, where "long" would have to mean long <em>for a sparse board of this shape</em>.</p>
+</div>
+
+<div class="note">
+  <h2>Two ways to count a modifier, and the narrow one is the honest floor</h2>
+  <p>The deal accepts a board when every modifier on it is one the host permitted. So a host who allows sonar and nothing else draws only plain boards and sonar boards, while a host who allows everything draws all 336 boards in the Petals sparse quick column. <strong>Any set containing it</strong> counts the second player's shelf; <strong>only this modifier</strong> counts the first player's, which is the floor under every wider choice.</p>
+  <p>The two disagree by more than they look. Pooled, 29 cells sit under target and none are empty. Narrow, <strong>27 sit under target and 34 hold nothing at all</strong>: in those the library has only multi-modifier boards, so a host who asks for that one modifier alone gets an empty deal. Reading the pooled view as supply overstates what a focused host can actually reach.</p>
+</div>
+
+<div class="note alt">
+  <h2>The Climb library is bigger, and we can play its boards here too</h2>
+  <p><strong>4,412 boards across 1,050 corners</strong>, beside the match library's 30,069 across 1,290. Almost all of them price as <em>Long</em> (4,511 of them), because the ladder's easiest bin starts around 340s and the endless zone sits above a 400s floor, so <strong>not one of them lands in the Quick band</strong>. Quick is generation's problem alone.</p>
+  <p>Filing them onto the same shelf is still the breadth answer, even after the top-up: <strong>789 corners</strong> hold no match board at all and the Climb covers every one of them. Generation buys depth; the harvest buys the map.</p>
+  <p>It also enlarges the target. The union spans <strong>2,069 corners</strong>, and 20 apiece means roughly 41,000 boards against the 34,481 that exist. Worth deciding whether every corner deserves 20, or whether the ones nobody picks deserve less.</p>
+</div>
+
+<section class="decisions">
+  <h2>Decided</h2>
+  <dl>
+    <div><dt>Objective</dt><dd>Score each candidate as <strong>supply need &times; model leverage</strong>, so a board that fills a thin corner and extends the fit wins outright. No fixed split to tune.</dd></div>
+    <div><dt>Hard corners</dt><dd><strong>Exponential backoff with a record.</strong> A corner that resists is tried less often, never abandoned, and tonight's run reads what last night learned.</dd></div>
+    <div><dt>Per board</dt><dd>Store a <strong>durable leverage score</strong>: the board's distance from the rest of the library in feature space. Mission fit stays computed at deal time, because the mission changes nightly.</dd></div>
+    <div><dt>Budget</dt><dd><strong>Ladder first</strong>, match takes the remainder of the 20 minutes. The ladder is satisfied today (<code>deficits.json</code> is empty), so the remainder is the whole budget.</dd></div>
+    <div><dt>One shelf</dt><dd>The two libraries become <strong>a library for all</strong>. The ladder draws from it before generating anything; Challenge plays the same boards under a different clock, where time counts and mines do not end the run.</dd></div>
+    <div><dt>Seen-sets</dt><dd><strong>Separate.</strong> A Climb play does not spend a board for Challenge: nobody carries a memory of one board across that many plays, and the two modes reward different things.</dd></div>
+    <div><dt>Digit priors</dt><dd><strong>Settled by measurement, not argument.</strong> The shape indicators inherit the Par Lab centers; re-fitting with everything zero-centered moved the four digit shares by at most 0.08 SD, and clueShare3 by 0.00. The inheritance stays.</dd></div>
+  </dl>
+</section>
+
+<section class="build">
+  <h2>Build status &middot; topup-match-library</h2>
+  <ol>
+    <li><span class="s done">Done</span><span>Measured the gap and confirmed nothing tops up this library.</span></li>
+    <li><span class="s done">Done</span><span>Measured the Climb library's overlap. Still 789 corners it covers that hold no match board, even after the top-up.</span></li>
+    <li><span class="s done">Done</span><span><strong><code>topup-match-library.mjs</code> runs.</strong> Appends its own pages, verified byte-identical on every existing one, because <code>page:idx</code> is the seen-cycle key on every device and may never shift. The build's own emitter re-sorts every board, so it is deliberately not used.</span></li>
+    <li><span class="s done">Done</span><span><strong>Census then mine.</strong> One draw per corner first, so a stubborn corner cannot eat the run before the cheap wins are taken. Measured on a one-minute budget: 75 corners probed, <strong>28 reachable</strong>, 575 boards kept, corners at target 17 &rarr; 43.</span></li>
+    <li><span class="s done">Done</span><span><strong>Wired into the nightly</strong>, behind the ladder's own top-up and after the re-price, taking whatever is left of the 20 minutes. The ladder is satisfied, so on a quiet night that is nearly all of it.</span></li>
+    <li><span class="s done">Done</span><span><strong>A full 20-minute run.</strong> 16,218 census draws over 1,586 corners, 547 reachable, 11,227 boards kept from 29,650 draws. Corners at target 17 &rarr; 541.</span></li>
+    <li><span class="s done">Done</span><span><strong>Sharded finer.</strong> One file per corner, so a focused deal fetches 0.7 KB where it used to fetch 89 KB.</span></li>
+    <li><span class="s done">Done</span><span><strong>Rebalanced to his cutoffs</strong>, two and four minutes, and capped at ten. Every stored board re-sorted; corners 853 to 752.</span></li>
+    <li><span class="s done">Done</span><span><strong>Overnight fill.</strong> Seven runs, 17,434 to 30,069 boards, 613 to 1,272 corners at target. Long went 428 to 4,130. Stopped on a disk valve at 30,000, not on any per-corner rule.</span></li>
+    <li><span class="s next">Next</span><span><strong>A burst pays less than a cadence.</strong> The backoff is <code>run % 2^fails</code>, so consecutive runs in one night keep hitting the same parity: by run 9 only 11 corners of 889 were due. Budget an overnight batch at six to eight useful runs, and let the nightly do the rest.</span></li>
+    <li><span class="s next">Next</span><span>Decide the sparse question: relative bands for the sparse end, or accept those cells as empty.</span></li>
+    <li><span class="s next">Next</span><span>The harvest, which is the bigger win and needs its own decision: a Climb play does not spend a board for Challenge, so the two seen-sets stay separate.</span></li>
+  </ol>
+</section>
+
+<div class="legend">
+  <span>Unplayed boards per cell</span>
+  <span class="ramp"><i style="background:var(--heat-0)"></i><i style="background:#c96a12"></i><i style="background:#c9a415"></i><i style="background:#5d8f2a"></i><i style="background:var(--heat-4)"></i></span>
+  <span>0 &rarr; 20+</span>
+  <span aria-hidden="true">&middot;</span>
+  <span><span class="swatch"></span> nothing at all</span>
+</div>
+
+<div class="grid"><!--PANELS--></div>
+
+<footer>
+  <p><strong>How to read it.</strong> Each panel is one density band crossed with one length band. Rows are shapes, columns are modifiers, and the number is boards nobody has finished yet.</p>
+  <p><strong>The columns deliberately do not sum to the library total.</strong> Under <em>any set containing it</em> a board counts once for each of its modifiers, so a two-modifier board counts twice. The deal filters on the modifier <em>set</em>, not on single modifiers, which is why the match library's 1,290 true corners collapse into this grid's 513 occupied cells.</p>
+  <p><strong>Climb boards count as unplayed here even when somebody has finished them on the ladder.</strong> Challenge runs the same board under a different clock, where time counts and a mine does not end the run, so a ladder play does not spend it.</p>
+  <p>Played boards: read live from <code>dailyMeta</code>. Depth: committed libraries at <code>54f5931</code>.</p>
+</footer>
+</div>
+<script>
+(function () {
+  var TARGET = 20;
+  var cells = Array.prototype.slice.call(document.querySelectorAll('td.c'));
+  var swaps = Array.prototype.slice.call(document.querySelectorAll('[data-v]'));
+  var bMatch = document.getElementById('b-match');
+  var bBoth = document.getElementById('b-both');
+  var bPool = document.getElementById('b-pool');
+  var bNarrow = document.getElementById('b-narrow');
+  var both = true;
+  var narrow = false;
+
+  function paint() {
+    cells.forEach(function (td) {
+      var m = +td.dataset[narrow ? 'nm' : 'm'] || 0;
+      var c = +td.dataset[narrow ? 'nc' : 'c'] || 0;
+      var n = both ? m + c : m;
+      td.textContent = n === 0 ? '' : String(n);
+      td.classList.toggle('void', n === 0);
+      td.style.setProperty('--f', Math.min(1, n / TARGET).toFixed(3));
+    });
+    var idx = (narrow ? 2 : 0) + (both ? 1 : 0);
+    swaps.forEach(function (el) {
+      var parts = el.getAttribute('data-v').split('|');
+      el.textContent = parts[idx] !== undefined ? parts[idx] : parts[parts.length - 1];
+    });
+    bBoth.setAttribute('aria-pressed', both ? 'true' : 'false');
+    bMatch.setAttribute('aria-pressed', both ? 'false' : 'true');
+    bNarrow.setAttribute('aria-pressed', narrow ? 'true' : 'false');
+    bPool.setAttribute('aria-pressed', narrow ? 'false' : 'true');
+  }
+
+  bMatch.addEventListener('click', function () { both = false; paint(); });
+  bBoth.addEventListener('click', function () { both = true; paint(); });
+  bPool.addEventListener('click', function () { narrow = false; paint(); });
+  bNarrow.addEventListener('click', function () { narrow = true; paint(); });
+  paint();
+}());
+</script>
