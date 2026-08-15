@@ -138,6 +138,14 @@ export function writeMatchIndexFiles(pages, fp, { dry = false } = {}) {
     for (const f of readdirSync(OUT_DIR)) {
       if (/^match-index-.*\.json$/.test(f)) rmSync(new URL(f, OUT_DIR));
     }
+    // And any CORNER SHARD whose corner no longer exists. A corner empties
+    // when its last board leaves, which nothing did until boards started being
+    // evicted; the file would otherwise outlive the corner and keep serving
+    // rows for boards no page holds. Found by the library test after the
+    // unfit-rect eviction: 917 shard files against 853 occupied corners.
+    for (const f of readdirSync(OUT_DIR)) {
+      if (/^mx-.+\.json$/.test(f) && !byShard.has(f)) rmSync(new URL(f, OUT_DIR));
+    }
   }
   return {
     boards: rows.length, pages: pages.length, shards,

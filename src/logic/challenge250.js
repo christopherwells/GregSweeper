@@ -54,6 +54,8 @@
 //     stacked reaches only ~1.9. Authored at 112c, the proven spec.
 
 import { LADDER_POOL, CHALLENGE_POOL, ENDLESS_POOL } from './challengePool.js';
+// difficulty.js imports nothing, so this keeps challenge250.js a leaf.
+import { BOARD_WIDTH_CAP } from './difficulty.js';
 import {
   CLIMB_MIN_PAR_SECONDS, CLIMB_MIN_DEDUCTIONS,
   PAR_CEILING_SECONDS, GEN_CAP_MS, GEN_CAP_PEAK_MS, GEN_SLOW_DRAW_RATE,
@@ -785,9 +787,21 @@ for (const b of OPENER_BLOCKS) {
 // ENDLESS_POOL is deliberately left out. Those entries are the endless zone's
 // material, and borrowing them here would hand a player past L250 boards they
 // had already met on the way up.
+// LEGALITY IS RE-CHECKED HERE, not trusted from the file. Both pools are
+// generated data that outlives the rules they were searched under, which is
+// the same reason the search re-checks at emit. When BOARD_WIDTH_CAP moved
+// from 12 to 11 (his ruling 2026-08-14) three stored specs became illegal
+// (L126 and L173 at 6x12, L217 at 7x12) and would have kept being dealt: the
+// pool is a leaf data module and nothing in it re-reads the cap. Dropping
+// them here means a cap change takes effect on the next boot rather than on
+// the next pool regeneration, which is a search measured in hours.
+const specWithinWidthCap = (e) => (e.shape !== 'rect'
+  || !Number.isInteger(e.cols) || e.cols <= BOARD_WIDTH_CAP);
+
 const CLIMB_POOL = (() => {
   const byFace = new Map();
   for (const e of [...LADDER_POOL, ...CHALLENGE_POOL]) {
+    if (!specWithinWidthCap(e)) continue;
     const face = specFace(e);
     if (!byFace.has(face)) byFace.set(face, Object.freeze({ ...e, face }));
   }
