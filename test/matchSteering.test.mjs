@@ -523,3 +523,37 @@ test('the deal applies the filter itself, so no caller can hand it raw rows', ()
   assert.equal(plan.picks.length, 1);
   assert.equal(eligibleRows(rows, rules).length, 1);
 });
+
+// REGRESSION (2026-08-14): the nightly refit died the first night every
+// coverage target was satisfied at once.
+//
+// The match library's first top-up added 11,227 boards in one run, which took
+// all eight modifiers past the 20-board saturation line together. The throttle
+// then filtered `coverage_targets` down to an EMPTY list, and the sort below it
+// read `-sapply(coverage_targets, ...)`. sapply over an empty list returns
+// list(), not numeric(0), and unary minus on a list is an error, so the refit
+// halted at exactly the moment its coverage question had been fully answered.
+//
+// An empty coverage list is a SUCCESS state: nothing is undersampled, the
+// daily emits no coverage missions, and its slots fall through to the primary
+// target and the lottery. It must sort to nothing, not crash.
+test('an EMPTY coverage list sorts to nothing rather than halting the refit', () => {
+  // The unary-minus-on-sapply form is what failed. vapply with an explicit
+  // FUN.VALUE returns numeric(0) on an empty list, and the length guard means
+  // order() is never reached with one.
+  // Plain string checks rather than regexes: the thing being pinned is a
+  // handful of exact expressions, and an escaping slip in the pattern would
+  // make this pass on source that still crashes.
+  for (const name of ['coverage_targets', 'shape_coverage']) {
+    assert.ok(!R_SRC.includes(`-sapply(${name}`),
+      `${name} still sorts through -sapply(), which errors on an empty list`);
+    assert.ok(R_SRC.includes(`if (length(${name}) > 0) {`),
+      `${name}'s sort must sit behind a length guard, or an empty list halts the run`);
+    assert.ok(R_SRC.includes(`-vapply(${name}, function(x) as.numeric(x$deficit_weight), numeric(1))`),
+      `${name} must sort through vapply with an explicit numeric(1), not sapply`);
+  }
+  // Non-vacuity: the strings above must actually occur, or all three
+  // assertions are satisfied by a file that never mentions them.
+  assert.ok(R_SRC.includes('coverage_targets <- coverage_targets[order('),
+    'the coverage sort itself was not found; this test is pinning nothing');
+});
