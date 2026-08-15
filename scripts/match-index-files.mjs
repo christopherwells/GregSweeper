@@ -81,12 +81,19 @@ export function matchPageNames(dir = OUT_DIR) {
  * @returns {{boards: number, pages: number, shards: object, corners: number}}
  */
 export function writeMatchIndexFiles(pages, fp, { dry = false } = {}) {
+  // TOMBSTONES ARE SKIPPED, POSITIONS ARE NOT: an evicted board's slot holds
+  // `{ evicted: true, seed }` so every survivor keeps its page:idx (the
+  // seen-cycle key), and the row below is written with the slot's own index
+  // `i`, never a compacted one. A stub that reached the index would deal a
+  // board no page holds; a survivor renumbered past one would reset seen
+  // records. Both halves matter.
+  const isLive = (b) => b && !b.evicted;
   // The feature header is derived from the boards themselves, so a new
   // feature key reaches the index with no edit here (matchRules.js).
-  const featureKeys = matchIndexFeatureKeys(pages.flat());
+  const featureKeys = matchIndexFeatureKeys(pages.flat().filter(isLive));
   const rows = [];
   pages.forEach((page, p) => {
-    page.forEach((b, i) => rows.push(matchIndexRow(p, i, b, featureKeys)));
+    page.forEach((b, i) => { if (isLive(b)) rows.push(matchIndexRow(p, i, b, featureKeys)); });
   });
 
   // Corners are counted from the PARSED rows rather than from the boards, so
