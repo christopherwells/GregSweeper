@@ -24,7 +24,7 @@ import { dealMatchEntries } from '../game/matchDeal.js';
 import { loadStats } from '../storage/statsStorage.js';
 import { getUid } from '../firebase/firebaseProgress.js';
 import { getHandicapRatioMap } from '../logic/handicaps.js';
-import { matchUnlocks, unmetMatchRules } from '../logic/matchRules.js';
+import { matchUnlocks, unmetMatchRules, fmtClock, needsTenths } from '../logic/matchRules.js';
 import { matchStandings } from '../logic/matchStandings.js';
 import { matchBoardBreakdown } from '../logic/matchRecord.js';
 import { normalizeCode, planMatchJoin, matchDaysRemaining, matchExpiresAt, partitionMatchReview, matchResumePoint } from '../logic/matchCodes.js';
@@ -38,8 +38,13 @@ import { reportCaughtError } from '../diagnostics/errorReporter.js';
 // still live on the server under its code, and re-offering a half-made one on
 // the next boot would be a surface with nothing behind it.
 let _pending = null;
-// The live standings subscription, one at a time.
-let _standingsUnsub = null;
+// One live subscription PER SURFACE, keyed by the element it paints. The
+// old singleton let any other standings render steal the end board's
+// listener (open the sheet to glance at Your runs mid-wait, come back,
+// frozen at its last paint forever; his report, 2026-08-16). An element
+// owns its feed until it is re-rendered or leaves the DOM, and surfaces
+// never contend.
+const _standingsSubs = new Map();
 
 const shapeLabelOf = (s) => (s === 'rect' ? CLASSIC_SHAPE_LABEL : tilingLabel(s));
 
@@ -399,97 +404,159 @@ async function _acceptJoin() {
  */
 export function renderMatchStandingsInto(el, matchId) {
   if (!el || !matchId) return;
-  if (_standingsUnsub) { _standingsUnsub(); _standingsUnsub = null; }
+  const prev = _standingsSubs.get(el);
+  if (prev) { prev(); _standingsSubs.delete(el); }
   el.classList.remove('hidden');
   el.innerHTML = '<div class="match-standings-row"><span>Loading the other runs…</span></div>';
   import('../firebase/firebaseMatch.js').then(({ subscribeMatch }) => {
-    _standingsUnsub = subscribeMatch(matchId, (node) => _paintStandings(el, node));
+    const unsub = subscribeMatch(matchId, (node) => {
+      // A surface that left the DOM unsubscribes itself: painting a
+      // detached element is work nobody sees and a listener nobody frees.
+      if (!el.isConnected) {
+        const u = _standingsSubs.get(el);
+        if (u) { u(); _standingsSubs.delete(el); }
+        return;
+      }
+      _paintStandings(el, node);
+    });
+    _standingsSubs.set(el, unsub);
   }).catch((err) => reportCaughtError('match-standings-subscribe', err));
 }
 
-/** Stop watching a match (leaving the surface, or starting another). */
+/** Stop watching every match surface (leaving the mode entirely). */
 export function stopMatchStandings() {
-  if (_standingsUnsub) { _standingsUnsub(); _standingsUnsub = null; }
+  for (const unsub of _standingsSubs.values()) unsub();
+  _standingsSubs.clear();
 }
 
+/** A margin in speech: tenths under ten seconds, whole seconds past it. */
+function _fmtGap(gap) {
+  const g = Math.abs(gap);
+  return g < 10 ? `${g.toFixed(1)}s` : `${Math.round(g)}s`;
+}
+
+/** The handicap the chip convention speaks: positive = faster than Greg. */
+function _hcLabel(handicaps, uid) {
+  const k = typeof handicaps.get === 'function' ? handicaps.get(uid) : handicaps[uid];
+  if (!Number.isFinite(k) || k <= 0) return '·';
+  const pct = Math.round((1 - k) * 100);
+  return pct > 0 ? `+${pct}%` : `${pct}%`;
+}
+
+function _shapeLabel(spec) {
+  const t = spec && spec.shape;
+  if (!t || t === 'rect') return CLASSIC_SHAPE_LABEL;
+  return tilingLabel(t) || t;
+}
+
+const _ORDINALS = ['1st', '2nd', '3rd'];
+const _ordinal = (n) => _ORDINALS[n - 1] || `${n}th`;
+
+/**
+ * The clean comparison, one painter for the live standings and the end
+ * board alike (his design 2026-08-16): a margin headline, the per-board
+ * grid with players as columns and the board's adjusted leader in the lead
+ * color, and Total / Adjusted / Handicap rows under the columns. Board
+ * labels sit LEFT (his ruling); totals show whole seconds with tenths only
+ * where a gap is inside one second (his ruling); a tie leads nobody; an
+ * unplayed board is a dot, honest absence rather than zero.
+ */
 function _paintStandings(el, node) {
-  const rows = matchStandings(node, { handicaps: getHandicapRatioMap(), myUid: getUid() });
+  const handicaps = getHandicapRatioMap();
+  const myUid = getUid();
+  const rows = matchStandings(node, { handicaps, myUid });
   if (rows.length === 0) {
     el.innerHTML = '<div class="match-standings-row"><span>Nobody has joined yet.</span></div>';
     return;
   }
-  // Adjusted is the mode's comparison (his ruling), so it leads. An unrated
-  // player shows their raw total with a marker rather than a pretend rating,
-  // exactly as every other adjusted view in the app does.
-  const anyUnrated = rows.some((r) => !r.rated);
-  const head = `<div class="match-standings-head"><span>Adjusted</span></div>`;
-  const body = rows.map((r, i) => {
-    const place = r.finished ? `${i + 1}.` : '·';
-    const value = r.finished
-      ? `${r.adjusted.toFixed(1)}s${r.rated ? '' : ' *'}`
-      : `${r.done} of ${r.of}`;
-    return `<div class="match-standings-row${r.isMe ? ' match-standings-me' : ''}">
-        <span class="match-standings-place">${place}</span>
-        <span class="match-standings-name">${escapeHtml(r.name)}</span>
-        <span class="match-standings-value">${value}</span>
-      </div>`;
+
+  const me = rows.find((r) => r.isMe) || null;
+  const cols = me ? [me, ...rows.filter((r) => !r.isMe)] : rows.slice();
+  const breakdown = matchBoardBreakdown(node, { myUid, handicaps });
+
+  // ── Headline: place and margin among the FINISHED, adjusted ──
+  const finished = rows.filter((r) => r.finished);
+  let head = '';
+  if (me && me.finished && finished.length >= 2) {
+    const place = finished.indexOf(me);
+    if (place === 0) {
+      const gap = finished[1].adjusted - me.adjusted;
+      head = gap === 0
+        ? `<div class="match-headline">Tied with ${escapeHtml(finished[1].name)}</div>`
+        : `<div class="match-headline">You won <span class="match-lead">by ${_fmtGap(gap)}</span></div>
+           <div class="match-headline-sub">ahead of ${escapeHtml(finished[1].name)}, adjusted</div>`;
+    } else {
+      const gap = me.adjusted - finished[0].adjusted;
+      head = `<div class="match-headline">${_ordinal(place + 1)} of ${rows.length}</div>
+        <div class="match-headline-sub">${_fmtGap(gap)} behind ${escapeHtml(finished[0].name)}, adjusted</div>`;
+    }
+  } else if (me && me.finished) {
+    head = '<div class="match-headline-sub">Run complete · waiting on the others</div>';
+  }
+
+  // ── The per-board grid ──
+  const headerCells = cols.map((c) =>
+    `<th class="match-grid-p${c.isMe ? ' match-grid-me' : ''}">${escapeHtml(c.isMe ? 'You' : c.name)}</th>`).join('');
+  const bodyRows = breakdown.map((r) => {
+    const label = `${r.index + 1} · ${escapeHtml(_shapeLabel(r.spec))}`;
+    const best = r.fastestAdjusted;
+    const cells = cols.map((c) => {
+      const e = r.entries.find((x) => x.uid === c.uid);
+      if (!e) return '<td class="match-grid-none">·</td>';
+      if (r.entries.length === 1) {
+        return `<td class="match-grid-solo">${e.adjusted.toFixed(1)}</td>`;
+      }
+      if (best && e.adjusted === best.adjusted) {
+        return `<td class="${best.tied ? 'match-grid-tied' : 'match-grid-lead'}">${e.adjusted.toFixed(1)}</td>`;
+      }
+      return `<td class="match-grid-gap">+${(e.adjusted - best.adjusted).toFixed(1)}</td>`;
+    }).join('');
+    return `<tr><th scope="row" class="match-grid-board">${label}</th>${cells}</tr>`;
   }).join('');
+
+  // ── Totals: whole seconds unless a gap is inside one second ──
+  const rawTenths = needsTenths(cols.filter((c) => c.finished).map((c) => c.time));
+  const adjTenths = needsTenths(cols.filter((c) => c.finished).map((c) => c.adjusted));
+  const totalCells = cols.map((c) => `<td>${c.finished
+    ? fmtClock(c.time, rawTenths) : `${c.done} of ${c.of}`}</td>`).join('');
+  const adjCells = cols.map((c) => (c.finished
+    ? `<td class="${c.isMe && finished[0] === c ? 'match-grid-lead' : ''}">${fmtClock(c.adjusted, adjTenths)}${c.rated ? '' : ' *'}</td>`
+    : '<td class="match-grid-none">·</td>')).join('');
+  const hcCells = cols.map((c) => `<td>${_hcLabel(handicaps, c.uid)}</td>`).join('');
+
+  // ── The board that decided it ──
+  let swing = '';
+  const contested = breakdown.filter((r) => r.contested && r.mine);
+  if (me && contested.length >= 2) {
+    let top = null;
+    for (const r of contested) {
+      const rivals = r.entries.filter((e) => !e.isMe);
+      let bestRival = rivals[0];
+      for (const e of rivals) { if (e.adjusted < bestRival.adjusted) bestRival = e; }
+      const gap = r.mine.adjusted - bestRival.adjusted;
+      if (!top || Math.abs(gap) > Math.abs(top.gap)) top = { index: r.index, gap };
+    }
+    if (top && Math.abs(top.gap) > 0) {
+      swing = `<div class="match-swing">Board ${top.index + 1} decided it: ${_fmtGap(top.gap)} `
+        + `${top.gap < 0 ? 'swung your way' : 'went against you'}.</div>`;
+    }
+  }
+
+  const anyUnrated = rows.some((r) => !r.rated);
   const note = anyUnrated
     ? '<p class="friends-code-hint">* not rated yet, so that total is the raw clock.</p>'
     : '';
-  el.innerHTML = head + body + note + _breakdownHTML(node);
-}
-
-/**
- * The head-to-head breakdown: board by board, who was fastest.
- *
- * A total says who won; this says WHERE. The comparison is adjusted, his
- * standing ruling for the mode, and a board only reads as won or lost when
- * somebody else actually played it, so an opponent who is three boards behind
- * leaves those boards blank rather than losing them by default.
- *
- * Rendered only where there is a comparison to make: a solo run has nothing to
- * break down, and its summary already shows every board's clock.
- */
-function _breakdownHTML(node) {
-  const rows = matchBoardBreakdown(node, {
-    myUid: getUid(), handicaps: getHandicapRatioMap(),
-  });
-  const contested = rows.filter((r) => r.contested);
-  if (contested.length === 0) return '';
-
-  const body = rows.map((r) => {
-    const label = `Board ${r.index + 1}`;
-    if (!r.mine) {
-      return `<div class="match-breakdown-row match-breakdown-waiting">
-          <span>${label}</span><span>not played</span></div>`;
-    }
-    if (!r.contested) {
-      return `<div class="match-breakdown-row match-breakdown-waiting">
-          <span>${label}</span><span>${r.mine.adjusted.toFixed(1)}s · waiting</span></div>`;
-    }
-    const best = r.fastestAdjusted;
-    const gap = Math.abs(r.mine.adjusted - best.adjusted);
-    const verdict = r.wonAdjusted
-      ? '<span class="match-breakdown-won">you</span>'
-      : (best.tied
-        ? '<span class="match-breakdown-tied">tied</span>'
-        : `<span class="match-breakdown-lost">${escapeHtml(best.name)} by ${gap.toFixed(1)}s</span>`);
-    return `<div class="match-breakdown-row">
-        <span>${label}</span>
-        <span>${r.mine.adjusted.toFixed(1)}s</span>
-        ${verdict}
-      </div>`;
-  }).join('');
-
-  const won = contested.filter((r) => r.wonAdjusted).length;
-  return `<div class="match-breakdown">
-      <div class="match-standings-head"><span>Board by board</span>
-        <span>${won} of ${contested.length}</span></div>
-      ${body}
-      <p class="friends-code-hint">Adjusted times, so a board reads the same
-        whoever played it. A board nobody has raced you on yet is left open.</p>
-    </div>`;
+  el.innerHTML = `${head}
+    <div class="match-grid-wrap"><table class="match-grid">
+      <thead><tr><th class="match-grid-board"></th>${headerCells}</tr></thead>
+      <tbody>${bodyRows}</tbody>
+      <tfoot>
+        <tr><th scope="row" class="match-grid-board">Total</th>${totalCells}</tr>
+        <tr><th scope="row" class="match-grid-board">Adjusted</th>${adjCells}</tr>
+        <tr><th scope="row" class="match-grid-board">Handicap</th>${hcCells}</tr>
+      </tfoot>
+    </table></div>
+    ${swing}${note}`;
 }
 
 // ── Incoming friend invites ─────────────────────────────────────────────

@@ -8220,3 +8220,34 @@ pre.diagnostics-pre {
 .stat-h2h-split-pct { font-weight: 700; color: var(--color-text, #eee); }
 /* The sample rides beside every percentage, never implied. */
 .stat-h2h-split-n { font-size: 11px; color: var(--color-text-secondary); }
+
+/* The clean comparison (2026-08-16): margin headline, the per-board grid
+   with players as columns, and the totals rows. Board labels sit LEFT (his
+   ruling); the lead color rides the theme's own 2-count green so dark
+   themes keep it bright through their num overrides. */
+.match-headline { font-size: 17px; font-weight: 700; color: var(--color-text, #eee); }
+.match-headline .match-lead { color: var(--color-num-2, #2e7d32); }
+.match-headline-sub { font-size: 12px; color: var(--color-text-secondary, #888); margin-bottom: 8px; }
+.match-grid-wrap { overflow-x: auto; }
+.match-grid { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.match-grid th, .match-grid td { padding: 4px 6px; text-align: right; white-space: nowrap; }
+.match-grid th.match-grid-board { text-align: left; font-weight: 500; color: var(--color-text-secondary, #888); padding-left: 0; max-width: 9em; overflow: hidden; text-overflow: ellipsis; }
+.match-grid thead th { font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--color-text-secondary, #888); }
+.match-grid thead th.match-grid-me { color: var(--color-text, #eee); }
+.match-grid tbody tr, .match-grid tfoot tr:first-child { border-top: 1px solid var(--color-border, #333); }
+.match-grid tfoot th.match-grid-board, .match-grid tfoot td { font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase; }
+.match-grid-lead { color: var(--color-num-2, #2e7d32); font-weight: 700; }
+.match-grid-gap, .match-grid-solo { color: var(--color-text-secondary, #888); }
+.match-grid-none { color: var(--color-text-secondary, #888); opacity: 0.6; }
+.match-grid-tied { color: var(--color-text, #eee); font-weight: 700; }
+.match-swing { font-size: 11.5px; color: var(--color-text-secondary, #888); border-top: 1px solid var(--color-border, #333); padding-top: 8px; margin-top: 2px; }
+
+/* Rivalry rows on the Challenge stats panel: counts, never percentages. */
+.stat-riv-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--color-border, #333); font-size: 13px; }
+.stat-riv-row:last-of-type { border-bottom: 0; }
+.stat-riv-field .stat-riv-name { font-weight: 700; }
+.stat-riv-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stat-riv-tally { font-variant-numeric: tabular-nums; color: var(--color-text-secondary, #888); }
+.stat-riv-ahead { font-size: 12px; color: var(--color-num-2, #2e7d32); }
+.stat-riv-behind { font-size: 12px; color: var(--color-num-3, #c62828); }
+.stat-riv-even { font-size: 12px; color: var(--color-text-secondary, #888); }

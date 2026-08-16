@@ -209,3 +209,63 @@ test('winPct refuses to divide by nothing', () => {
   assert.equal(winPct(3, null), null);
   assert.equal(winPct(1, 2), 50);
 });
+
+// ── Rivalries and the field row (his ask 2026-08-16) ────────────────────
+
+import { rivalries } from '../src/logic/matchRecord.js';
+
+test('rivalries: per-opponent tallies with signed median margins', () => {
+  // Three boards against two rivals. Against You: ahead by 10, behind by 5,
+  // ahead by 3 — record 2-1, margins [-10, +5, -3], median -3 (ahead).
+  const r = rivalries([node({
+    me: player('Me', [30, 45, 60]),
+    you: player('You', [40, 40, 63]),
+    kate: player('Kate', [35, 50, null]),
+  }, [SPECS[0], SPECS[1], SPECS[0]])], { myUid: 'me' });
+
+  const you = r.rivals.find((x) => x.uid === 'you');
+  assert.equal(you.won, 2);
+  assert.equal(you.lost, 1);
+  assert.equal(you.boards, 3);
+  assert.equal(you.medianMargin, -3, 'median of [-10, +5, -3] is -3: usually ahead');
+
+  const kate = r.rivals.find((x) => x.uid === 'kate');
+  assert.equal(kate.boards, 2, 'a board Kate never posted is not in the rivalry');
+  assert.equal(kate.won, 2);
+
+  // The field row scores each board against the BEST rival on it, and its
+  // won count is exactly the aggregate wonAdjusted, so the two surfaces can
+  // never disagree.
+  assert.equal(r.field.boards, 3);
+  assert.equal(r.field.won, 2);
+  const agg = matchRecord([node({
+    me: player('Me', [30, 45, 60]),
+    you: player('You', [40, 40, 63]),
+    kate: player('Kate', [35, 50, null]),
+  }, [SPECS[0], SPECS[1], SPECS[0]])], { myUid: 'me' });
+  assert.equal(r.field.won, agg.wonAdjusted);
+});
+
+test('rivalries: a tie counts for nobody and is tallied on its own', () => {
+  const r = rivalries([node({
+    me: player('Me', [40]),
+    you: player('You', [40]),
+  }, [SPECS[0]])], { myUid: 'me' });
+  const you = r.rivals[0];
+  assert.equal(you.won, 0);
+  assert.equal(you.lost, 0);
+  assert.equal(you.ties, 1);
+  assert.equal(r.field.ties, 1);
+  assert.equal(r.field.medianMargin, 0);
+});
+
+test('rivalries: adjusted decides, and solo boards stay out entirely', () => {
+  const r = rivalries([node({
+    me: player('Me', [60, 30]),
+    you: player('You', [50, null]),
+  }, [SPECS[0], SPECS[1]])], { myUid: 'me', handicaps: { me: 2.0, you: 1.0 } });
+  const you = r.rivals[0];
+  assert.equal(you.boards, 1, 'the solo second board is nobody\'s rivalry');
+  assert.equal(you.won, 1, '60/2.0 = 30 beats 50/1.0 = 50, adjusted decides');
+  assert.equal(you.medianMargin, -20);
+});

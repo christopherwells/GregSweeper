@@ -172,6 +172,63 @@ export function matchRecord(nodes, opts = {}) {
   return { ...totals, boardsPlayed, matchesPlayed, splits };
 }
 
+/**
+ * Rivalry rows (his ask 2026-08-16): your record and typical margin against
+ * each opponent, plus the FIELD row, "vs anyone", which is every contested
+ * board scored against the best rival on it. Counts, never percentages: a
+ * record over a dozen boards is a tally, not a rate.
+ *
+ * The margin is the MEDIAN adjusted gap, signed: negative means you were
+ * ahead. Median rather than mean because one blown board should not move
+ * "usually 6s ahead" to "usually 9s behind". Every rule mirrors
+ * matchRecord's own: contested boards only, adjusted times decide, a tie
+ * counts for nobody and is tallied separately (`ties`), and being strictly
+ * fastest against the best rival is exactly matchBoardBreakdown's
+ * `wonAdjusted`, so the field row can never disagree with the aggregate.
+ */
+export function rivalries(nodes, opts = {}) {
+  const byUid = new Map();
+  const field = { won: 0, lost: 0, ties: 0, margins: [] };
+  const tally = (rec, gap) => {
+    rec.margins.push(gap);
+    if (gap < 0) rec.won++;
+    else if (gap > 0) rec.lost++;
+    else rec.ties++;
+  };
+  for (const node of nodes || []) {
+    for (const row of matchBoardBreakdown(node, opts)) {
+      if (!row.contested || !row.mine) continue;
+      const rivals = row.entries.filter((e) => !e.isMe);
+      let best = rivals[0];
+      for (const r of rivals) { if (r.adjusted < best.adjusted) best = r; }
+      tally(field, Math.round((row.mine.adjusted - best.adjusted) * 10) / 10);
+      for (const r of rivals) {
+        const rec = byUid.get(r.uid)
+          || { uid: r.uid, name: r.name, won: 0, lost: 0, ties: 0, margins: [] };
+        if (r.name) rec.name = r.name;
+        tally(rec, Math.round((row.mine.adjusted - r.adjusted) * 10) / 10);
+        byUid.set(r.uid, rec);
+      }
+    }
+  }
+  const median = (a) => {
+    if (!a.length) return null;
+    const s = [...a].sort((x, y) => x - y);
+    const m = Math.floor(s.length / 2);
+    return s.length % 2 ? s[m] : Math.round(((s[m - 1] + s[m]) / 2) * 10) / 10;
+  };
+  const finish = ({ margins, ...rec }) => ({
+    ...rec,
+    boards: rec.won + rec.lost + rec.ties,
+    medianMargin: median(margins),
+  });
+  return {
+    field: finish(field),
+    rivals: [...byUid.values()].map(finish)
+      .sort((a, b) => (b.boards - a.boards) || (a.name < b.name ? -1 : 1)),
+  };
+}
+
 /** Win percentage, or null when nothing has been contested. */
 export function winPct(won, contested) {
   if (!Number.isFinite(contested) || contested <= 0) return null;

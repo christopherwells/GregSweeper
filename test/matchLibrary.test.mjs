@@ -126,15 +126,20 @@ test('the summary counts what the deal can actually reach', () => {
   const MODS = ['walls', 'liar', 'mystery', 'locked', 'wormhole', 'mirror', 'sonar', 'compass', 'worm'];
   const TIMES = ['any', ...MATCH_TIME_BANDS.map((b) => b.key)];
   const DENSITIES = ['any', 'sparse', 'standard', 'dense'];
+  const DIFFICULTIES = ['any', 'gentle', 'standard', 'mean'];
   let nonZero = 0;
   for (let t = 0; t < 240; t++) {
     // Deterministic sweep: a fixed bit pattern per trial, so a failure is
-    // reproducible rather than a flake nobody can re-run.
+    // reproducible rather than a flake nobody can re-run. Difficulty joined
+    // the sweep 2026-08-16: its counts ride a per-corner SPLIT in the
+    // summary rather than the corner key, and this equality is what holds
+    // the split to the deal's own row filter.
     const rules = {
       shapes: SHAPES.filter((_, i) => (t >> i) & 1),
       mods: MODS.filter((_, i) => (t >> (i % 7)) & 1 || i % 3 === t % 3),
       time: TIMES[t % TIMES.length],
       density: DENSITIES[(t >> 2) % DENSITIES.length],
+      difficulty: DIFFICULTIES[(t >> 1) % DIFFICULTIES.length],
       count: 5,
     };
     if (!rules.shapes.length) continue;

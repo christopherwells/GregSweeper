@@ -440,7 +440,7 @@ async function _renderMatchHeadToHead() {
 
   let nodes = null;
   try {
-    const [{ fetchMyMatches }, { matchRecord, winPct, rankedSplits }, { getHandicapRatioMap }] =
+    const [{ fetchMyMatches }, { matchRecord, rivalries, rankedSplits }, { getHandicapRatioMap }] =
       await Promise.all([
         import('../firebase/firebaseMatch.js'),
         import('../logic/matchRecord.js'),
@@ -461,49 +461,57 @@ async function _renderMatchHeadToHead() {
       return;
     }
 
-    const adj = winPct(rec.wonAdjusted, rec.contested);
-    const raw = winPct(rec.wonRaw, rec.contested);
-    const shapes = rankedSplits(rec.splits.shape, { minContested: MIN_SPLIT_BOARDS });
-    const dens = rankedSplits(rec.splits.density, { minContested: MIN_SPLIT_BOARDS });
-    const mods = rankedSplits(rec.splits.modifier, { minContested: MIN_SPLIT_BOARDS });
-
-    const splitBlock = (title, rowsIn, labeler) => {
-      if (rowsIn.length === 0) return '';
-      const items = rowsIn.map((r) => `<div class="stat-h2h-split">
-          <span class="stat-h2h-split-name">${escapeHtml(labeler(r.name))}</span>
-          <span class="stat-h2h-split-pct">${r.pct}%</span>
-          <span class="stat-h2h-split-n">${r.wonAdjusted} of ${r.contested}</span>
-        </div>`).join('');
-      return `<h4 class="stat-h2h-heading">${title}</h4>${items}`;
+    // Rivalries, not percentages (his call 2026-08-16: "X out of X seems a
+    // little disingenuine"): with two to four real rivals, a rate over a
+    // dozen boards claims a stability the sample cannot back, while "7-5
+    // against MJP, usually 6s ahead" is a plain fact. Counts everywhere; the
+    // margin is the median adjusted gap so one blown board cannot move it.
+    const riv = rivalries(nodes, { myUid: getUid(), handicaps: getHandicapRatioMap() });
+    const marginPhrase = (m) => {
+      if (m == null || Math.abs(m) < 0.5) return '<span class="stat-riv-even">too close to call</span>';
+      const amount = Math.abs(m) < 10 ? `${Math.abs(m).toFixed(1)}s` : `${Math.round(Math.abs(m))}s`;
+      return m < 0
+        ? `<span class="stat-riv-ahead">usually ${amount} ahead</span>`
+        : `<span class="stat-riv-behind">usually ${amount} behind</span>`;
     };
+    const rivalRow = (label, r, me) => `<div class="stat-riv-row${me ? ' stat-riv-field' : ''}">
+        <span class="stat-riv-name">${escapeHtml(label)}</span>
+        <span class="stat-riv-tally">${r.won}-${r.lost}${r.ties ? ` (${r.ties} tied)` : ''}</span>
+        ${marginPhrase(r.medianMargin)}
+      </div>`;
+    const rivalRows = [rivalRow('vs anyone', riv.field, true),
+      ...riv.rivals.slice(0, 4).map((r) => rivalRow(`vs ${r.name}`, r, false))].join('');
+    const more = riv.rivals.length > 4
+      ? `<p class="friends-code-hint">and ${riv.rivals.length - 4} more you have raced less.</p>` : '';
 
-    const defs = getGimmickDefs();
+    const shapes = rankedSplits(rec.splits.shape, { minContested: MIN_SPLIT_BOARDS });
+    const shapeLabel = (n) => (n === 'rect' ? CLASSIC_SHAPE_LABEL : tilingLabel(n));
+    const ground = shapes.length >= 2
+      ? `<p class="stats-blurb">Strongest ground: ${escapeHtml(shapeLabel(shapes[0].name))},
+          ${shapes[0].wonAdjusted}-${shapes[0].contested - shapes[0].wonAdjusted}.
+          Weakest: ${escapeHtml(shapeLabel(shapes[shapes.length - 1].name))},
+          ${shapes[shapes.length - 1].wonAdjusted}-${shapes[shapes.length - 1].contested - shapes[shapes.length - 1].wonAdjusted}.</p>`
+      : '';
+
+    const solo = rec.boardsPlayed - rec.contested;
+    const ties = riv.field.ties;
     el.innerHTML = `
-      <div class="stat-row">
-        <div class="stat-mini"><div class="stat-mini-label">Adjusted</div>
-          <div class="stat-mini-value">${adj}%</div></div>
-        <div class="stat-mini"><div class="stat-mini-label">Raw</div>
-          <div class="stat-mini-value">${raw}%</div></div>
-        <div class="stat-mini"><div class="stat-mini-label">Boards raced</div>
-          <div class="stat-mini-value">${rec.contested}</div></div>
-      </div>
-      <p class="stats-blurb">Boards where someone else played the same board.
+      <h4 class="stat-h2h-heading">Your rivalries</h4>
+      ${rivalRows}${more}
+      <p class="stats-blurb">${rec.contested} board${rec.contested === 1 ? '' : 's'} raced.
+        You took ${rec.wonAdjusted} adjusted, ${rec.wonRaw} raw${ties
+  ? `; ${ties} tie${ties === 1 ? '' : 's'} counted for nobody` : ''}.
         Adjusted divides every time by that player's handicap, so it is the fair
         comparison; raw is who finished first.</p>
-      ${splitBlock('Best shapes', shapes, (n) => (n === 'rect' ? CLASSIC_SHAPE_LABEL : tilingLabel(n)))}
-      ${splitBlock('Best mine densities', dens, (n) => DENSITY_LABELS[n] || n)}
-      ${splitBlock('Best modifiers', mods, (n) => (defs[n] && defs[n].name) || n)}
-      ${(shapes.length + dens.length + mods.length) === 0
-        ? `<p class="stats-blurb">A few more races and this will show which shapes and
-             modifiers suit you. It needs ${MIN_SPLIT_BOARDS} boards of something before
-             saying anything about it.</p>` : ''}`;
+      ${ground}
+      ${solo > 0 ? `<p class="friends-code-hint">${solo} more board${solo === 1 ? '' : 's'} run solo.
+        Nobody raced them, so they carry no record.</p>` : ''}`;
   } catch (err) {
     reportCaughtError('match-h2h', err);
     el.innerHTML = '<p class="stats-blurb">Could not work out your record right now.</p>';
   }
 }
 
-const DENSITY_LABELS = { sparse: 'Sparse', standard: 'Standard', dense: 'Packed' };
 
 function populateMatchPanel() {
   const stats = loadStats();
