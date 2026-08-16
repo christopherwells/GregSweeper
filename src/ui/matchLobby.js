@@ -25,7 +25,7 @@ import { loadStats } from '../storage/statsStorage.js';
 import { getUid } from '../firebase/firebaseProgress.js';
 import { getHandicapRatioMap } from '../logic/handicaps.js';
 import { matchUnlocks, unmetMatchRules, fmtClock, needsTenths } from '../logic/matchRules.js';
-import { matchStandings } from '../logic/matchStandings.js';
+import { matchStandings, columnLeader } from '../logic/matchStandings.js';
 import { matchBoardBreakdown } from '../logic/matchRecord.js';
 import { normalizeCode, planMatchJoin, matchDaysRemaining, matchExpiresAt, partitionMatchReview, matchResumePoint } from '../logic/matchCodes.js';
 import { tilingLabel, CLASSIC_SHAPE_LABEL } from '../logic/coastlineLink.js';
@@ -408,7 +408,18 @@ export function renderMatchStandingsInto(el, matchId) {
   if (prev) { prev(); _standingsSubs.delete(el); }
   el.classList.remove('hidden');
   el.innerHTML = '<div class="match-standings-row"><span>Loading the other runs…</span></div>';
-  import('../firebase/firebaseMatch.js').then(({ subscribeMatch }) => {
+  import('../firebase/firebaseMatch.js').then(async ({ subscribeMatch }) => {
+    // Names resolve join-at-read: the CURRENT playerNames entry beats the
+    // name snapshotted into the node at join time, so a player who named
+    // themselves after joining (or renamed since) reads correctly on every
+    // old run. The node's stored name is the fallback; a failed fetch still
+    // paints. Fetched once per surface, cached 60s inside the leaderboard
+    // module, so the live subscription never re-reads it per update.
+    let names = {};
+    try {
+      const { fetchPlayerNames } = await import('../firebase/firebaseLeaderboard.js');
+      names = (await fetchPlayerNames()) || {};
+    } catch { /* stored node names still paint */ }
     const unsub = subscribeMatch(matchId, (node) => {
       // A surface that left the DOM unsubscribes itself: painting a
       // detached element is work nobody sees and a listener nobody frees.
@@ -417,7 +428,7 @@ export function renderMatchStandingsInto(el, matchId) {
         if (u) { u(); _standingsSubs.delete(el); }
         return;
       }
-      _paintStandings(el, node);
+      _paintStandings(el, node, names);
     });
     _standingsSubs.set(el, unsub);
   }).catch((err) => reportCaughtError('match-standings-subscribe', err));
@@ -461,7 +472,7 @@ const _ordinal = (n) => _ORDINALS[n - 1] || `${n}th`;
  * where a gap is inside one second (his ruling); a tie leads nobody; an
  * unplayed board is a dot, honest absence rather than zero.
  */
-function _paintStandings(el, node) {
+function _paintStandings(el, node, names = {}) {
   const handicaps = getHandicapRatioMap();
   const myUid = getUid();
   const rows = matchStandings(node, { handicaps, myUid });
@@ -473,6 +484,7 @@ function _paintStandings(el, node) {
   const me = rows.find((r) => r.isMe) || null;
   const cols = me ? [me, ...rows.filter((r) => !r.isMe)] : rows.slice();
   const breakdown = matchBoardBreakdown(node, { myUid, handicaps });
+  const nameOf = (r) => (r.isMe ? 'You' : (names[r.uid] || r.name));
 
   // ── Headline: place and margin among the FINISHED, adjusted ──
   const finished = rows.filter((r) => r.finished);
@@ -482,13 +494,13 @@ function _paintStandings(el, node) {
     if (place === 0) {
       const gap = finished[1].adjusted - me.adjusted;
       head = gap === 0
-        ? `<div class="match-headline">Tied with ${escapeHtml(finished[1].name)}</div>`
+        ? `<div class="match-headline">Tied with ${escapeHtml(nameOf(finished[1]))}</div>`
         : `<div class="match-headline">You won <span class="match-lead">by ${_fmtGap(gap)}</span></div>
-           <div class="match-headline-sub">ahead of ${escapeHtml(finished[1].name)}, adjusted</div>`;
+           <div class="match-headline-sub">ahead of ${escapeHtml(nameOf(finished[1]))}, adjusted</div>`;
     } else {
       const gap = me.adjusted - finished[0].adjusted;
       head = `<div class="match-headline">${_ordinal(place + 1)} of ${rows.length}</div>
-        <div class="match-headline-sub">${_fmtGap(gap)} behind ${escapeHtml(finished[0].name)}, adjusted</div>`;
+        <div class="match-headline-sub">${_fmtGap(gap)} behind ${escapeHtml(nameOf(finished[0]))}, adjusted</div>`;
     }
   } else if (me && me.finished) {
     head = '<div class="match-headline-sub">Run complete · waiting on the others</div>';
@@ -496,7 +508,7 @@ function _paintStandings(el, node) {
 
   // ── The per-board grid ──
   const headerCells = cols.map((c) =>
-    `<th class="match-grid-p${c.isMe ? ' match-grid-me' : ''}">${escapeHtml(c.isMe ? 'You' : c.name)}</th>`).join('');
+    `<th class="match-grid-p${c.isMe ? ' match-grid-me' : ''}">${escapeHtml(nameOf(c))}</th>`).join('');
   const bodyRows = breakdown.map((r) => {
     const label = `${r.index + 1} · ${escapeHtml(_shapeLabel(r.spec))}`;
     const best = r.fastestAdjusted;
@@ -514,13 +526,20 @@ function _paintStandings(el, node) {
     return `<tr><th scope="row" class="match-grid-board">${label}</th>${cells}</tr>`;
   }).join('');
 
-  // ── Totals: whole seconds unless a gap is inside one second ──
+  // ── Totals: whole seconds unless a gap is inside one second, and the
+  // best Total and best Adjusted read in the lead green (his ask 2026-08-16,
+  // "so you can easily see who won"). The two can be different players, which
+  // is the adjusted-vs-raw disagreement made visible rather than hidden.
   const rawTenths = needsTenths(cols.filter((c) => c.finished).map((c) => c.time));
   const adjTenths = needsTenths(cols.filter((c) => c.finished).map((c) => c.adjusted));
-  const totalCells = cols.map((c) => `<td>${c.finished
+  const timeLead = columnLeader(cols, 'time');
+  const adjLead = columnLeader(cols, 'adjusted');
+  const leadCls = (lead, c) => (lead && c.finished && lead.uids.includes(c.uid)
+    ? (lead.tied ? 'match-grid-tied' : 'match-grid-lead') : '');
+  const totalCells = cols.map((c) => `<td class="${leadCls(timeLead, c)}">${c.finished
     ? fmtClock(c.time, rawTenths) : `${c.done} of ${c.of}`}</td>`).join('');
   const adjCells = cols.map((c) => (c.finished
-    ? `<td class="${c.isMe && finished[0] === c ? 'match-grid-lead' : ''}">${fmtClock(c.adjusted, adjTenths)}${c.rated ? '' : ' *'}</td>`
+    ? `<td class="${leadCls(adjLead, c)}">${fmtClock(c.adjusted, adjTenths)}${c.rated ? '' : ' *'}</td>`
     : '<td class="match-grid-none">·</td>')).join('');
   const hcCells = cols.map((c) => `<td>${_hcLabel(handicaps, c.uid)}</td>`).join('');
 

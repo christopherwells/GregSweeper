@@ -467,6 +467,17 @@ async function _renderMatchHeadToHead() {
     // against MJP, usually 6s ahead" is a plain fact. Counts everywhere; the
     // margin is the median adjusted gap so one blown board cannot move it.
     const riv = rivalries(nodes, { myUid: getUid(), handicaps: getHandicapRatioMap() });
+    // Rival names resolve join-at-read, the leaderboard's own rule: the
+    // CURRENT playerNames entry for the uid beats whatever name the match
+    // node snapshotted at join time, and the stored 'Player' sentinel never
+    // reaches here at all (matchRecord reads it as absent). Only a player
+    // unnamed to this day falls back to the literal.
+    let names = {};
+    try {
+      const { fetchPlayerNames } = await import('../firebase/firebaseLeaderboard.js');
+      names = (await fetchPlayerNames()) || {};
+    } catch { /* node names still label the rows */ }
+    const rivalName = (r) => names[r.uid] || r.name || 'Player';
     const marginPhrase = (m) => {
       if (m == null || Math.abs(m) < 0.5) return '<span class="stat-riv-even">too close to call</span>';
       const amount = Math.abs(m) < 10 ? `${Math.abs(m).toFixed(1)}s` : `${Math.round(Math.abs(m))}s`;
@@ -480,7 +491,7 @@ async function _renderMatchHeadToHead() {
         ${marginPhrase(r.medianMargin)}
       </div>`;
     const rivalRows = [rivalRow('vs anyone', riv.field, true),
-      ...riv.rivals.slice(0, 4).map((r) => rivalRow(`vs ${r.name}`, r, false))].join('');
+      ...riv.rivals.slice(0, 4).map((r) => rivalRow(`vs ${rivalName(r)}`, r, false))].join('');
     const more = riv.rivals.length > 4
       ? `<p class="friends-code-hint">and ${riv.rivals.length - 4} more you have raced less.</p>` : '';
 

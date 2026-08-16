@@ -269,3 +269,27 @@ test('rivalries: adjusted decides, and solo boards stay out entirely', () => {
   assert.equal(you.won, 1, '60/2.0 = 30 beats 50/1.0 = 50, adjusted decides');
   assert.equal(you.medianMargin, -20);
 });
+
+// ── The stored 'Player' sentinel (his report 2026-08-16) ────────────────
+
+test('REGRESSION: the stored Player sentinel never shadows a real name', () => {
+  // createMatch/joinMatch write the literal 'Player' when a player had no
+  // name at join time (the rules require a name child). Kate's 95 boards
+  // read "vs Player" on the stats panel because an old unnamed join's
+  // sentinel overwrote her real name during aggregation. The sentinel must
+  // read as ABSENT in the pure layer, whichever order the nodes process.
+  const named = node({ me: player('Me', [30, 30]), kate: player('Kate', [40, 40]) });
+  const unnamed = node({ me: player('Me', [30, 30]), kate: player('Player', [40, 40]) });
+  for (const nodes of [[named, unnamed], [unnamed, named]]) {
+    const riv = rivalries(nodes, { myUid: 'me' });
+    assert.equal(riv.rivals.length, 1);
+    assert.equal(riv.rivals[0].name, 'Kate',
+      'the real name wins regardless of node order');
+  }
+  // A rival unnamed in every node reports null, never the sentinel: the
+  // display layer resolves the uid through playerNames and owns the fallback.
+  const rivNone = rivalries([unnamed], { myUid: 'me' });
+  assert.equal(rivNone.rivals[0].name, null);
+  const rows = matchBoardBreakdown(unnamed, { myUid: 'me' });
+  assert.equal(rows[0].entries.find((e) => e.uid === 'kate').name, null);
+});

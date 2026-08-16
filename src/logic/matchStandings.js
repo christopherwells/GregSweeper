@@ -89,6 +89,29 @@ export function matchFinishedCount(rows) {
 }
 
 /**
+ * Who leads a totals row (his ask 2026-08-16: the best Total and Adjusted
+ * read green, "so you can easily see who won").
+ *
+ * Only FINISHED players compete: a partial total is a different quantity, the
+ * standings' own sorting rule. Fewer than two finished returns null, because
+ * a green on the only posted total would claim a win over nobody; the same
+ * rule applies to a solo row in the per-board grid. A tie is flagged rather
+ * than resolved; the tie leads nobody, matchRecord's own rule.
+ *
+ * @param {Array<object>} rows standings rows ({uid, finished} plus `key`)
+ * @param {string} key 'time' or 'adjusted'
+ * @returns {{value: number, uids: string[], tied: boolean}|null}
+ */
+export function columnLeader(rows, key) {
+  const fin = (rows || []).filter((r) => r && r.finished && Number.isFinite(r[key]));
+  if (fin.length < 2) return null;
+  let best = Infinity;
+  for (const r of fin) { if (r[key] < best) best = r[key]; }
+  const uids = fin.filter((r) => r[key] === best).map((r) => r.uid);
+  return { value: best, uids, tied: uids.length > 1 };
+}
+
+/**
  * Build this player's par-fit rows from a finished match.
  *
  * Match rows go into the same `daily/*` + `dailyMeta/*` tables the refit reads,
