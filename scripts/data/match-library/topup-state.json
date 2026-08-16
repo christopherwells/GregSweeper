@@ -1,5 +1,5 @@
 {
- "runs": 11,
+ "runs": 12,
  "corners": {
   "4.8.8||short|sparse": {
    "fails": 4,
@@ -298,8 +298,8 @@
   },
   "rect||long|standard": {
    "fails": 0,
-   "attempts": 7,
-   "lastRun": 11
+   "attempts": 18,
+   "lastRun": 12
   },
   "hex|liar|short|sparse": {
    "fails": 4,
@@ -5423,8 +5423,8 @@
   },
   "rect|mystery|short|standard": {
    "fails": 0,
-   "attempts": 40,
-   "lastRun": 4
+   "attempts": 54,
+   "lastRun": 12
   },
   "hex|liar+sonar|quick|sparse": {
    "fails": 0,
@@ -5568,13 +5568,13 @@
   },
   "rhombille|walls|quick|standard": {
    "fails": 0,
-   "attempts": 20,
-   "lastRun": 1
+   "attempts": 34,
+   "lastRun": 12
   },
   "rhombille|walls|short|dense": {
-   "fails": 0,
-   "attempts": 52,
-   "lastRun": 11
+   "fails": 1,
+   "attempts": 53,
+   "lastRun": 12
   },
   "4.8.8|sonar|quick|standard": {
    "fails": 0,
@@ -9488,8 +9488,8 @@
   },
   "rhombille||quick|standard": {
    "fails": 0,
-   "attempts": 3,
-   "lastRun": 3
+   "attempts": 19,
+   "lastRun": 12
   },
   "cairo||long|dense": {
    "fails": 0,
@@ -9513,8 +9513,8 @@
   },
   "rhombille||quick|sparse": {
    "fails": 0,
-   "attempts": 2,
-   "lastRun": 3
+   "attempts": 19,
+   "lastRun": 12
   },
   "floret||quick|sparse": {
    "fails": 0,

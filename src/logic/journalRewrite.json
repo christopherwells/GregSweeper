@@ -1,28 +1,32 @@
 {
   "format": "journal-rewrite-v2",
-  "date": "2026-08-15",
+  "date": "2026-08-16",
   "entries": {
+    "wormLoad": {
+      "sourceHash": 3129651661,
+      "paragraph": "The worm tiles numbers have stopped surprising me, though I keep checking anyway. My note on this one was simply a question mark, but the data answered with a real cost: about 3% per hundred worm moves, likely between 1% and 4%. Uncertainty has narrowed by 29% since July 17, though consistency alone is not proof. Yet, it does pay the rent."
+    },
     "patternMoves": {
-      "sourceHash": 4066037041,
-      "paragraph": "Back into the pattern reasoning file, the number I left there isn’t the number I found. On July 13, this file read about 11% per ten pattern reads, but now it reads about 35%. The cost per ten pattern reads runs about 35%, with a floor around 26% and a ceiling around 44%. I wrote that a practiced read should cost seconds, not tens of seconds, and the data agree: the effect is real and small. A number that moves while nobody feeds it has my full attention."
+      "sourceHash": 174011558,
+      "paragraph": "Back into the pattern reasoning file, I noticed that the number I left there isn't the same as the one I found. The parked estimate moved from about 11% per ten pattern reads on Jul 13 to 40% now. The cost comes to about 40% per ten pattern reads, with a band running from 32% to 48%. I wrote that a practiced read should cost seconds, not tens of seconds. The data agree, showing that the effect is real but small. A number that moves on its own, without any input, has my full attention."
     },
     "sonarCellCount": {
-      "sourceHash": 2990967426,
-      "paragraph": "I closed the sonar file, and it moved while I wasn’t looking. On study day, it read about 105% per ten sonar cells, likely between 69% and 149%. On Jul 2, this file read about 37% per ten sonar cells. It reads about 105% now, and I don’t like surprises in closed drawers."
+      "sourceHash": 1624686670,
+      "paragraph": "I closed the sonar file, and it moved while I wasn’t looking. The model places the estimate at about 98% per ten sonar cells, within a range of 66% to 136%. The parked estimate shifted from about 37% per ten sonar cells on study day 2 to 98% now. Closed is a state, not a mood."
     },
     "wormholePairCount": {
-      "sourceHash": 2824690106,
-      "paragraph": "The wormholes numbers moved the wrong way, and I want that on the record. Since July 2, the spread has grown by 867%, and I recorded it as is. The estimate stands at about 44% per ten wormhole pairs, with a range between 21% and 71%. I predicted that splitting one number across two places would slow the reading down, and it does. Backwards results get front-page space in this notebook."
+      "sourceHash": 638171646,
+      "paragraph": "The wormholes file is doing the thing measurement is not supposed to do, with more plays coming in and my uncertainty going up by about 828%, which is backwards from how measurement is supposed to go. Ten wormhole pairs add about 43% to your time, likely between 21% and 69%. I predicted that splitting one number across two places would slow the reading down, and it does, but the result is wider, not the one I ordered."
     },
     "liarCellCount": {
-      "sourceHash": 2935640586,
-      "paragraph": "I closed the liar cells file on Jun 28. The data presented two possibilities: poison, or a rounding error. The data picked the second. A liar barely moves the clock. The study covered ten study days, from Apr 22 to Jun 28. Across ten liar cells, the cost reads as somewhere between 0% and about 3%. Closed files make room for open ones."
+      "sourceHash": 2649811332,
+      "paragraph": "The liar cells case is closed. My note gave the data two doors: poison, or a rounding error. It picked the second. A liar barely moves the clock, and the books show ten study days from April 22 to June 28. The cost lies between 0% and about 3% per ten liar cells, which is thin either way. I'll take a clean answer over a flattering one any day."
     },
-    "clueShare2": {
-      "sourceHash": 1987787928,
-      "paragraph": "The twos file reads the same almost every night I open it. I wrote that a two should read almost as fast as a one, but the range puts it a little above that. Uncertainty is down 19% since July 18, and the estimate stands at about 5% per extra two in ten numbers, between 3% and 8%. Consistency, while not proof, does pay the rent."
+    "mysteryCellCount": {
+      "sourceHash": 1810090930,
+      "paragraph": "The mystery cells file reads the same almost every night I open it, and I wrote that missing information has a price. I measured this price, and the data show it is close to free. The charge per ten mystery cells reads between 0% and about 3%, and this reading has stayed put since July 2. I noted it again in my records."
     }
   },
   "model": "qwen2.5-7b-instruct-q4km-local",
-  "generatedAt": "2026-08-16T00:05:05.871Z"
+  "generatedAt": "2026-08-16T04:41:02.152Z"
 }

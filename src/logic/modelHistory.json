@@ -19433,5 +19433,521 @@
         "nRows": 3
       }
     }
+  },
+  {
+    "date": "2026-08-16",
+    "updatedAt": "2026-08-16T04:19:41Z",
+    "method": "brms-ranef",
+    "n_scores": 652,
+    "n_dates": 282,
+    "n_players": 6,
+    "n_eligible": 5,
+    "rmse": 51.42,
+    "bias": -5.04,
+    "diagnostics": "max Rhat = 1.005, min ESS = 1255, divergent = 0/4000",
+    "target": "wormLoad",
+    "candidates": [
+      {
+        "feature": "wormLoad",
+        "mean": 0.0275,
+        "sd": 0.0134,
+        "cv": 0.489
+      },
+      {
+        "feature": "clueShare4",
+        "mean": 0.0946,
+        "sd": 0.0454,
+        "cv": 0.48
+      },
+      {
+        "feature": "wormholePairCount",
+        "mean": 0.0359,
+        "sd": 0.0167,
+        "cv": 0.4662
+      },
+      {
+        "feature": "clueShare2",
+        "mean": 0.0482,
+        "sd": 0.0201,
+        "cv": 0.4175
+      },
+      {
+        "feature": "searchMoves",
+        "mean": 0.011,
+        "sd": 0.0043,
+        "cv": 0.3904
+      },
+      {
+        "feature": "lockedCellCount",
+        "mean": 0.0432,
+        "sd": 0.0165,
+        "cv": 0.3814
+      },
+      {
+        "feature": "compassCellCount",
+        "mean": 0.0469,
+        "sd": 0.0178,
+        "cv": 0.3803
+      },
+      {
+        "feature": "clueShare3",
+        "mean": 0.0988,
+        "sd": 0.0302,
+        "cv": 0.3054
+      },
+      {
+        "feature": "mirrorPairCount",
+        "mean": 0.061,
+        "sd": 0.0186,
+        "cv": 0.304
+      },
+      {
+        "feature": "sonarCellCount",
+        "mean": 0.0683,
+        "sd": 0.0176,
+        "cv": 0.2579
+      },
+      {
+        "feature": "wallEdgeCount",
+        "mean": 0.0023,
+        "sd": 0.0025,
+        "cv": 0.2549
+      },
+      {
+        "feature": "clueShare5plus",
+        "mean": 0.0015,
+        "sd": 0.0018,
+        "cv": 0.1817
+      },
+      {
+        "feature": "patternMoves",
+        "mean": 0.0337,
+        "sd": 0.0058,
+        "cv": 0.1737
+      },
+      {
+        "feature": "mysteryCellCount",
+        "mean": 0.0015,
+        "sd": 0.0015,
+        "cv": 0.1545
+      },
+      {
+        "feature": "liarCellCount",
+        "mean": 0.0014,
+        "sd": 0.0014,
+        "cv": 0.1442
+      },
+      {
+        "feature": "zeroClusterCount",
+        "mean": 0.0011,
+        "sd": 0.0011,
+        "cv": 0.1127
+      },
+      {
+        "feature": "totalMines",
+        "mean": 0.0482,
+        "sd": 0.0025,
+        "cv": 0.0519
+      }
+    ],
+    "contribution": [
+      {
+        "feature": "sonarRequired",
+        "mean": 0.4235,
+        "sd": 0.1121
+      },
+      {
+        "feature": "compassRequired",
+        "mean": 0.3492,
+        "sd": 0.1341
+      },
+      {
+        "feature": "compassClicksSaved",
+        "mean": -0.0434,
+        "sd": 0.036
+      },
+      {
+        "feature": "wormholeRequired",
+        "mean": -0.1443,
+        "sd": 0.1684
+      },
+      {
+        "feature": "liarRequired",
+        "mean": -0.016,
+        "sd": 0.1143
+      },
+      {
+        "feature": "mirrorRequired",
+        "mean": 0.0943,
+        "sd": 0.1742
+      },
+      {
+        "feature": "lockedMineCount",
+        "mean": 0.0699,
+        "sd": 0.0501
+      },
+      {
+        "feature": "lockedNumberCount",
+        "mean": 0.0918,
+        "sd": 0.0253
+      }
+    ],
+    "shapeDeviations": {
+      "shape488": {
+        "mean": 0.4251,
+        "sd": 0.631,
+        "nRows": 17
+      },
+      "shapeHex": {
+        "mean": -0.2192,
+        "sd": 0.3066,
+        "nRows": 73
+      },
+      "shapeCairo": {
+        "mean": -0.269,
+        "sd": 0.3692,
+        "nRows": 38
+      },
+      "shapeFloret": {
+        "mean": 0.4892,
+        "sd": 0.6982,
+        "nRows": 19
+      },
+      "shapeRhombille": {
+        "mean": -0.1896,
+        "sd": 0.8176,
+        "nRows": 21
+      },
+      "shapeDeltoidal": {
+        "mean": 0.4659,
+        "sd": 0.7252,
+        "nRows": 9
+      },
+      "shape488_x_cellCount": {
+        "mean": -0.0002,
+        "sd": 0.0086,
+        "nRows": 17
+      },
+      "shape488_x_totalMines": {
+        "mean": 0.0032,
+        "sd": 0.0183,
+        "nRows": 17
+      },
+      "shape488_x_patternMoves": {
+        "mean": -0.0059,
+        "sd": 0.0908,
+        "nRows": 6
+      },
+      "shape488_x_searchMoves": {
+        "mean": 0.0433,
+        "sd": 0.0812,
+        "nRows": 2
+      },
+      "shape488_x_wallEdgeCount": {
+        "mean": -0.0811,
+        "sd": 0.2306,
+        "nRows": 3
+      },
+      "shape488_x_zeroClusterCount": {
+        "mean": 0.0309,
+        "sd": 0.0638,
+        "nRows": 17
+      },
+      "shape488_x_mysteryCellCount": {
+        "mean": -0.0494,
+        "sd": 0.4468,
+        "nRows": 3
+      },
+      "shape488_x_liarCellCount": {
+        "mean": 0.002,
+        "sd": 0.4923,
+        "nRows": 2
+      },
+      "shapeHex_x_cellCount": {
+        "mean": -0.0106,
+        "sd": 0.0044,
+        "nRows": 73
+      },
+      "shapeHex_x_totalMines": {
+        "mean": 0.0524,
+        "sd": 0.0113,
+        "nRows": 73
+      },
+      "shapeHex_x_patternMoves": {
+        "mean": 0.0466,
+        "sd": 0.1458,
+        "nRows": 1
+      },
+      "shapeHex_x_searchMoves": {
+        "mean": -0.0136,
+        "sd": 0.2627,
+        "nRows": 5
+      },
+      "shapeHex_x_wallEdgeCount": {
+        "mean": -0.0038,
+        "sd": 0.0159,
+        "nRows": 16
+      },
+      "shapeHex_x_zeroClusterCount": {
+        "mean": 0.0151,
+        "sd": 0.0417,
+        "nRows": 73
+      },
+      "shapeHex_x_mysteryCellCount": {
+        "mean": -0.0071,
+        "sd": 0.095,
+        "nRows": 13
+      },
+      "shapeHex_x_liarCellCount": {
+        "mean": 0.2734,
+        "sd": 0.2839,
+        "nRows": 5
+      },
+      "shapeHex_x_lockedCellCount": {
+        "mean": 0.1116,
+        "sd": 0.0601,
+        "nRows": 9
+      },
+      "shapeHex_x_wormholePairCount": {
+        "mean": -0.0676,
+        "sd": 0.0752,
+        "nRows": 8
+      },
+      "shapeHex_x_mirrorPairCount": {
+        "mean": 0.0711,
+        "sd": 0.1636,
+        "nRows": 2
+      },
+      "shapeHex_x_sonarCellCount": {
+        "mean": -0.0559,
+        "sd": 0.0774,
+        "nRows": 6
+      },
+      "shapeHex_x_compassCellCount": {
+        "mean": 0.0161,
+        "sd": 0.0611,
+        "nRows": 7
+      },
+      "shapeHex_x_wormLoad": {
+        "mean": 0.3186,
+        "sd": 0.1552,
+        "nRows": 12
+      },
+      "shapeCairo_x_cellCount": {
+        "mean": 0.0191,
+        "sd": 0.0087,
+        "nRows": 38
+      },
+      "shapeCairo_x_totalMines": {
+        "mean": -0.0284,
+        "sd": 0.0223,
+        "nRows": 38
+      },
+      "shapeCairo_x_patternMoves": {
+        "mean": 0.0294,
+        "sd": 0.047,
+        "nRows": 18
+      },
+      "shapeCairo_x_searchMoves": {
+        "mean": 0.0279,
+        "sd": 0.0339,
+        "nRows": 12
+      },
+      "shapeCairo_x_zeroClusterCount": {
+        "mean": -0.0497,
+        "sd": 0.0691,
+        "nRows": 38
+      },
+      "shapeCairo_x_mysteryCellCount": {
+        "mean": 0.0264,
+        "sd": 0.2893,
+        "nRows": 2
+      },
+      "shapeCairo_x_liarCellCount": {
+        "mean": 0.0721,
+        "sd": 0.1275,
+        "nRows": 8
+      },
+      "shapeCairo_x_wormholePairCount": {
+        "mean": 0.0801,
+        "sd": 0.116,
+        "nRows": 12
+      },
+      "shapeCairo_x_mirrorPairCount": {
+        "mean": -0.0328,
+        "sd": 0.1005,
+        "nRows": 8
+      },
+      "shapeCairo_x_sonarCellCount": {
+        "mean": -0.1547,
+        "sd": 0.075,
+        "nRows": 6
+      },
+      "shapeCairo_x_wormLoad": {
+        "mean": 0.0629,
+        "sd": 0.1151,
+        "nRows": 5
+      },
+      "shapeFloret_x_cellCount": {
+        "mean": -0.0028,
+        "sd": 0.0117,
+        "nRows": 19
+      },
+      "shapeFloret_x_totalMines": {
+        "mean": 0.0149,
+        "sd": 0.0247,
+        "nRows": 19
+      },
+      "shapeFloret_x_patternMoves": {
+        "mean": 0.0916,
+        "sd": 0.0543,
+        "nRows": 12
+      },
+      "shapeFloret_x_wallEdgeCount": {
+        "mean": -0.0157,
+        "sd": 0.0511,
+        "nRows": 2
+      },
+      "shapeFloret_x_zeroClusterCount": {
+        "mean": 0.0285,
+        "sd": 0.303,
+        "nRows": 19
+      },
+      "shapeFloret_x_mysteryCellCount": {
+        "mean": 0.0972,
+        "sd": 0.3623,
+        "nRows": 1
+      },
+      "shapeFloret_x_lockedCellCount": {
+        "mean": 0.1465,
+        "sd": 0.3053,
+        "nRows": 4
+      },
+      "shapeFloret_x_mirrorPairCount": {
+        "mean": 0.1005,
+        "sd": 0.1056,
+        "nRows": 2
+      },
+      "shapeFloret_x_sonarCellCount": {
+        "mean": -0.0969,
+        "sd": 0.3083,
+        "nRows": 2
+      },
+      "shapeFloret_x_compassCellCount": {
+        "mean": 0.0965,
+        "sd": 0.3087,
+        "nRows": 4
+      },
+      "shapeFloret_x_wormLoad": {
+        "mean": -0.0117,
+        "sd": 0.3016,
+        "nRows": 2
+      },
+      "shapeRhombille_x_cellCount": {
+        "mean": 0.0736,
+        "sd": 0.0333,
+        "nRows": 21
+      },
+      "shapeRhombille_x_totalMines": {
+        "mean": -0.2749,
+        "sd": 0.1356,
+        "nRows": 21
+      },
+      "shapeRhombille_x_patternMoves": {
+        "mean": 0.2275,
+        "sd": 0.1152,
+        "nRows": 4
+      },
+      "shapeRhombille_x_searchMoves": {
+        "mean": -0.0412,
+        "sd": 0.1565,
+        "nRows": 3
+      },
+      "shapeRhombille_x_wallEdgeCount": {
+        "mean": -0.2742,
+        "sd": 0.3181,
+        "nRows": 1
+      },
+      "shapeRhombille_x_zeroClusterCount": {
+        "mean": 0.2486,
+        "sd": 0.1848,
+        "nRows": 21
+      },
+      "shapeRhombille_x_liarCellCount": {
+        "mean": -0.1805,
+        "sd": 0.4332,
+        "nRows": 4
+      },
+      "shapeRhombille_x_lockedCellCount": {
+        "mean": -0.2073,
+        "sd": 0.4637,
+        "nRows": 3
+      },
+      "shapeRhombille_x_wormholePairCount": {
+        "mean": 0.474,
+        "sd": 0.3543,
+        "nRows": 4
+      },
+      "shapeRhombille_x_mirrorPairCount": {
+        "mean": -0.3275,
+        "sd": 0.3376,
+        "nRows": 5
+      },
+      "shapeRhombille_x_sonarCellCount": {
+        "mean": -0.2221,
+        "sd": 0.433,
+        "nRows": 2
+      },
+      "shapeRhombille_x_compassCellCount": {
+        "mean": -0.4279,
+        "sd": 0.1357,
+        "nRows": 6
+      },
+      "shapeRhombille_x_wormLoad": {
+        "mean": 0.1804,
+        "sd": 0.147,
+        "nRows": 7
+      },
+      "shapeDeltoidal_x_cellCount": {
+        "mean": 0.001,
+        "sd": 0.0212,
+        "nRows": 9
+      },
+      "shapeDeltoidal_x_totalMines": {
+        "mean": 0.0668,
+        "sd": 0.0964,
+        "nRows": 9
+      },
+      "shapeDeltoidal_x_patternMoves": {
+        "mean": -0.0295,
+        "sd": 0.1172,
+        "nRows": 8
+      },
+      "shapeDeltoidal_x_searchMoves": {
+        "mean": 0.0991,
+        "sd": 0.1238,
+        "nRows": 5
+      },
+      "shapeDeltoidal_x_zeroClusterCount": {
+        "mean": -0.0139,
+        "sd": 0.4761,
+        "nRows": 9
+      },
+      "shapeDeltoidal_x_wormholePairCount": {
+        "mean": -0.275,
+        "sd": 0.1567,
+        "nRows": 4
+      },
+      "shapeDeltoidal_x_sonarCellCount": {
+        "mean": 0.0232,
+        "sd": 0.3951,
+        "nRows": 3
+      },
+      "shapeDeltoidal_x_compassCellCount": {
+        "mean": 0.0174,
+        "sd": 0.3215,
+        "nRows": 3
+      }
+    }
   }
 ]
