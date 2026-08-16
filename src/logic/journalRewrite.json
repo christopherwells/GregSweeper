@@ -1,28 +1,28 @@
 {
   "format": "journal-rewrite-v2",
-  "date": "2026-08-14",
+  "date": "2026-08-15",
   "entries": {
-    "clueShare2": {
-      "sourceHash": 2865860664,
-      "paragraph": "The twos numbers have stopped surprising me, though I keep checking anyway. I wrote that a two should read almost as fast as a one, but the range puts it a little above that. I cannot yet split the twos from the boards they sit on. The band has barely moved since Jul 18. Each extra two in ten numbers adds about 5% to your time, likely between 2% and 8%. The same answer came back again, and I’m listening."
-    },
     "patternMoves": {
-      "sourceHash": 3355290830,
-      "paragraph": "Back into the pattern reasoning file, I found that the number I left there isn't the number I discovered. The parked estimate moved from about 11% per ten pattern reads on Jul 13 to about 29% now. The cost comes to about 29% per ten pattern reads, with a band running from 21% to 38%. I wrote that a practiced read should cost seconds, not tens of seconds, and the data agree: the effect is real but small. I don't like surprises in closed drawers."
+      "sourceHash": 4066037041,
+      "paragraph": "Back into the pattern reasoning file, the number I left there isn’t the number I found. On July 13, this file read about 11% per ten pattern reads, but now it reads about 35%. The cost per ten pattern reads runs about 35%, with a floor around 26% and a ceiling around 44%. I wrote that a practiced read should cost seconds, not tens of seconds, and the data agree: the effect is real and small. A number that moves while nobody feeds it has my full attention."
+    },
+    "sonarCellCount": {
+      "sourceHash": 2990967426,
+      "paragraph": "I closed the sonar file, and it moved while I wasn’t looking. On study day, it read about 105% per ten sonar cells, likely between 69% and 149%. On Jul 2, this file read about 37% per ten sonar cells. It reads about 105% now, and I don’t like surprises in closed drawers."
     },
     "wormholePairCount": {
-      "sourceHash": 3765257146,
-      "paragraph": "The wormholes file is doing the thing measurement is not supposed to do. I predicted that splitting one number across two places would slow the reading down, but it does the opposite; instead, it speeds it up. More plays came in and my uncertainty went up by about 872%, which is backwards from how measurement is supposed to go. Ten wormhole pairs add about 43% to your time, likely between 20% and 70%. Instruments drift, so do estimates. The notebook is the record."
+      "sourceHash": 2824690106,
+      "paragraph": "The wormholes numbers moved the wrong way, and I want that on the record. Since July 2, the spread has grown by 867%, and I recorded it as is. The estimate stands at about 44% per ten wormhole pairs, with a range between 21% and 71%. I predicted that splitting one number across two places would slow the reading down, and it does. Backwards results get front-page space in this notebook."
     },
-    "mirrorPairCount": {
-      "sourceHash": 1905671711,
-      "paragraph": "I opened the mirrors file expecting progress and found the opposite. Ten mirror pairs add about 46% to your time, likely between 23% and 74%. Since July 2, the band has grown 63%, which I noted in ink. In this file, I wrote that a player who spots the pair should lose almost no time. However, the top of the range does not read as almost no time. The Should is on notice, and wider is still an answer, though not the one I ordered."
+    "liarCellCount": {
+      "sourceHash": 2935640586,
+      "paragraph": "I closed the liar cells file on Jun 28. The data presented two possibilities: poison, or a rounding error. The data picked the second. A liar barely moves the clock. The study covered ten study days, from Apr 22 to Jun 28. Across ten liar cells, the cost reads as somewhere between 0% and about 3%. Closed files make room for open ones."
     },
-    "compassCellCount": {
-      "sourceHash": 4105739974,
-      "paragraph": "The compass file stays open on purpose, and my current read is about 43% per ten compass cells, likely between 19% and 71%. The range has not moved, and I wrote that I couldn’t tell whether players read the arrow fast or stop to puzzle over it. So far, neither can the model. There’s no clever move here, just patience."
+    "clueShare2": {
+      "sourceHash": 1987787928,
+      "paragraph": "The twos file reads the same almost every night I open it. I wrote that a two should read almost as fast as a one, but the range puts it a little above that. Uncertainty is down 19% since July 18, and the estimate stands at about 5% per extra two in ten numbers, between 3% and 8%. Consistency, while not proof, does pay the rent."
     }
   },
   "model": "qwen2.5-7b-instruct-q4km-local",
-  "generatedAt": "2026-08-14T00:41:54.909Z"
+  "generatedAt": "2026-08-16T00:05:05.871Z"
 }
