@@ -317,12 +317,21 @@ test('GOLDEN: the first endless block is fixed', () => {
   // search, not a re-shipped failure. The zone's PLAY path is unaffected
   // either way — it deals the pre-generated library, where rect holds 81
   // boards; this pool is the fallback braid behind it.
+  // Moved on 2026-08-16 by the first match-row fit: 159 Challenge rows
+  // crossed MATCH_FIT_THRESHOLD and the re-priced ENDLESS_POOL lost 22
+  // entries under the 400s floor, every hex among them (the deepest hex
+  // spec in the whole feature store prices 369s under this model). The
+  // migration also exposed a mover bug, since fixed: an endless entry
+  // migrating to the ladder landed on a face the ladder body already held
+  // and shipped as a duplicate row. A 73-entry endless deck deals a
+  // different five, hex-less until a spec search finds hex past the floor
+  // under the new equations or the model moves again.
   assert.deepEqual(got, [
+    'floret:120c:30m:[mystery+locked+sonar]',
     '4.8.8:98c:34m:[liar+mirror+sonar]',
-    'deltoidal:36c:13m:[locked]',
-    'floret:96c:31m:[mystery+worm]',
+    'deltoidal:36c:13m:[compass]',
     'rhombille:30c:10m:[locked+mirror+sonar]',
-    'hex:110c:38m:[walls+sonar]',
+    'cairo:110c:16m:[liar+sonar+compass]',
   ]);
 
 
