@@ -289,16 +289,40 @@ export function subscribeMatch(matchId, callback) {
   if (!matchId || typeof callback !== 'function') return () => {};
   let ref = null;
   let handler = null;
-  try {
-    ref = db().ref(`matches/${matchId}`);
-    handler = ref.on('value', (snap) => {
-      try { callback(snap.val()); } catch (err) { reportCaughtError('match-subscribe-cb', err); }
-    }, () => { /* permission or network drop: the panel keeps its last render */ });
-  } catch (err) {
-    reportCaughtError('match-subscribe', err);
-    return () => {};
-  }
-  return () => { try { ref.off('value', handler); } catch { /* already gone */ } };
+  let stopped = false;
+  let retries = 0;
+  let retryTimer = null;
+  // An error on a compat `on('value')` CANCELS the listener for good, and
+  // the old comment here ("the panel keeps its last render") was that freeze
+  // described approvingly: a phone sleeping mid-match or an auth-token
+  // refresh race killed the feed silently and the final report never moved
+  // again (his report, 2026-08-16). Re-attach on a bounded backoff; past the
+  // last retry the surface keeps its paint and any reopen re-subscribes
+  // fresh, so the failure mode is stale-until-touched, never stale-forever
+  // with no way back.
+  const RETRY_MS = [5000, 15000, 45000];
+  const attach = () => {
+    if (stopped) return;
+    try {
+      ref = db().ref(`matches/${matchId}`);
+      handler = ref.on('value', (snap) => {
+        retries = 0;
+        try { callback(snap.val()); } catch (err) { reportCaughtError('match-subscribe-cb', err); }
+      }, () => {
+        if (stopped || retries >= RETRY_MS.length) return;
+        retryTimer = setTimeout(attach, RETRY_MS[retries]);
+        retries += 1;
+      });
+    } catch (err) {
+      reportCaughtError('match-subscribe', err);
+    }
+  };
+  attach();
+  return () => {
+    stopped = true;
+    if (retryTimer) clearTimeout(retryTimer);
+    try { if (ref && handler) ref.off('value', handler); } catch { /* already gone */ }
+  };
 }
 
 // ── Friend invites ──────────────────────────────────────────────────────

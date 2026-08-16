@@ -93,6 +93,16 @@ test('the Challenge card opens the setup sheet, and its supply line is real', as
   expect(narrowed).toBeGreaterThan(0);
   expect(narrowed).toBeLessThan(all);
 
+  // The difficulty chips (2026-08-16) must be wired to the same live count:
+  // Mean is a strict subset of Any, so the number can only shrink or hold.
+  const diffChips = page.locator('#match-difficulty .match-chip');
+  await expect(diffChips).toHaveCount(4);
+  await diffChips.filter({ hasText: 'Mean' }).click();
+  await expect(supply).toHaveText(/\d+ boards fit these rules/);
+  const withDiff = Number((await supply.textContent()).match(/(\d+)/)[1]);
+  expect(withDiff).toBeLessThanOrEqual(narrowed);
+  await expect(diffChips.filter({ hasText: 'Mean' })).toHaveAttribute('aria-pressed', 'true');
+
   expect(errors, `console errors: ${errors.join(' | ')}`).toHaveLength(0);
 });
 

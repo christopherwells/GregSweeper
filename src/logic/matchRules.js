@@ -104,6 +104,57 @@ export function densityBandOf(mines, cells) {
   return MATCH_DENSITY_BANDS[MATCH_DENSITY_BANDS.length - 1].key;
 }
 
+// Difficulty in seconds of thinking per cell (his ruling 2026-08-16, labels
+// his). par/cells is the ladder's own currency, so the cutoffs anchor to the
+// Climb's ramp rather than to this library's happenstance: Gentle is the
+// early-Climb pace, Mean is its upper blocks. Measured at adoption the
+// library split roughly 25/48/27 across the three. Deliberately NOT part of
+// the corner key: shards and seen-cycles stay untouched, rows filter on
+// their own stored par and cells, and only the summary carries a per-corner
+// split so the sheet's count stays exact.
+export const MATCH_DIFFICULTY_BANDS = [
+  { key: 'gentle', label: 'Gentle', max: 1.0 },
+  { key: 'standard', label: 'Standard', max: 2.0 },
+  { key: 'mean', label: 'Mean', max: Infinity },
+];
+
+export function difficultyBandOf(par, cells) {
+  const ppc = cells > 0 ? par / cells : 0;
+  for (const b of MATCH_DIFFICULTY_BANDS) { if (ppc < b.max) return b.key; }
+  return MATCH_DIFFICULTY_BANDS[MATCH_DIFFICULTY_BANDS.length - 1].key;
+}
+
+/**
+ * Whether a list of totals needs its tenths (his ruling 2026-08-16: "cut the
+ * tenth of a second unless it actually matters"). It matters exactly when
+ * two totals sit inside one second of each other, where the whole-second
+ * form would show a tie that is not one.
+ */
+export function needsTenths(totals) {
+  const t = (totals || []).filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
+  for (let i = 1; i < t.length; i++) { if (t[i] - t[i - 1] < 1) return true; }
+  return false;
+}
+
+/**
+ * A total as a clock: m:ss past a minute, plain seconds under it, tenths
+ * only when the caller says they matter. Never negative, never NaN text.
+ */
+export function fmtClock(sec, withTenths = false) {
+  if (!Number.isFinite(sec) || sec < 0) return '';
+  // Round FIRST at the precision being shown, so 59.96 becomes 60 before
+  // the minute split and carries to 1:00 instead of printing 60s or 1:60.
+  const v = withTenths ? Math.round(sec * 10) / 10 : Math.round(sec);
+  if (v >= 60) {
+    const m = Math.floor(v / 60);
+    const rem = withTenths ? Math.round((v - m * 60) * 10) / 10 : v - m * 60;
+    const s = withTenths ? rem.toFixed(1) : String(rem);
+    const [whole, tenth] = s.split('.');
+    return `${m}:${whole.padStart(2, '0')}${tenth ? `.${tenth}` : ''}`;
+  }
+  return withTenths ? `${v.toFixed(1)}s` : `${v}s`;
+}
+
 /** "~1 in 4", the sheet's whole density vocabulary. */
 export function densityPhrase(mines, cells) {
   if (!(mines > 0) || !(cells > 0)) return '';
@@ -161,6 +212,7 @@ export function defaultMatchRules(unlocks) {
     mods: unlocks.mods.slice(),
     time: 'any',
     density: 'any',
+    difficulty: 'any',
   };
 }
 
@@ -187,12 +239,15 @@ export function sanitizeMatchRules(raw, unlocks) {
     ? raw.mods.filter((m) => modSet.has(m)) : def.mods;
   const timeOk = raw.time === 'any' || MATCH_TIME_BANDS.some((b) => b.key === raw.time);
   const densOk = raw.density === 'any' || MATCH_DENSITY_BANDS.some((b) => b.key === raw.density);
+  const diffOk = raw.difficulty === undefined || raw.difficulty === 'any'
+    || MATCH_DIFFICULTY_BANDS.some((b) => b.key === raw.difficulty);
   return {
     count,
     shapes: shapes.length ? shapes : def.shapes,
     mods,
     time: timeOk ? raw.time : 'any',
     density: densOk ? raw.density : 'any',
+    difficulty: diffOk && raw.difficulty ? raw.difficulty : 'any',
   };
 }
 
@@ -478,12 +533,19 @@ export function matchCornerKey(row) {
  */
 export function buildMatchCorners(rows) {
   const n = new Map();
+  const diffIdx = new Map(MATCH_DIFFICULTY_BANDS.map((b, i) => [b.key, i]));
   for (const r of rows || []) {
     const k = JSON.stringify(matchCornerKey(r));
-    n.set(k, (n.get(k) || 0) + 1);
+    const rec = n.get(k) || { count: 0, diff: MATCH_DIFFICULTY_BANDS.map(() => 0) };
+    rec.count += 1;
+    // The corner KEY deliberately excludes difficulty (shards and seen-cycles
+    // must not move); the summary carries a per-corner split instead so the
+    // sheet's count under a difficulty chip stays exact.
+    rec.diff[diffIdx.get(difficultyBandOf(r.par, r.cells))] += 1;
+    n.set(k, rec);
   }
   return [...n.entries()]
-    .map(([k, count]) => [...JSON.parse(k), count])
+    .map(([k, rec]) => [...JSON.parse(k), rec.count, rec.diff])
     .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)
       || (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0)
       || (a[2] < b[2] ? -1 : a[2] > b[2] ? 1 : 0)
@@ -499,11 +561,20 @@ export function parseMatchSummary(summary) {
   const corners = [];
   for (const c of summary.corners) {
     if (!Array.isArray(c) || c.length < 5) return null;
-    const [shape, mods, time, density, count] = c;
+    const [shape, mods, time, density, count, diff] = c;
     if (typeof shape !== 'string' || typeof mods !== 'string') return null;
     if (typeof time !== 'string' || typeof density !== 'string') return null;
     if (!Number.isFinite(count) || count < 0) return null;
-    corners.push({ shape, mods: mods ? mods.split('+') : [], time, density, count });
+    // The difficulty split is OPTIONAL: a summary cached before it shipped
+    // still parses and still deals; a difficulty-filtered count then falls
+    // back to the whole corner, overstating gracefully rather than refusing.
+    const diffOk = Array.isArray(diff)
+      && diff.length === MATCH_DIFFICULTY_BANDS.length
+      && diff.every((x) => Number.isFinite(x) && x >= 0);
+    corners.push({
+      shape, mods: mods ? mods.split('+') : [], time, density, count,
+      diff: diffOk ? diff.slice() : null,
+    });
   }
   return corners;
 }
@@ -520,13 +591,16 @@ export function parseMatchSummary(summary) {
 export function countEligibleCorners(corners, rules) {
   const shapes = new Set(rules.shapes || []);
   const allowed = new Set(rules.mods || []);
+  const wantDiff = rules.difficulty && rules.difficulty !== 'any'
+    ? MATCH_DIFFICULTY_BANDS.findIndex((b) => b.key === rules.difficulty)
+    : -1;
   let n = 0;
   for (const c of corners || []) {
     if (!shapes.has(c.shape)) continue;
     if (c.mods.some((m) => !allowed.has(m))) continue;
     if (rules.time !== 'any' && c.time !== rules.time) continue;
     if (rules.density !== 'any' && c.density !== rules.density) continue;
-    n += c.count;
+    n += wantDiff >= 0 && c.diff ? c.diff[wantDiff] : c.count;
   }
   return n;
 }
@@ -539,6 +613,10 @@ export function boardMatchesRules(row, rules) {
   for (const m of row.mods) { if (!allowed.has(m)) return false; }
   if (rules.time !== 'any' && timeBandOf(row.par) !== rules.time) return false;
   if (rules.density !== 'any' && densityBandOf(row.mines, row.cells) !== rules.density) return false;
+  // `difficulty` may be absent on rules stored before it shipped; absent
+  // means 'any', the way an unknown state reads as pending elsewhere.
+  if (rules.difficulty && rules.difficulty !== 'any'
+    && difficultyBandOf(row.par, row.cells) !== rules.difficulty) return false;
   return true;
 }
 

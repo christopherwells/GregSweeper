@@ -425,3 +425,64 @@ test('resolveMatchPicks survives a page that never arrived', () => {
   assert.deepEqual(resolveMatchPicks([], new Map()), { entries: [], keys: [], missing: [] });
   assert.deepEqual(resolveMatchPicks(null, null), { entries: [], keys: [], missing: [] });
 });
+
+// ── The difficulty axis (his ruling 2026-08-16: Gentle/Standard/Mean at
+// 1.0/2.0 seconds per cell, ppc being the ladder's own currency) ─────────
+
+import {
+  MATCH_DIFFICULTY_BANDS, difficultyBandOf, boardMatchesRules as bmr,
+  sanitizeMatchRules as smr, buildMatchCorners as bmc, parseMatchSummary as pms,
+  countEligibleCorners as cec, needsTenths, fmtClock,
+} from '../src/logic/matchRules.js';
+
+test('difficultyBandOf cuts at 1.0 and 2.0 seconds per cell', () => {
+  assert.equal(difficultyBandOf(50, 100), 'gentle');
+  assert.equal(difficultyBandOf(100, 100), 'standard', 'the boundary belongs upward');
+  assert.equal(difficultyBandOf(199, 100), 'standard');
+  assert.equal(difficultyBandOf(200, 100), 'mean');
+  assert.equal(MATCH_DIFFICULTY_BANDS.map((b) => b.label).join('/'), 'Gentle/Standard/Mean');
+});
+
+test('rules stored before difficulty shipped read as any, never refuse', () => {
+  const row = { shape: 'rect', mods: [], par: 150, mines: 20, cells: 100 };
+  const legacy = { shapes: ['rect'], mods: [], time: 'any', density: 'any' };
+  assert.equal(bmr(row, legacy), true, 'an absent difficulty is any');
+  const un = { shapes: ['rect'], mods: ['sonar'] };
+  const sane = smr({ ...legacy, difficulty: 'nonsense' }, un);
+  assert.equal(sane.difficulty, 'any', 'garbage degrades, never throws');
+  assert.equal(smr({ ...legacy, difficulty: 'mean' }, un).difficulty, 'mean');
+});
+
+test('the summary difficulty split is exact, and an old summary still parses', () => {
+  // ONE corner (rect, plain, quick, sparse) spanning all three ppc bands:
+  // cells are not corners, so the difficulty spread must come from cell
+  // count at a fixed time band, not from par alone.
+  const rows = [
+    { shape: 'rect', mods: [], par: 100, mines: 12, cells: 120, key: 'a' },
+    { shape: 'rect', mods: [], par: 110, mines: 8, cells: 80, key: 'b' },
+    { shape: 'rect', mods: [], par: 115, mines: 5, cells: 50, key: 'c' },
+  ];
+  const corners = pms({ corners: bmc(rows) });
+  assert.equal(corners.length, 1, 'one corner: same shape, band, and density');
+  assert.deepEqual(corners[0].diff, [1, 1, 1]);
+  const rules = { shapes: ['rect'], mods: [], time: 'any', density: 'any', difficulty: 'mean' };
+  assert.equal(cec(corners, rules), 1, 'the split answers a difficulty filter exactly');
+  // A summary cached before the split shipped: five-element tuples.
+  const old = pms({ corners: [['rect', '', 'quick', 'sparse', 3]] });
+  assert.equal(old[0].diff, null);
+  assert.equal(cec(old, rules), 3,
+    'a stale summary overstates gracefully rather than refusing to count');
+});
+
+test('tenths appear only when a gap is inside one second (his ruling)', () => {
+  assert.equal(needsTenths([372.4, 398.1]), false);
+  assert.equal(needsTenths([372.4, 372.9]), true);
+  assert.equal(needsTenths([372.4]), false);
+  assert.equal(needsTenths([100, 250, 250.4]), true, 'any close pair is enough');
+  assert.equal(fmtClock(372.4), '6:12');
+  assert.equal(fmtClock(372.4, true), '6:12.4');
+  assert.equal(fmtClock(41.23, true), '41.2s');
+  assert.equal(fmtClock(41.23), '41s');
+  assert.equal(fmtClock(59.96), '1:00', 'rounding must carry, never print 0:60');
+  assert.equal(fmtClock(-3), '');
+});

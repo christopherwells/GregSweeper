@@ -31,6 +31,7 @@ import { getGimmickDefs } from '../logic/gimmicks.js';
 import { gimmickSpriteImgHTML, uiSpriteImgHTML } from './spriteLoader.js';
 import {
   MATCH_BOARD_MIN, MATCH_BOARD_MAX, MATCH_TIME_BANDS, MATCH_DENSITY_BANDS,
+  MATCH_DIFFICULTY_BANDS,
   matchUnlocks, matchUnlockLevel, defaultMatchRules, sanitizeMatchRules,
   countEligibleCorners,
 } from '../logic/matchRules.js';
@@ -150,6 +151,18 @@ function renderBands() {
         `<span class="match-chip-label">${b.label}</span>`
         + (phrases[b.key] ? `<span class="match-chip-sub">${phrases[b.key]}</span>` : ''),
         _rules.density === b.key, b.label)).join('');
+  }
+  const diffEl = $('#match-difficulty');
+  if (diffEl) {
+    // Thinking per cell, anchored to the Climb's own ramp (his labels).
+    // The sub speaks in Climb terms because that is the pace a player has
+    // already felt, never in seconds per cell, which nobody plays in.
+    const phrases = { gentle: 'early Climb', standard: 'the middle ramp', mean: 'upper blocks' };
+    diffEl.innerHTML = [{ key: 'any', label: 'Any' }, ...MATCH_DIFFICULTY_BANDS]
+      .map((b) => chipHTML(b.key,
+        `<span class="match-chip-label">${b.label}</span>`
+        + (phrases[b.key] ? `<span class="match-chip-sub">${phrases[b.key]}</span>` : ''),
+        (_rules.difficulty || 'any') === b.key, b.label)).join('');
   }
 }
 
@@ -280,7 +293,8 @@ function wire() {
     modsEl.addEventListener('pointerleave', () => renderModReadout(null));
   }
 
-  for (const [id, field] of [['#match-time', 'time'], ['#match-density', 'density']]) {
+  for (const [id, field] of [['#match-time', 'time'], ['#match-density', 'density'],
+    ['#match-difficulty', 'difficulty']]) {
     const el = $(id);
     if (!el) continue;
     el.addEventListener('click', (e) => {
