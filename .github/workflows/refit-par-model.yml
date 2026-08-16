@@ -380,6 +380,27 @@ jobs:
           echo "        and run node scripts/rewrite-journal-entry.mjs --dry-run locally."
           exit 1
 
+      # THE DRIFT ALARM (2026-08-16). Refit pushes carry no CI (GITHUB_TOKEN
+      # pushes trigger no push workflows), so three consecutive nights of
+      # artifact defects shipped green and reddened main silently until the
+      # next PR's checks named them. This runs the WHOLE unit suite against
+      # exactly what this run just pushed, AFTER the push and the deploy: the
+      # model is never held hostage to an artifact bug, and a red here is the
+      # same red the next PR would have found, a night earlier and pinned to
+      # the run that caused it. The full suite rather than a curated subset,
+      # because a curated list drifts (the refit-push-conflict class). Last
+      # among the tail steps, so a red alarm can never skip a remedy-naming
+      # tail above it.
+      - name: Drift alarms over what this run just pushed
+        if: steps.commit.outputs.pushed == 'true'
+        run: |
+          node --test test/*.test.mjs || {
+            echo "::error::The refit pushed artifacts that fail the drift alarms. The model,"
+            echo "handicaps and libraries are LIVE; main is red until repaired. Each drift"
+            echo "test names its own remedy tool in its failure message above."
+            exit 1
+          }
+
       - name: Notify on failure
         if: failure()
         env:
