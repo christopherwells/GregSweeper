@@ -1,66 +1,61 @@
 {
-  "updatedAt": "2026-08-16T07:17:42Z",
-  "target": "clueShare4",
-  "reason": "highest posterior CV (0.510) excluding last 3 targets",
+  "updatedAt": "2026-08-16T21:55:59Z",
+  "target": "wormholePairCount",
+  "reason": "highest posterior CV (0.457) excluding last 3 targets",
   "lastRevalidationDate": "2026-08-15",
   "recentTargets": [
+    "wormholePairCount",
     "clueShare4",
-    "wormLoad",
-    "mysteryCellCount"
+    "wormLoad"
   ],
   "candidates": [
     {
-      "feature": "clueShare4",
-      "mean": 0.084,
-      "sd": 0.043,
-      "cv": 0.51
-    },
-    {
       "feature": "wormLoad",
-      "mean": 0.026,
+      "mean": 0.027,
       "sd": 0.013,
-      "cv": 0.493
+      "cv": 0.491
     },
     {
       "feature": "wormholePairCount",
-      "mean": 0.035,
+      "mean": 0.038,
       "sd": 0.017,
-      "cv": 0.478
+      "cv": 0.457
+    },
+    {
+      "feature": "clueShare4",
+      "mean": 0.121,
+      "sd": 0.05,
+      "cv": 0.412
     },
     {
       "feature": "clueShare2",
-      "mean": 0.048,
-      "sd": 0.02,
+      "mean": 0.052,
+      "sd": 0.021,
       "cv": 0.41
     },
     {
-      "feature": "searchMoves",
-      "mean": 0.011,
-      "sd": 0.004,
-      "cv": 0.38
+      "feature": "compassCellCount",
+      "mean": 0.049,
+      "sd": 0.019,
+      "cv": 0.393
     }
   ],
   "coverage_targets": [],
   "shape_coverage": [
     {
       "shape": "deltoidal",
-      "n_boards": 5,
-      "deficit_weight": 0.1667
-    },
-    {
-      "shape": "rhombille",
-      "n_boards": 7,
-      "deficit_weight": 0.125
+      "n_boards": 6,
+      "deficit_weight": 0.1429
     },
     {
       "shape": "floret",
-      "n_boards": 11,
-      "deficit_weight": 0.0833
+      "n_boards": 13,
+      "deficit_weight": 0.0714
     },
     {
-      "shape": "4.8.8",
-      "n_boards": 17,
-      "deficit_weight": 0.0556
+      "shape": "rhombille",
+      "n_boards": 18,
+      "deficit_weight": 0.0526
     },
     {
       "shape": "cairo",
@@ -68,9 +63,14 @@
       "deficit_weight": 0.05
     },
     {
+      "shape": "4.8.8",
+      "n_boards": 22,
+      "deficit_weight": 0.0435
+    },
+    {
       "shape": "hex",
-      "n_boards": 31,
-      "deficit_weight": 0.0312
+      "n_boards": 37,
+      "deficit_weight": 0.0263
     },
     {
       "shape": "rect",
