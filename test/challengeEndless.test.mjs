@@ -298,6 +298,14 @@ test('GOLDEN: the first endless block is fixed', () => {
   // left on the generation-tail bar. He ruled Classic out of the live pool
   // until the pre-generated endless lands (see the shape test above); a
   // 20-entry-smaller pool deals a different five.
+  // Moved on 2026-08-16 by the first fit with match rows pooled and the
+  // repair that followed it: rhombille's deviations earned their posteriors
+  // (21 rows) and the whole pool re-priced, the emit and the repricer were
+  // taught to judge admission on the SAME store-grade price (the emit's
+  // cache-price optimism had hex flapping in and out twice in one day), and
+  // his top-decile ruling gave hex (2.3) and rect (1.5) the per-shape
+  // allowances cairo and rhombille already had. Seven shapes, 94 entries, a
+  // different deck, a different five.
   // Moved on 2026-08-11 by Classic's restore: the pre-generated endless
   // landed and six rect entries re-entered under the norm-read harden (see
   // the shape test above), so the deck grew a rect queue and the fair
@@ -327,11 +335,11 @@ test('GOLDEN: the first endless block is fixed', () => {
   // different five, hex-less until a spec search finds hex past the floor
   // under the new equations or the model moves again.
   assert.deepEqual(got, [
-    'floret:120c:30m:[mystery+locked+sonar]',
-    '4.8.8:98c:34m:[liar+mirror+sonar]',
-    'deltoidal:36c:13m:[compass]',
-    'rhombille:30c:10m:[locked+mirror+sonar]',
-    'cairo:110c:16m:[liar+sonar+compass]',
+    '4.8.8:98c:35m:[liar+mystery+mirror]',
+    'deltoidal:54c:14m:[wormhole+mirror+worm]',
+    'floret:84c:27m:[mystery+wormhole+sonar]',
+    'cairo:112c:32m:[sonar+worm]',
+    'rhombille:30c:5m:[]',
   ]);
 
 

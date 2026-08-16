@@ -374,12 +374,21 @@ function reprice() {
     process.exit(1);
   }
 
-  // A migration MOVES a line between the two tables, which a price patch
-  // cannot express, so the table bodies are rebuilt from the priced list
-  // whenever anything moved or was dropped. Rebuilding both bodies rather
-  // than splicing single lines keeps the file's shape exactly what the
-  // emitter produces, and each entry's own constructor text is reused
-  // verbatim, so a spec can never be altered by being moved.
+  // A migration MOVES a line between tables, which a price patch cannot
+  // express, so the table bodies are rebuilt from the priced list whenever
+  // anything moved or was dropped. Rebuilding the bodies rather than
+  // splicing single lines keeps the file's shape exactly what the emitter
+  // produces, and each entry's own constructor text is reused verbatim, so a
+  // spec can never be altered by being moved.
+  //
+  // ALL THREE tables, not two. The migration loop above judges coverage
+  // entries too (they take the ladder's ceiling), but the first cut of this
+  // rebuild only rewrote the ladder and endless bodies: a coverage entry
+  // that migrated was EMITTED into the endless table while its original line
+  // stayed put (the 2026-08-16 disjointness break), and a coverage entry
+  // judged homeless kept shipping at a price the rules refuse (the same
+  // night's four over-ceiling entries). A decision the writer cannot express
+  // is a decision that did not happen.
   if (migrations.length || homeless.length) {
     // CRLF-tolerant on purpose: this repo's checkouts carry \r\n, and a
     // \n-only anchor silently matches nothing, which reads as a corrupt pool
@@ -416,6 +425,18 @@ function reprice() {
     };
     src = replaceTable(src, 'POOL:START', 'POOL:END', body('ladder'));
     src = replaceTable(src, 'ENDLESS:START', 'ENDLESS:END', body('endless'));
+    // The coverage table is DISJOINT from the other two (its own contract
+    // test): a face the final ladder or endless tables ship is dropped here
+    // rather than emitted twice. Challenge draws from the union, so nothing
+    // a player can be dealt is lost by the drop.
+    const shippedElsewhere = new Set(priced
+      .filter((p) => p.finalPool === 'ladder' || p.finalPool === 'endless')
+      .map((p) => specFace(p.e)));
+    const challengeRows = priced
+      .filter((p) => p.finalPool === 'challenge' && !shippedElsewhere.has(specFace(p.e)))
+      .map((p) => `  E(${p.now.toFixed(2)}, ${emitCtor(p.e)}),`)
+      .join(eol);
+    src = replaceTable(src, 'CHALLENGE:START', 'CHALLENGE:END', challengeRows);
   }
 
   fs.writeFileSync(POOL_PATH, src);
@@ -423,6 +444,60 @@ function reprice() {
   console.log(`\nrewrote ${patched} prices in ${path.relative(process.cwd(), POOL_PATH)}`
     + (migrations.length ? `; ${migrations.length} migrated` : '')
     + (homeless.length ? `; ${homeless.length} dropped (${kept} shipped)` : ''));
+
+  // ── Keep the feature store in lockstep with what the file now ships ────
+  //
+  // A homeless drop or a migration changes the shipped set, and the store is
+  // what the next reader reasons about: a stored face the pool no longer
+  // ships is a board it believes in (the --merge path already says so), and
+  // a stale `pool` field contradicts the shipped tables. The first cut left
+  // pruning to the next manual --capture, so every homeless drop orphaned
+  // the store until a human noticed (three faces on 2026-08-15, two more the
+  // next night). Prices are re-derived for the same reason the capture path
+  // re-derives them: the store stamps one model fingerprint, and keeping
+  // yesterday's numbers under today's stamp would be a claim the
+  // faithfulness test reads and refuses.
+  const finalPools = new Map(priced.filter((p) => p.finalPool)
+    .map((p) => [p.face, p.finalPool]));
+  let pruned = 0;
+  for (const face of Object.keys(store.entries)) {
+    if (!finalPools.has(face)) { delete store.entries[face]; pruned++; continue; }
+    const rec = store.entries[face];
+    rec.pool = finalPools.get(face);
+    rec.ppc = (predictPar(rec.features) * scale) / rec.cells;
+  }
+  store.model = modelFingerprint();
+  fs.writeFileSync(FEATURES_PATH, JSON.stringify(store));
+  if (pruned) console.log(`pruned ${pruned} store entries the pool no longer ships`);
+
+  // ── Write the measured truth back to the SEARCH CACHE for evicted faces ─
+  //
+  // A homeless face leaves the pool and the prune above forgets it, but the
+  // search cache still carries the optimistic candidate price that admitted
+  // it, so the next emit re-picks the same face and the next reprice evicts
+  // it again: hex circled the endless pool exactly that way on 2026-08-16.
+  // The store's 16-seed price is the truth the eviction was judged on, so it
+  // replaces the cache's number (in the cache's own pre-scale unit), and the
+  // corrected face simply stops being a candidate.
+  if (homeless.length) {
+    const CACHE_PATH = path.join(__dirname, 'data', 'spec-search-cache.json');
+    try {
+      const cache = JSON.parse(fs.readFileSync(CACHE_PATH, 'utf8'));
+      let corrected = 0;
+      for (const p of priced) {
+        if (p.finalPool !== null) continue;
+        const c = cache[p.face];
+        if (!c) continue;
+        c.ppc = p.now / scale;
+        c.medPar = p.par / scale;
+        corrected++;
+      }
+      if (corrected) {
+        fs.writeFileSync(CACHE_PATH, JSON.stringify(cache, null, 0));
+        console.log(`corrected ${corrected} search-cache prices for evicted faces`);
+      }
+    } catch { /* no cache in this checkout: nothing to correct */ }
+  }
 }
 
 /** The constructor call as write-challenge-pool emits it, for identity matching. */

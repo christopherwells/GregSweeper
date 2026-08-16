@@ -209,6 +209,17 @@ export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
   // still learning the lattice. When 3D Cubes' per-cell rate rises on real
   // data this entry should shrink toward the shared floor and eventually go.
   rhombille: 2.2,
+  // HONEYCOMB joined on 2026-08-16, his top-decile ruling extended to any
+  // shape the model prices below the shared floor. The first fit with match
+  // rows pooled cheapened hex 10.5% in one night, and its restored endless
+  // entries fell back out for the second time in 24 hours; fresh heavy-stack
+  // searches measured under 3.5 at store grade too, so on the shared floor
+  // the zone holds no Honeycomb at all, which his every-tiling ruling
+  // forbids. Its 90th percentile is 2.34 over 3,425 measured specs; 2.3 is
+  // the top decile, the same bar the two entries above were set at. Same
+  // provisional reading: when hex's rate rises on real data this entry
+  // should shrink toward the shared floor.
+  hex: 2.3,
   // CLASSIC joined on 2026-08-10, and it is the one case that is not about a
   // shape being under-priced while players learn it. Rect's constraints just
   // conflict: it prices so gently that reaching 3.5 s/cell takes 130-156
@@ -224,10 +235,18 @@ export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
   // THAT BAR WAS THE MISTAKE, NOT THE FLOOR, and the allowance came straight
   // back out. Under his 2.5s peak allowance (see GEN_CAP_PEAK_MS) three of the
   // five are fine: their medians are 241-447ms and only their tails reach past
-  // two seconds. Classic reaches the SHARED floor, so an entry here would do
-  // nothing but let easier Classic boards into the endless zone than the
-  // summit intends. Left as prose rather than a number on purpose: this is
-  // the one shape whose absence from the zone is a measurement artifact.
+  // two seconds. For a while Classic reached the SHARED floor and this stayed
+  // prose on purpose, the one shape whose absence was a measurement artifact.
+  //
+  // That ended on 2026-08-16: the first fit with match rows pooled moved the
+  // equations enough that the five 3.5-clearing rect boards no longer exist
+  // (the whole shape's 95th percentile sits at 1.58 over 14,725 measured
+  // specs), so Classic was priced out of the zone entirely and his top-decile
+  // ruling now covers it like the others. Its 90th percentile is 1.45; 1.5 is
+  // the top decile. Rect prices gently BECAUSE its boards are familiar, which
+  // is exactly the provisional reading above: as real play data accumulates
+  // this entry should shrink toward the shared floor.
+  rect: 1.5,
 });
 
 /** The admission floor a shape is held to. */

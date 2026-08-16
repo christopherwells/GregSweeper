@@ -588,6 +588,26 @@ function emitPool(cache, { floorFn, ceilFn, perSlice, slices, maxPerShape = Infi
   if (preFloor) {
     console.error(`// NOTE: ${preFloor} cached entries fail the deduction floor on their stored median draw and are excluded.`);
   }
+  // THE FEATURE STORE'S PRICE WINS WHERE A FACE HAS ONE (2026-08-16). The
+  // emit used to judge admission on the cache's own median while the
+  // repricer judges the shipped pool on the store's, and the two are
+  // different draw sets (10-seed search vs the store's 16-seed capture): a
+  // boundary face admitted here on the cache's number was evicted hours
+  // later on the store's, and hex flapped out of the endless pool twice in
+  // one day. The store is authoritative by the repricer's own doctrine, so
+  // a candidate the store has measured is judged at the store's price and
+  // can never be admitted only to be evicted. Faces the store has never
+  // held keep the cache price; the first merge-capture measures them, and
+  // an evicted one gets its cache price corrected by the repricer so the
+  // next emit does not re-pick it.
+  let storePrices = new Map();
+  try {
+    const store = JSON.parse(fs.readFileSync(
+      path.join(__dirname, 'data', 'pool-features.json'), 'utf8'));
+    storePrices = new Map(Object.entries(store.entries)
+      .map(([face, rec]) => [face, rec]));
+  } catch { /* no store yet: the cache's own prices stand */ }
+
   const ok = Object.values(cache)
     .filter((e) => e.ok && legal.get(e.shape)?.has(`${e.a}x${e.b}`))
     .filter(clearsDeductionFloor)
@@ -595,6 +615,12 @@ function emitPool(cache, { floorFn, ceilFn, perSlice, slices, maxPerShape = Infi
     // admission floor, the par ceiling, and the ppc that ships — is on the
     // cohort's yardstick from this line on.
     .map((e) => ({ ...e, ppc: e.ppc * SCALE, medPar: e.medPar * SCALE }))
+    .map((e) => {
+      const rec = storePrices.get(cacheFace(e));
+      // rec.ppc is already in ladder seconds (the store derives it through
+      // the same referenceScale), so it replaces the scaled cache numbers.
+      return rec ? { ...e, ppc: rec.ppc, medPar: rec.ppc * rec.cells } : e;
+    })
     .filter((e) => e.ppc >= floorFn(e.shape) && e.medPar <= ceilFn(e.shape) * PAR_CEILING_MARGIN)
     // Excluded BEFORE the slices rather than after them, so an excluded face
     // does not silently consume a shape's per-slice allowance on its way to
