@@ -1017,7 +1017,15 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
    clip-paths, where an outline or border would be clipped away. Tokens let a
    theme world revoice it; the fallbacks are the shipped default. */
 .cell.region-highlight {
-  background: var(--region-highlight-bg, rgba(38, 180, 222, 0.42)) !important;
+  /* A wash OVER the cell's own background, never a replacement: the old
+     background-color swap erased the revealed/hidden distinction across the
+     whole region and read as one solid slab (his report 2026-08-16, "it
+     sort of flashbangs you"). background-image layers on top, so revealed
+     stays revealed under the tint, and the per-cell inset ring keeps every
+     edge readable inside the region. Both are clip-path-safe. */
+  background-image: linear-gradient(var(--region-highlight-bg, rgba(38, 180, 222, 0.26)),
+    var(--region-highlight-bg, rgba(38, 180, 222, 0.26))) !important;
+  box-shadow: inset 0 0 0 2px var(--region-cell-ring, rgba(38, 180, 222, 0.6)) !important;
 }
 .cell.region-source {
   box-shadow: inset 0 0 0 3px var(--region-source-ring, rgba(255, 143, 32, 0.95)) !important;
@@ -8266,3 +8274,7 @@ pre.diagnostics-pre {
 .stat-margin-ahead { fill: var(--color-num-2, #2e7d32); }
 .stat-margin-behind { fill: var(--color-mine, #e53935); }
 .stat-margin-even { fill: var(--color-text-secondary, #888); }
+
+/* The daily's standing line (his ask 2026-08-16): where you sit in the
+   live field, one quiet line under the par comparison. */
+.gameover-standing { font-size: 13px; color: var(--color-text-secondary, #888); margin: 2px 0 0; }
