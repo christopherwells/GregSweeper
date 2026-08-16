@@ -297,9 +297,9 @@
    "lastRun": 8
   },
   "rect||long|standard": {
-   "fails": 4,
-   "attempts": 4,
-   "lastRun": 8
+   "fails": 0,
+   "attempts": 7,
+   "lastRun": 11
   },
   "hex|liar|short|sparse": {
    "fails": 4,
@@ -3012,9 +3012,9 @@
    "lastRun": 8
   },
   "rect|sonar|short|sparse": {
-   "fails": 2,
-   "attempts": 2,
-   "lastRun": 2
+   "fails": 3,
+   "attempts": 3,
+   "lastRun": 11
   },
   "rect|sonar|long|sparse": {
    "fails": 2,
@@ -4562,9 +4562,9 @@
    "lastRun": 1
   },
   "rhombille|sonar+walls|long|dense": {
-   "fails": 2,
-   "attempts": 2,
-   "lastRun": 10
+   "fails": 0,
+   "attempts": 12,
+   "lastRun": 11
   },
   "floret|locked+sonar+worm|long|sparse": {
    "fails": 2,
@@ -5017,9 +5017,9 @@
    "lastRun": 10
   },
   "floret|sonar|short|sparse": {
-   "fails": 3,
-   "attempts": 3,
-   "lastRun": 10
+   "fails": 0,
+   "attempts": 18,
+   "lastRun": 11
   },
   "floret|sonar|long|sparse": {
    "fails": 2,
@@ -7957,9 +7957,9 @@
    "lastRun": 3
   },
   "4.8.8||long|standard": {
-   "fails": 3,
-   "attempts": 3,
-   "lastRun": 8
+   "fails": 4,
+   "attempts": 4,
+   "lastRun": 11
   },
   "deltoidal|liar+wormhole|short|standard": {
    "fails": 1,
@@ -10269,6 +10269,21 @@
   "hex||long|dense": {
    "fails": 0,
    "attempts": 13,
+   "lastRun": 11
+  },
+  "deltoidal|sonar|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 11
+  },
+  "4.8.8|liar+mirror+sonar+wormhole|short|sparse": {
+   "fails": 1,
+   "attempts": 1,
+   "lastRun": 11
+  },
+  "floret|liar+locked+mirror+sonar+wormhole|long|sparse": {
+   "fails": 1,
+   "attempts": 1,
    "lastRun": 11
   }
  }

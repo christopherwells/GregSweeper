@@ -60,7 +60,8 @@ import {
   timeBandOf, densityBandOf, matchCornerKey,
   MATCH_TIME_BANDS, MATCH_DENSITY_BANDS, MATCH_PAR_CEILING_SECONDS,
 } from '../src/logic/matchRules.js';
-import { rectFitsPhone } from '../src/logic/boardFit.js';
+import { rectFitsPhone, boardFitsPhone } from '../src/logic/boardFit.js';
+import { buildTiling, containerIsStorable } from '../src/logic/tilingGeometry.js';
 import { OUT_DIR, writeMatchIndexFiles, matchPageFile, matchPageNames } from './match-index-files.mjs';
 
 const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
@@ -278,6 +279,47 @@ export function corner_isDue(rec, runNo) {
 }
 
 /**
+ * The big end of a shape's LEGAL size range, cached per shape: the largest
+ * four distinct cell counts the fit rules admit, read from the same
+ * functions the choosers use (rectFitsPhone; boardFitsPhone + buildTiling
+ * for the lattices). Enumerated once per process; a lattice build is
+ * milliseconds and the cache makes the census pay it once.
+ */
+const _synthCache = new Map();
+export function synthBigEnd(shape) {
+  if (_synthCache.has(shape)) return _synthCache.get(shape);
+  const out = [];
+  if (shape === 'rect') {
+    for (let rows = 17; rows >= 12; rows--) {
+      if (rectFitsPhone(rows, BOARD_SYNTH_COLS)) {
+        out.push({ shape, rows, cols: BOARD_SYNTH_COLS, cells: rows * BOARD_SYNTH_COLS });
+      }
+    }
+  } else {
+    for (let M = 2; M <= 14; M++) {
+      for (let N = 2; N <= 14; N++) {
+        if (!boardFitsPhone(shape, M, N)) continue;
+        try {
+          const t = buildTiling(shape, M, N);
+          // STORABILITY is a bound of its own: a lattice's cell count must
+          // factor into a [5,30] canonical container or serializeBoard
+          // refuses it, however well it fits a phone (the first fill run
+          // died on a 124-cell 4.8.8, which factors only as 4x31).
+          if (t.total >= 30 && containerIsStorable(t.total)) {
+            out.push({ shape, M, N, cells: t.total });
+          }
+        } catch { /* a builder refusing dims is a legal answer */ }
+      }
+    }
+    out.sort((a, b) => b.cells - a.cells);
+  }
+  const seen = new Set();
+  const top = out.filter((g) => (seen.has(g.cells) ? false : (seen.add(g.cells), true))).slice(0, 4);
+  _synthCache.set(shape, top);
+  return top;
+}
+
+/**
  * Candidate specs for one corner. The pool's specs fix `cells` and `mines`, so
  * hitting a density band means SYNTHESIZING variants: take every pool spec of
  * the right shape and modifier set, then re-mine it across the band. Par is
@@ -316,23 +358,25 @@ export function specsForCorner(pool, shape, mods, timeBand, anchorSpecs = []) {
     ...pool.filter((s) => s.shape === shape && fits(s))
       .map((s) => ({ ...s, gimmicks: wantList.slice() })),
   ];
-  // SYNTHESIZED RECT DIMS TO THE LEGAL CEILING (probe-proven 2026-08-15):
-  // the pool's legal rect maximum is 143 cells while rectFitsPhone admits
-  // 187, and in that unsearched range the probe certified long|standard
-  // PLAIN at 17x11 (par 329s) and short|sparse at 16x11 with one sonar
-  // (127s), two cells the pool alone could never reach. Only the big end is
-  // synthesized, and only where a band wants size; quick keeps its proven
-  // small dims. Lattice dims are not synthesized here until a probe proves
-  // their ceilings the same way; they join through anchors and the pool.
-  if (shape === 'rect' && timeBand !== 'quick') {
+  // SYNTHESIZED DIMS TO THE LEGAL CEILING (probe-proven 2026-08-15/16): the
+  // pool's size ladder stops where the LADDER's needs stopped, far short of
+  // what the fit rules admit, and that gap is where the "impossible" cells
+  // lived. Rect: the pool's legal max is 143 cells while rectFitsPhone
+  // admits 187, and in that range long|standard certifies PLAIN at 17x11
+  // (par 329s) and short|sparse at 16x11 with one sonar (127s). Lattices:
+  // beyond-pool dims under boardFitsPhone opened deltoidal long|sparse with
+  // one sonar (5x3, 246s) and 4.8.8 long|standard plain (10x7, 245s);
+  // chaosTilingDims has searched parametric lattice dims at runtime since
+  // chaos shipped, so this is established practice, not invention. Only the
+  // big end is synthesized, and only where a band wants size; quick keeps
+  // its proven small dims.
+  if (timeBand !== 'quick') {
     const have = new Set(base.map((s) => s.cells));
-    for (let rows = 17; rows >= 12; rows--) {
-      const cols = BOARD_SYNTH_COLS;
-      const cells = rows * cols;
-      if (!rectFitsPhone(rows, cols) || have.has(cells)) continue;
+    for (const g of synthBigEnd(shape)) {
+      if (have.has(g.cells)) continue;
       base.push({
-        shape: 'rect', rows, cols, cells,
-        mines: Math.max(1, Math.round(cells * 0.2)),
+        ...g,
+        mines: Math.max(1, Math.round(g.cells * 0.2)),
         gimmicks: wantList.slice(),
         ...(wantList.includes('walls') ? { wallSegments: 4 } : {}),
       });
@@ -375,15 +419,23 @@ function drawBoard(spec, salt) {
     if (r.par > MATCH_PAR_CEILING_SECONDS) continue;
     const work = r.check.totalClicks - 1;
     if (work < CLIMB_MIN_DEDUCTIONS) continue;
+    // A board that cannot be STORED is a failed draw, never a crash: the
+    // synthesized ladder can propose cell counts serializeBoard refuses
+    // (no [5,30] container factorization), and the census must survive
+    // that the way it survives any other miss.
+    let payload;
+    try {
+      payload = serializeBoard({
+        board: r.board, rows: r.rows, cols: r.cols, totalMines: r.totalMines,
+        rngSeed: `${seed}:${t}`, activeGimmicks: r.activeGimmicks, firstClick: r.firstClick,
+      });
+    } catch { continue; }
     return {
       par: Math.round(r.par * 10) / 10,
       work,
       seed: `${seed}:${t}`,
       features: r.features,
-      payload: serializeBoard({
-        board: r.board, rows: r.rows, cols: r.cols, totalMines: r.totalMines,
-        rngSeed: `${seed}:${t}`, activeGimmicks: r.activeGimmicks, firstClick: r.firstClick,
-      }),
+      payload,
       spec: {
         shape: spec.shape, rows: spec.rows, cols: spec.cols, M: spec.M, N: spec.N,
         cells: spec.cells, mines: spec.mines, gimmicks: (spec.gimmicks || []).slice(),
