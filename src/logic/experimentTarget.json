@@ -1,43 +1,43 @@
 {
-  "updatedAt": "2026-08-16T04:18:42Z",
-  "target": "wormLoad",
-  "reason": "highest posterior CV (0.489) excluding last 3 targets",
+  "updatedAt": "2026-08-16T07:17:42Z",
+  "target": "clueShare4",
+  "reason": "highest posterior CV (0.510) excluding last 3 targets",
   "lastRevalidationDate": "2026-08-15",
   "recentTargets": [
+    "clueShare4",
     "wormLoad",
-    "mysteryCellCount",
-    "clueShare2"
+    "mysteryCellCount"
   ],
   "candidates": [
     {
-      "feature": "wormLoad",
-      "mean": 0.027,
-      "sd": 0.013,
-      "cv": 0.489
+      "feature": "clueShare4",
+      "mean": 0.084,
+      "sd": 0.043,
+      "cv": 0.51
     },
     {
-      "feature": "clueShare4",
-      "mean": 0.095,
-      "sd": 0.045,
-      "cv": 0.48
+      "feature": "wormLoad",
+      "mean": 0.026,
+      "sd": 0.013,
+      "cv": 0.493
     },
     {
       "feature": "wormholePairCount",
-      "mean": 0.036,
+      "mean": 0.035,
       "sd": 0.017,
-      "cv": 0.466
+      "cv": 0.478
     },
     {
       "feature": "clueShare2",
       "mean": 0.048,
       "sd": 0.02,
-      "cv": 0.418
+      "cv": 0.41
     },
     {
       "feature": "searchMoves",
       "mean": 0.011,
       "sd": 0.004,
-      "cv": 0.39
+      "cv": 0.38
     }
   ],
   "coverage_targets": [],
@@ -48,19 +48,19 @@
       "deficit_weight": 0.1667
     },
     {
-      "shape": "4.8.8",
-      "n_boards": 9,
-      "deficit_weight": 0.1
-    },
-    {
       "shape": "rhombille",
-      "n_boards": 10,
-      "deficit_weight": 0.0909
+      "n_boards": 7,
+      "deficit_weight": 0.125
     },
     {
       "shape": "floret",
       "n_boards": 11,
       "deficit_weight": 0.0833
+    },
+    {
+      "shape": "4.8.8",
+      "n_boards": 17,
+      "deficit_weight": 0.0556
     },
     {
       "shape": "cairo",
@@ -78,13 +78,5 @@
       "deficit_weight": 0.0051
     }
   ],
-  "lastDecorrelationDate": "2026-08-16",
-  "decorrelation_mission": {
-    "feature": "clueShare3",
-    "confounder": "density",
-    "slope": 10.6297,
-    "intercept": -0.7032,
-    "residualSd": 0.5071,
-    "weight": 0.5
-  }
+  "lastDecorrelationDate": "2026-08-16"
 }

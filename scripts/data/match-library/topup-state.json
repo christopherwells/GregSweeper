@@ -1,5 +1,5 @@
 {
- "runs": 12,
+ "runs": 13,
  "corners": {
   "4.8.8||short|sparse": {
    "fails": 4,
@@ -5458,8 +5458,8 @@
   },
   "hex|worm|long|dense": {
    "fails": 0,
-   "attempts": 40,
-   "lastRun": 4
+   "attempts": 53,
+   "lastRun": 13
   },
   "floret||quick|standard": {
    "fails": 0,
@@ -6217,9 +6217,9 @@
    "lastRun": 5
   },
   "rhombille|worm|short|dense": {
-   "fails": 0,
-   "attempts": 51,
-   "lastRun": 11
+   "fails": 1,
+   "attempts": 52,
+   "lastRun": 13
   },
   "cairo||quick|sparse": {
    "fails": 0,
@@ -6268,8 +6268,8 @@
   },
   "cairo|walls|long|dense": {
    "fails": 0,
-   "attempts": 37,
-   "lastRun": 4
+   "attempts": 40,
+   "lastRun": 13
   },
   "deltoidal|locked|short|sparse": {
    "fails": 0,
@@ -6553,8 +6553,8 @@
   },
   "cairo|mirror|short|standard": {
    "fails": 0,
-   "attempts": 26,
-   "lastRun": 11
+   "attempts": 39,
+   "lastRun": 13
   },
   "cairo|mirror|quick|dense": {
    "fails": 0,
@@ -8922,9 +8922,9 @@
    "lastRun": 4
   },
   "4.8.8|worm|short|standard": {
-   "fails": 0,
-   "attempts": 34,
-   "lastRun": 5
+   "fails": 1,
+   "attempts": 35,
+   "lastRun": 13
   },
   "rect|locked+sonar+walls|quick|standard": {
    "fails": 0,
@@ -9337,9 +9337,9 @@
    "lastRun": 4
   },
   "hex||short|standard": {
-   "fails": 0,
-   "attempts": 14,
-   "lastRun": 4
+   "fails": 1,
+   "attempts": 15,
+   "lastRun": 13
   },
   "rect|mirror|short|dense": {
    "fails": 0,
@@ -9482,9 +9482,9 @@
    "lastRun": 3
   },
   "cairo||long|standard": {
-   "fails": 0,
-   "attempts": 7,
-   "lastRun": 4
+   "fails": 1,
+   "attempts": 8,
+   "lastRun": 13
   },
   "rhombille||quick|standard": {
    "fails": 0,
@@ -9652,9 +9652,9 @@
    "lastRun": 4
   },
   "4.8.8||short|standard": {
-   "fails": 0,
-   "attempts": 15,
-   "lastRun": 4
+   "fails": 1,
+   "attempts": 16,
+   "lastRun": 13
   },
   "4.8.8|mirror|short|dense": {
    "fails": 0,
