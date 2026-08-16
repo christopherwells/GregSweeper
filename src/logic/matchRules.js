@@ -459,14 +459,69 @@ export const MATCH_SHARD_PREFIX = 'mx';
  * so a caller cannot accidentally transpose two of them. `mods` is the sorted
  * '+'-joined set, or empty for a plain board.
  */
-export function matchShardFile(shape, time, density, mods) {
-  return `${MATCH_SHARD_PREFIX}-${shape}-${time}-${density}-${mods || 'none'}.json`;
+export function matchShardFile(shape, time, density, mods, prefix = MATCH_SHARD_PREFIX) {
+  return `${prefix}-${shape}-${time}-${density}-${mods || 'none'}.json`;
 }
 
 /** The shard file a row belongs in, straight from its own corner. */
 export function matchShardFileForRow(row) {
   const [shape, mods, time, density] = matchCornerKey(row);
   return matchShardFile(shape, time, density, mods);
+}
+
+// ── THE HARVEST: the Climb library as a second shelf ────────────────────
+//
+// His ruling 2026-08-16, "Do this first": the Climb's boards become
+// dealable for Challenge. They are certified, priced by the same nightly
+// refit, and concentrated exactly where this library is thinnest
+// (measured at build: 833 corners with no match board, 3,825 boards, 96%
+// carrying two or more modifiers, two-thirds long or short).
+//
+// HIS INVIOLABLE, verbatim: "The climb times do finish DO NOT TRANSFER!"
+// Nothing crosses between the modes in either direction. Two structural
+// rules carry that here. Harvest rows key their seen-cycle as `c:<seed>`
+// inside the MATCH seen list, never any Climb store, and by SEED because
+// the nightly re-bin renumbers Climb files, so a file+index key would rot
+// where a seed key cannot. And a harvest pick resolves by locator PLUS
+// seed (resolveMatchPicks), so a re-binned file can never hand the deal a
+// different board than the index promised; the mismatch reads as missing
+// and the deal degrades honestly.
+export const CLIMB_SHARD_PREFIX = 'cmx';
+
+/** One harvest index row: the Climb file stem and index locate the board,
+ * the seed IS its identity, and the corner and feature fields are exactly
+ * what matchIndexRow carries so eligibility and steering read both shelves
+ * with one set of eyes. */
+export function climbIndexRow(file, idx, entry, featureKeys = []) {
+  const f = (entry && entry.features) || {};
+  return [file, idx, entry.spec.shape, entry.spec.cells, entry.spec.mines,
+    entry.par, (entry.spec.gimmicks || []).slice().sort(), entry.seed,
+    featureKeys.map((k) => _round(f[k]))];
+}
+
+/** Read a harvest shard back. Same contract as parseMatchIndex: null on a
+ * malformed file, `features: {}` on a row without its vector. */
+export function parseClimbMatchIndex(index) {
+  if (!index || !Array.isArray(index.rows)) return null;
+  const featureKeys = Array.isArray(index.featureKeys) ? index.featureKeys : [];
+  const rows = [];
+  for (const r of index.rows) {
+    if (!Array.isArray(r) || r.length < 8) return null;
+    const [file, idx, shape, cells, mines, par, mods, seed, vec] = r;
+    if (typeof file !== 'string' || !Number.isInteger(idx)) return null;
+    if (typeof shape !== 'string' || !Array.isArray(mods)) return null;
+    if (typeof seed !== 'string' || !seed) return null;
+    if (!Number.isFinite(cells) || !Number.isFinite(mines) || !Number.isFinite(par)) return null;
+    const features = {};
+    if (Array.isArray(vec)) {
+      for (let i = 0; i < featureKeys.length && i < vec.length; i++) {
+        const n = Number(vec[i]);
+        if (Number.isFinite(n)) features[featureKeys[i]] = n;
+      }
+    }
+    rows.push({ page: file, idx, seed, shape, cells, mines, par, mods, features, key: `c:${seed}` });
+  }
+  return rows;
 }
 
 /**
@@ -492,7 +547,7 @@ export function modSubsetKeys(mods) {
  * asking for one would spend a round trip to learn nothing. Pass null to get
  * the full cross product instead, which a client without a summary must.
  */
-export function matchShardFilesFor(rules, corners) {
+export function matchShardFilesFor(rules, corners, prefix = MATCH_SHARD_PREFIX) {
   const shapes = rules && rules.shapes && rules.shapes.length ? rules.shapes : [];
   const times = rules && rules.time && rules.time !== 'any'
     ? [rules.time] : MATCH_TIME_BANDS.map((b) => b.key);
@@ -512,7 +567,7 @@ export function matchShardFilesFor(rules, corners) {
       for (const d of dens) {
         for (const m of modKeys) {
           if (live && !live.has([s, m, t, d].join('|'))) continue;
-          out.push(matchShardFile(s, t, d, m));
+          out.push(matchShardFile(s, t, d, m, prefix));
         }
       }
     }
@@ -672,7 +727,12 @@ export function resolveMatchPicks(picks, byPage) {
   for (const pick of picks || []) {
     const boards = byPage && byPage.get ? byPage.get(pick.page) : null;
     const entry = Array.isArray(boards) ? boards[pick.idx] : null;
-    if (!entry || !entry.payload || !entry.seed) {
+    // The harvest's stale-locator guard: a harvest pick carries the seed the
+    // index promised, and the nightly re-bin moves Climb boards between
+    // files, so an index cached across a re-bin can point at somebody else's
+    // slot. A seed mismatch is a missing board, never a silent substitute.
+    if (!entry || !entry.payload || !entry.seed
+      || (pick.seed && entry.seed !== pick.seed)) {
       missing.push(pick);
       continue;
     }

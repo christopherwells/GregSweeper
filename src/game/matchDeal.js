@@ -26,6 +26,7 @@ import { state } from '../state/gameState.js';
 import { fetchLibraryJson } from './climbDeal.js';
 import {
   parseMatchIndex, parseMatchSummary, matchShardFilesFor, resolveMatchPicks,
+  parseClimbMatchIndex, CLIMB_SHARD_PREFIX,
 } from '../logic/matchRules.js';
 import { planMatchDeal, currentSteerMissions } from '../logic/matchSteering.js';
 import { loadExperimentTarget } from '../logic/experimentDesign.js';
@@ -43,6 +44,11 @@ const STEER_LOAD_TIMEOUT_MS = 1500;
 // RELATIVE on purpose: the app serves at / in production and /test/ on the
 // test branch, and a root-anchored path would cross the two.
 const LIB = 'scripts/data/match-library';
+// THE HARVEST'S shelf (his 'Do this first', 2026-08-16): the Climb library,
+// read here as certified boards and nothing else. The Climb's own deal and
+// seen-sets are never touched from this module; the no-transfer contract is
+// pinned by test/matchHarvest.test.mjs.
+const CLIMB_LIB = 'scripts/data/climb-library';
 
 export function matchSummaryUrl() {
   return `${LIB}/match-summary.json`;
@@ -56,6 +62,18 @@ export function matchPageUrl(page) {
   return `${LIB}/match-${String(page).padStart(3, '0')}.json`;
 }
 
+export function climbMatchSummaryUrl() {
+  return `${CLIMB_LIB}/climb-match-summary.json`;
+}
+
+export function climbShardUrl(file) {
+  return `${CLIMB_LIB}/${file}`;
+}
+
+export function climbBoardsUrl(stem) {
+  return `${CLIMB_LIB}/${stem}.json`;
+}
+
 // TWO FETCHES, SIZED TO THE TWO QUESTIONS (see the split's note in
 // matchRules.js). The sheet asks how many boards fit and takes the SUMMARY,
 // which is a few KB and does not grow with the library's depth. The deal asks
@@ -67,6 +85,7 @@ export function matchPageUrl(page) {
 // re-counts without a second fetch. The SW runtime-caches the files too, so
 // this is a courtesy rather than the offline story.
 let _corners = null;
+let _climbCorners = null;
 const _shardRows = new Map();
 
 /** The summary's corner counts, or null when it cannot be fetched or parsed. */
@@ -75,6 +94,23 @@ export async function fetchMatchCorners() {
   const corners = parseMatchSummary(await fetchLibraryJson(matchSummaryUrl()));
   if (!corners || corners.length === 0) return null;
   _corners = corners;
+  return corners;
+}
+
+/**
+ * The harvest shelf's corner counts. Null-soft TWICE over: a client on a
+ * deploy that predates the harvest index, or one whose fetch fails, deals
+ * from the match library alone exactly as before, and the supply line
+ * counts less. The harvest may only ever ADD.
+ */
+export async function fetchClimbMatchCorners() {
+  if (_climbCorners) return _climbCorners;
+  let corners = null;
+  try {
+    corners = parseMatchSummary(await fetchLibraryJson(climbMatchSummaryUrl()));
+  } catch { /* the match shelf stands alone */ }
+  if (!corners || corners.length === 0) return null;
+  _climbCorners = corners;
   return corners;
 }
 
@@ -94,14 +130,25 @@ export async function fetchMatchIndexRows(rules) {
   // as nothing, which is the same outcome one step slower.
   const corners = await fetchMatchCorners();
   const want = matchShardFilesFor(rules, corners);
-  if (want.length === 0) return null;
   await Promise.all(want
     .filter((f) => !_shardRows.has(f))
     .map(async (file) => {
       const rows = parseMatchIndex(await fetchLibraryJson(matchShardUrl(file)));
       _shardRows.set(file, rows || []);
     }));
-  const rows = want.flatMap((f) => _shardRows.get(f) || []);
+  // The harvest shelf, in parallel form: same derivation over its own
+  // summary, its own prefix, its own parser. A missing summary means no
+  // shard is requested at all, so the union is exactly the match rows.
+  const climbCorners = await fetchClimbMatchCorners();
+  const wantClimb = climbCorners
+    ? matchShardFilesFor(rules, climbCorners, CLIMB_SHARD_PREFIX) : [];
+  await Promise.all(wantClimb
+    .filter((f) => !_shardRows.has(f))
+    .map(async (file) => {
+      const rows = parseClimbMatchIndex(await fetchLibraryJson(climbShardUrl(file)));
+      _shardRows.set(file, rows || []);
+    }));
+  const rows = [...want, ...wantClimb].flatMap((f) => _shardRows.get(f) || []);
   return rows.length ? rows : null;
 }
 
@@ -119,6 +166,20 @@ async function fetchPage(page) {
   const data = await fetchLibraryJson(matchPageUrl(page));
   if (!data || data.page !== page || !Array.isArray(data.boards)) return null;
   return data.boards.map((b) => (b && b.payload ? { ...b, payload: unpackPayload(b.payload) } : b));
+}
+
+/**
+ * Fetch one Climb file's board list for a harvest pick, keyed by the file
+ * stem the index row carries. Climb payloads are plain today; the unpack is
+ * conditional so a future packing of that library cannot silently hand the
+ * installer columnar cells.
+ */
+async function fetchClimbBoards(stem) {
+  const data = await fetchLibraryJson(climbBoardsUrl(stem));
+  const boards = Array.isArray(data) ? data : (data && data.boards);
+  if (!Array.isArray(boards)) return null;
+  return boards.map((b) => (b && b.payload && b.payload.cells && b.payload.cells.f
+    ? { ...b, payload: unpackPayload(b.payload) } : b));
 }
 
 /**
@@ -151,9 +212,15 @@ export async function dealMatchEntries(rules) {
     missions: currentSteerMissions(),
   });
 
+  // A pick's `page` is a NUMBER for the match shelf and the Climb file's
+  // STRING stem for the harvest shelf; the resolver downstream is shelf-blind
+  // because both fetches land in one map under the pick's own key.
   const pending = new Map();
   for (const p of picks) {
-    if (!pending.has(p.page)) pending.set(p.page, fetchPage(p.page));
+    if (!pending.has(p.page)) {
+      pending.set(p.page, typeof p.page === 'string'
+        ? fetchClimbBoards(p.page) : fetchPage(p.page));
+    }
   }
   const byPage = new Map();
   for (const [page, promise] of pending) byPage.set(page, await promise);
