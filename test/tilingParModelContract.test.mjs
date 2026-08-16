@@ -167,22 +167,31 @@ test('LAB SEED: every shape block = PAR_MODEL + its frozen lab deviation centers
     const block = PAR_MODEL_SHAPES[t];
     const stem = `shape${SHAPE_KEY[t]}`;
     const devs = seededDevsFor(stem);
-    // Fitted posteriors override their seeds, term by term.
-    // A fitted posterior replaces its seed ONLY for a term that is seeded.
-    // An unseeded term keeps the NEW_FEATURE_DATA_THRESHOLD earn guard and
-    // ships ZERO no matter what the fit produced — which is why the override
-    // is scoped rather than applied to everything modelHistory carries. On
-    // 2026-08-04 the fit had a shapeHex_x_zeroClusterCount posterior of
-    // -0.0072 while difficulty.js correctly shipped 0 for it.
-    const isSeeded = new Set(Object.keys(devs).filter((k) => devs[k] !== 0));
+    // Fitted posteriors override their seeds, term by term — and `fitted`
+    // is itself the earn guard: only terms whose recorded `nRows` clears
+    // NEW_FEATURE_DATA_THRESHOLD are in it, so a one-row posterior (the
+    // 2026-08-13 rhombille class) can never reach this override.
+    //
+    // The override deliberately covers UNSEEDED terms too. The R contract is
+    // one rule for every deviation, seeded or not: below the threshold a
+    // seeded term ships its lab center and an unseeded one ships zero; at
+    // the threshold BOTH ship the fitted posterior. This override was once
+    // scoped to seeded terms only, which encoded "an unseeded term ships
+    // zero no matter what" — true below the threshold, wrong above it, and
+    // the wrongness stayed invisible until 2026-08-16, when the first
+    // match-row fit earned shapeHex_x_zeroClusterCount at nRows=25 and this
+    // pin contradicted a difficulty.js that was following its own contract.
+    // (The old comment's 2026-08-04 example, a hex posterior correctly held
+    // at zero, was an UNDER-threshold posterior: today it would never enter
+    // `fitted` at all.)
     for (const [term, post] of Object.entries(fitted)) {
       if (term === stem) {
-        if (isSeeded.has('intercept')) devs.intercept = post.mean;
+        devs.intercept = post.mean;
       } else if (term.startsWith(`${stem}_x_`)) {
         // Fitted terms name the R PREDICTOR; the deviations map is keyed by
         // the JS coefficient. Same translation seededDevsFor does.
         const coef = PREDICTOR_TO_COEF[term.slice(stem.length + 3)];
-        if (coef && isSeeded.has(coef)) devs[coef] = post.mean;
+        if (coef) devs[coef] = post.mean;
       }
     }
     assert.equal(block.scale, 'log', `${t}: shape blocks are log-scale`);

@@ -105,9 +105,9 @@ footer code{font-family:var(--mono);font-size:12px}
 </style>
 <div class="wrap">
 <header>
-  <p class="eyebrow">Challenge &middot; board supply &middot; 15 Aug 2026, after the overnight fill</p>
-  <h1>Nearly every reachable corner is stocked; what is left cannot be built</h1>
-  <p>An overnight batch of seven 20-minute runs took the match library from 17,434 boards to <strong>30,069</strong>, and corners at target from 613 to 1,272 of 1,290. Under the two-and-four-minute cutoffs it now reads 16,239 Quick, 9,700 Standard and 4,130 Long, where Long held 428 yesterday. Target depth stays 20 unplayed boards per cell, and no corner exceeded its ceiling of 100: the largest holds 66.</p>
+  <p class="eyebrow">Challenge &middot; board supply &middot; 16 Aug 2026, after the eviction and the reach</p>
+  <h1>Smaller on purpose, and reaching further than the pool ever looked</h1>
+  <p>Two rulings landed in one day. Depth now scales by modifier arity, <strong>20/15/10/8</strong> for 0/1/2/3 or more, because the deal's filter is a subset test and stacked corners serve hosts who already draw the most. The tombstone eviction then removed <strong>16,156 unplayed boards</strong> above those targets, the fit's first match rows re-priced the rest, and a legality pass took 365 rectangles no phone can hold. The library reads <strong>12,597 dealable boards across 1,248 corners</strong>, every survivor keeping its exact address, so no player's no-repeat record moved. The grid's 20 line is a reference now, not the rule: modifier columns resting at 15, 10 or 8 are at target by design.</p>
 </header>
 
 <div class="switches">
@@ -124,23 +124,22 @@ footer code{font-family:var(--mono);font-size:12px}
 <!--STATS-->
 
 <div class="note">
-  <h2>What is left is structural, and it is sparse and long</h2>
-  <p>Every shape can reach four minutes, probed at its largest phone-legal size with modifier stacks: 3D Cubes clears at 1,324s where its shipped boards topped out at 208s. So the <em>time</em> axis is fillable and absolute cutoffs survive.</p>
-  <p>The <strong>density</strong> axis is a different answer. Of 789 corners still below target, <strong>771 hold no board at all</strong>, and every one has now been attempted. They concentrate in <strong>long (492) and sparse (389)</strong>, and the hardest are almost entirely sparse. A board with few mines does not take four minutes at any size, so those cells cannot exist under absolute-seconds cutoffs and no generation budget reaches them.</p>
-  <p>That is the case for per-shape <em>relative</em> bands, narrowed: not for time in general, but for the sparse end, where "long" would have to mean long <em>for a sparse board of this shape</em>.</p>
+  <h2>Half of "cannot be built" was the pool's reach, not physics</h2>
+  <p>Yesterday's conclusion was that the empty corners could not exist under absolute cutoffs. His answer was that generation might need to be rethought, and the probes proved him right about half of it. The pool's size ladder stops far short of what the fit rules allow: rect's legal ceiling is <strong>17x11 = 187 cells</strong> against the pool's legal 143, and in that unsearched range long-standard rectangles certify <strong>plain at 329s</strong>. Eight of the sixteen hard cells opened in one night, two of them with no modifiers at all. Generation now searches to the fit rules themselves: candidates are fit-checked at consumption, any board already in a cell's mix donates its geometry, and each shape's legal big end is synthesized rather than hoped for.</p>
+  <p>The other half is physics with measured ceilings now: hex sparse tops out at <strong>99s</strong> at every legal size, 4.8.8 long-sparse at <strong>128s</strong>, rect long-sparse at <strong>174s</strong> on 187 cells wearing five modifiers, and rhombille's sparse cells sit near <strong>51s</strong>. The sparse question is about exactly that residue, and nothing else: a handful of cells where "long" cannot mean four minutes for this shape at this density, whatever generation does.</p>
 </div>
 
 <div class="note">
   <h2>Two ways to count a modifier, and the narrow one is the honest floor</h2>
   <p>The deal accepts a board when every modifier on it is one the host permitted. So a host who allows sonar and nothing else draws only plain boards and sonar boards, while a host who allows everything draws all 336 boards in the Petals sparse quick column. <strong>Any set containing it</strong> counts the second player's shelf; <strong>only this modifier</strong> counts the first player's, which is the floor under every wider choice.</p>
-  <p>The two disagree by more than they look. Pooled, 29 cells sit under target and none are empty. Narrow, <strong>27 sit under target and 34 hold nothing at all</strong>: in those the library has only multi-modifier boards, so a host who asks for that one modifier alone gets an empty deal. Reading the pooled view as supply overstates what a focused host can actually reach.</p>
+  <p>The two disagree by more than they look, and the eviction sharpened the gap. Pooled over the match library alone, <strong>41 cells hold nothing</strong>: the physics residue, the cells the legality pass emptied, and band membership moving under the new model, summed. Narrow reads <strong>66</strong>; the union with the Climb's boards leaves <strong>29 narrow empties and exactly one cell with nothing at all</strong>. The single-modifier holes the narrow view first exposed were filled where boards can exist, deltoidal, floret and rhombille each carrying single-modifier stock in their once-stacked cells now, and the rest were reclassified by the probes rather than left as promises.</p>
 </div>
 
 <div class="note alt">
   <h2>The Climb library is bigger, and we can play its boards here too</h2>
-  <p><strong>4,412 boards across 1,050 corners</strong>, beside the match library's 30,069 across 1,290. Almost all of them price as <em>Long</em> (4,511 of them), because the ladder's easiest bin starts around 340s and the endless zone sits above a 400s floor, so <strong>not one of them lands in the Quick band</strong>. Quick is generation's problem alone.</p>
-  <p>Filing them onto the same shelf is still the breadth answer, even after the top-up: <strong>789 corners</strong> hold no match board at all and the Climb covers every one of them. Generation buys depth; the harvest buys the map.</p>
-  <p>It also enlarges the target. The union spans <strong>2,069 corners</strong>, and 20 apiece means roughly 41,000 boards against the 34,481 that exist. Worth deciding whether every corner deserves 20, or whether the ones nobody picks deserve less.</p>
+  <p><strong>5,049 boards</strong> beside the match library's 12,597. The endless zone was rebuilt this night under the new model after the re-price drained it: <strong>549 boards, every shape past its 25 floor, hex at 50</strong>, heavy four-and-five-modifier stacks at 150 against the 30 bar. The pool's fallback braid carries hex again on three specs the rebuild itself proved, priced mid-window so one night's model motion cannot evict them.</p>
+  <p>Filing both libraries onto one shelf is still the breadth answer: the Climb covers nearly every cell the match library leaves empty, which is why the union's empty count is one.</p>
+  <p>Yesterday's open question, whether every corner deserves 20, is answered: they do not. The arity table is the answer, and the eviction enforced it retroactively.</p>
 </div>
 
 <section class="decisions">
@@ -168,8 +167,13 @@ footer code{font-family:var(--mono);font-size:12px}
     <li><span class="s done">Done</span><span><strong>Sharded finer.</strong> One file per corner, so a focused deal fetches 0.7 KB where it used to fetch 89 KB.</span></li>
     <li><span class="s done">Done</span><span><strong>Rebalanced to his cutoffs</strong>, two and four minutes, and capped at ten. Every stored board re-sorted; corners 853 to 752.</span></li>
     <li><span class="s done">Done</span><span><strong>Overnight fill.</strong> Seven runs, 17,434 to 30,069 boards, 613 to 1,272 corners at target. Long went 428 to 4,130. Stopped on a disk valve at 30,000, not on any per-corner rule.</span></li>
-    <li><span class="s next">Next</span><span><strong>A burst pays less than a cadence.</strong> The backoff is <code>run % 2^fails</code>, so consecutive runs in one night keep hitting the same parity: by run 9 only 11 corners of 889 were due. Budget an overnight batch at six to eight useful runs, and let the nightly do the rest.</span></li>
-    <li><span class="s next">Next</span><span>Decide the sparse question: relative bands for the sparse end, or accept those cells as empty.</span></li>
+    <li><span class="s done">Done</span><span><strong>Depth follows the audience.</strong> Targets scale by modifier arity, 20/15/10/8, and a targeted scalpel run (<code>--corners</code>) fills named holes without shifting the nightly's backoff parity.</span></li>
+    <li><span class="s done">Done</span><span><strong>Tombstone eviction.</strong> 16,156 unplayed boards above target out, 92.5 MB, every survivor keeping its page and index so no seen record reset; 365 phone-illegal rectangles followed under the same stubs.</span></li>
+    <li><span class="s done">Done</span><span><strong>Generation reaches to the rules.</strong> Probes opened 8 of 16 "impossible" cells at sizes the pool never searched, plain 187-cell rectangles included; candidates are fit-checked at consumption, in-cell anchors donate geometry, and each shape's legal big end is synthesized.</span></li>
+    <li><span class="s done">Done</span><span><strong>The first match-row fit re-priced the world.</strong> The pool mover shipped duplicate faces, the endless drained, hex fell out of the pool. All repaired the same night: mover fixed, endless rebuilt at 549 with every floor cleared, hex restored on proven mid-window specs.</span></li>
+    <li><span class="s next">Next</span><span>The sparse ruling, narrowed to the measured residue: hex sparse, 4.8.8 long-sparse, rect long-sparse, rhombille sparse.</span></li>
+    <li><span class="s next">Next</span><span>Floors sized to fit volatility: hex sat 31 seconds from losing its whole endless presence to one night's model motion.</span></li>
+    <li><span class="s next">Next</span><span>A difficulty filter on the sheet (seconds per cell, 1.0/2.0 cutoffs) and the win-by margin on standings, both approved.</span></li>
     <li><span class="s next">Next</span><span>The harvest, which is the bigger win and needs its own decision: a Climb play does not spend a board for Challenge, so the two seen-sets stay separate.</span></li>
   </ol>
 </section>
@@ -188,7 +192,7 @@ footer code{font-family:var(--mono);font-size:12px}
   <p><strong>How to read it.</strong> Each panel is one density band crossed with one length band. Rows are shapes, columns are modifiers, and the number is boards nobody has finished yet.</p>
   <p><strong>The columns deliberately do not sum to the library total.</strong> Under <em>any set containing it</em> a board counts once for each of its modifiers, so a two-modifier board counts twice. The deal filters on the modifier <em>set</em>, not on single modifiers, which is why the match library's 1,290 true corners collapse into this grid's 513 occupied cells.</p>
   <p><strong>Climb boards count as unplayed here even when somebody has finished them on the ladder.</strong> Challenge runs the same board under a different clock, where time counts and a mine does not end the run, so a ladder play does not spend it.</p>
-  <p>Played boards: read live from <code>dailyMeta</code>. Depth: committed libraries at <code>54f5931</code>.</p>
+  <p>Played boards: read live from <code>dailyMeta</code>. Depth: committed libraries at <code>6e12e396</code>, 16 Aug 2026.</p>
 </footer>
 </div>
 <script>

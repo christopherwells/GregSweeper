@@ -385,10 +385,26 @@ function reprice() {
     // \n-only anchor silently matches nothing, which reads as a corrupt pool
     // file rather than as a regex that missed.
     const eol = src.includes('\r\n') ? '\r\n' : '\n';
-    const body = (pool) => priced
-      .filter((p) => p.finalPool === pool)
-      .map((p) => `  E(${p.now.toFixed(2)}, ${emitCtor(p.e)}),`)
-      .join(eol);
+    // A FACE THE DESTINATION ALREADY HOLDS IS DROPPED, NOT PLACED TWICE (the
+    // climb re-bin's own rule). A spec can legitimately sit in both tables,
+    // so an endless entry migrating to the ladder can land on a face the
+    // ladder body already carries; emitting both copies is how the
+    // 2026-08-16 refit shipped a pool with nine duplicate faces and reddened
+    // main silently (refit pushes run no CI). First occurrence wins; the
+    // copies are byte-identical by construction, so nothing is lost.
+    const body = (pool) => {
+      const seen = new Set();
+      return priced
+        .filter((p) => p.finalPool === pool)
+        .filter((p) => {
+          const f = specFace(p.e);
+          if (seen.has(f)) return false;
+          seen.add(f);
+          return true;
+        })
+        .map((p) => `  E(${p.now.toFixed(2)}, ${emitCtor(p.e)}),`)
+        .join(eol);
+    };
     const replaceTable = (text, startMark, endMark, rows) => {
       const re = new RegExp(
         `(// ${startMark}[^\\r\\n]*\\r?\\n[^\\r\\n]*\\r?\\n)[\\s\\S]*?(\\r?\\n\\]\\);\\r?\\n// ${endMark})`);
