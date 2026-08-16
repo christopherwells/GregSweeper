@@ -556,6 +556,9 @@ export const ENDLESS_POOL = Object.freeze([
   E(6.77, T('floret', 5, 3, 90, 33)),
   E(8.28, T('floret', 3, 4, 72, 27, ['mirror', 'sonar', 'worm'], { gimmickLevel: 120 })),
   E(7.85, T('deltoidal', 4, 3, 72, 22, ['walls', 'compass'], { gimmickLevel: 100 })),
+  E(5.34, T('hex', 10, 10, 100, 36, ['liar', 'sonar', 'compass', 'mirror'], { gimmickLevel: 70, constructive: true })),
+  E(4.95, T('hex', 10, 10, 100, 32, ['sonar', 'compass', 'locked', 'wormhole'], { gimmickLevel: 120, constructive: true })),
+  E(4.03, T('hex', 12, 10, 120, 38, ['sonar', 'compass', 'mirror', 'wormhole'], { gimmickLevel: 70, constructive: true })),
 ]);
 // ENDLESS:END
 

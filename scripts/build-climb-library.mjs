@@ -586,7 +586,16 @@ function runEndlessBuild({ dry, minutes, onlyShape, target }) {
   if (existingIndex) {
     for (let k = 0; k < existingIndex.pages; k++) {
       const page = loadJsonMaybe(endlessPageFile(k));
-      if (page) existing.push(...page.boards);
+      // A page the index PROMISES that cannot be read is FATAL, never a
+      // skip: `existing` is the dedupe ground truth, and a silently absent
+      // page re-admits its own boards from the resume cache as new. That is
+      // exactly how rapid append runs under OneDrive's transient file locks
+      // compounded 206 duplicate-seed boards on 2026-08-16.
+      if (!page) {
+        console.error(`endless-${String(k).padStart(3, '0')}.json is promised by the index but unreadable; refusing to build against an incomplete library`);
+        process.exit(1);
+      }
+      existing.push(...page.boards);
     }
     // An append against a stale-priced library would dedupe and quota
     // against numbers the model no longer stands behind.
@@ -805,7 +814,15 @@ function endlessExistingPages() {
   const out = [];
   for (let k = 0; k < idx.pages; k++) {
     const page = loadJsonMaybe(endlessPageFile(k));
-    if (page) out.push(page);
+    // Same rule as the build's own loader: a promised page that cannot be
+    // read is fatal. Skipping it here would emit a library missing that
+    // page's boards while the file itself survives on disk, desyncing the
+    // index from the pages in the other direction.
+    if (!page) {
+      console.error(`endless-${String(k).padStart(3, '0')}.json is promised by the index but unreadable; refusing to emit an incomplete merge`);
+      process.exit(1);
+    }
+    out.push(page);
   }
   return out;
 }
