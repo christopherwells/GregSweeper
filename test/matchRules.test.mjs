@@ -498,8 +498,8 @@ test('REGRESSION: every rules field the client writes is whitelisted in the matc
   const rules = JSON.parse(readFileSync(new URL('../firebase-rules.json', import.meta.url), 'utf8'));
   const block = rules.rules.matches.$matchId.rules;
   const allowed = new Set(Object.keys(block).filter((k) => !k.startsWith('.') && k !== '$other'));
-  const written = sanitizeMatchRules(defaultMatchRules(
-    { shapes: ['rect'], mods: [] }));
+  const unlocks = { shapes: ['rect'], mods: [] };
+  const written = sanitizeMatchRules(defaultMatchRules(unlocks), unlocks);
   for (const key of Object.keys(written)) {
     assert.ok(allowed.has(key),
       `the client writes rules.${key} but the match node's whitelist lacks it`);
