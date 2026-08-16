@@ -16,6 +16,10 @@ import { CHALLENGE_250_EPOCH } from '../../src/logic/challenge250.js';
 
 const summary = JSON.parse(readFileSync(new URL(
   '../../scripts/data/match-library/match-summary.json', import.meta.url), 'utf8'));
+// The harvest (2026-08-16): the sheet counts BOTH shelves, so the supply
+// assertion sums the match summary with the Climb-side harvest summary.
+const climbSummary = JSON.parse(readFileSync(new URL(
+  '../../scripts/data/climb-library/climb-match-summary.json', import.meta.url), 'utf8'));
 
 // A pinned board with a deterministic ?matchboard= target whose dims the
 // spec can assert. FOUND, not assumed at 0:0: since the tombstone eviction a
@@ -79,7 +83,7 @@ test('the Challenge card opens the setup sheet, and its supply line is real', as
   const supply = page.locator('#match-supply');
   await expect(supply).toHaveText(/\d+ boards fit these rules/, { timeout: 30_000 });
   const all = Number((await supply.textContent()).match(/(\d+)/)[1]);
-  expect(all).toBe(summary.boards);
+  expect(all).toBe(summary.boards + climbSummary.boards);
 
   // Narrowing to one shape must narrow the count: this is the assertion that
   // the chips are wired to the rules the deal will use, not to decoration.

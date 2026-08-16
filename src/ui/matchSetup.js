@@ -24,7 +24,7 @@ import { hideTitleScreen } from './titleScreen.js';
 import { launchMatch, resumeMatch } from '../game/modeManager.js';
 import { canResumeMode } from '../game/gamePersistence.js';
 import { loadStats, loadGameState } from '../storage/statsStorage.js';
-import { fetchMatchCorners } from '../game/matchDeal.js';
+import { fetchMatchCorners, fetchClimbMatchCorners } from '../game/matchDeal.js';
 import { shapePatchSVG } from '../logic/shapeIntro.js';
 import { tilingLabel, CLASSIC_SHAPE_LABEL } from '../logic/coastlineLink.js';
 import { getGimmickDefs } from '../logic/gimmicks.js';
@@ -47,6 +47,7 @@ const RULES_KEY = 'minesweeper_match_rules';
 // row-per-board index does (see the split's note in matchRules.js).
 let _rules = null;
 let _corners = null;
+let _climbCorners = null;
 
 function loadSavedRules() {
   try {
@@ -190,7 +191,11 @@ function renderSupply() {
     if (startBtn) startBtn.disabled = true;
     return;
   }
-  const n = countEligibleCorners(_corners, _rules);
+  // Both shelves: the match library plus the harvest's Climb index. The
+  // second summary is null-soft, so a client that could not fetch it counts
+  // the first shelf alone.
+  const n = countEligibleCorners(_corners, _rules)
+    + (_climbCorners ? countEligibleCorners(_climbCorners, _rules) : 0);
   if (n === 0) {
     el.innerHTML = `<span class="match-supply-empty">No boards fit these rules yet.`
       + ` Try another shape or length.</span>`;
@@ -374,4 +379,8 @@ export function openMatchSetup() {
     _corners = null;
     renderSupply();
   });
+  fetchClimbMatchCorners().then((corners) => {
+    _climbCorners = corners;
+    renderSupply();
+  }).catch(() => { _climbCorners = null; });
 }

@@ -182,6 +182,16 @@ jobs:
       # keep its page, because page:idx is the seen-cycle key on every
       # player's device), so this is one predictPar per board and finishes
       # in seconds. test/matchLibrary.test.mjs holds the lockstep.
+      # THE HARVEST INDEX regenerates whenever the Climb library has been
+      # re-binned or filled above: it maps every Climb board into
+      # match-corner terms (file + index + SEED locators), and a locator is
+      # only as fresh as the files it points into. Cheap (a map over the
+      # committed files, no generation), and its outputs live inside
+      # scripts/data/climb-library, which the commit step already carries.
+      - name: Rebuild the harvest index over the Climb library
+        continue-on-error: true
+        run: node scripts/climb-match-index.mjs
+
       - name: Re-price the Challenge match library
         id: matchreprice
         continue-on-error: true
