@@ -45,9 +45,10 @@ import { deserializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
 import { recalcAllAdjacency, recomputeDisplayedMines } from '../src/logic/gimmicks.js';
 import {
-  cornerTotalTarget, ARITY_BUFFERS, arityOfKey, validateTargetCorners,
+  cornerTotalTarget, ARITY_BUFFERS, arityOfKey, validateTargetCorners, specsForCorner,
 } from '../scripts/topup-match-library.mjs';
 import { narrowHoles } from '../scripts/match-narrow-holes.mjs';
+import { rectFitsPhone } from '../src/logic/boardFit.js';
 
 const summary = JSON.parse(readFileSync(SUMMARY_FILE, 'utf8'));
 const pageNames = matchPageNames(OUT_DIR);
@@ -358,6 +359,47 @@ test('validateTargetCorners refuses a key the library cannot hold', () => {
   assert.throws(() => validateTargetCorners(['rect|walls+liar|quick|dense']));
   const ok = validateTargetCorners(['rect||quick|dense', 'rect|liar+walls|quick|dense']);
   assert.equal(ok.length, 2);
+});
+
+test('every dealable rect board fits the phone the rules describe', () => {
+  // The pool outlives the rules it was searched under (BOARD_WIDTH_CAP moved
+  // 2026-08-14), and the overnight burst regenerated 365 phone-illegal rects
+  // from stale pool dims because nothing at the match generation boundary
+  // re-checked fit. specsForCorner filters at consumption now and the
+  // eviction tool tombstones offenders; this is the alarm if either stops.
+  const bad = boards
+    .filter((b) => b.spec.shape === 'rect' && !rectFitsPhone(b.spec.rows, b.spec.cols))
+    .map((b) => `${b.spec.rows}x${b.spec.cols}`);
+  assert.deepEqual([...new Set(bad)].sort(), [],
+    `${bad.length} dealable rect board(s) fail rectFitsPhone; run scripts/evict-match-surplus.mjs`);
+});
+
+test('specsForCorner: anchors join, illegal rects are refused, only quick leads small', () => {
+  const pool = [
+    { shape: 'rect', rows: 12, cols: 12, cells: 144, mines: 30, gimmicks: [] },  // illegal width
+    { shape: 'rect', rows: 8, cols: 9, cells: 72, mines: 14, gimmicks: [] },
+    { shape: 'rect', rows: 13, cols: 11, cells: 143, mines: 30, gimmicks: [] },
+  ];
+  // His expandable rule: a board already in the cell, whatever it wears,
+  // donates its geometry to this corner's candidates.
+  const anchor = { shape: 'rect', rows: 10, cols: 10, cells: 100, mines: 12, gimmicks: ['sonar', 'walls'] };
+  const short = specsForCorner(pool, 'rect', 'sonar', 'short', [anchor]);
+  assert.ok(short.length > 0, 'non-vacuous: candidates must exist');
+  assert.ok(!short.some((s) => s.cols > 11), 'an illegal-width dim reached the candidates');
+  assert.ok(short.every((s) => (s.gimmicks || []).join('+') === 'sonar'),
+    'every candidate wears the corner\'s own modifier set');
+  assert.ok(short.some((s) => s.cells === 100), 'the anchor geometry joined the candidates');
+  // The big end leads for short (the census used to spend its budget on
+  // boards that could only ever land quick), and the big end includes the
+  // SYNTHESIZED legal ceiling the pool never held (probe-proven: 17x11
+  // certifies long|standard plain and 16x11 short|sparse with one sonar).
+  assert.equal(short[0].cells, 187, 'the synthesized 17x11 ceiling must lead the short candidates');
+  assert.ok(short.every((s) => s.shape !== 'rect' || rectFitsPhone(s.rows, s.cols)),
+    'a synthesized dim must be phone-legal too');
+  // Quick keeps its proven small dims and gains no synthesized giants.
+  const quick = specsForCorner(pool, 'rect', '', 'quick', []);
+  assert.equal(quick[0].cells, 72);
+  assert.ok(!quick.some((s) => s.cells > 143), 'quick must not carry synthesized big-end dims');
 });
 
 test('narrowHoles: pooled supply cannot hide an empty narrow floor', () => {
