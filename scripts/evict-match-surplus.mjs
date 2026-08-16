@@ -41,6 +41,7 @@ import { pathToFileURL } from 'node:url';
 import { matchCornerKey } from '../src/logic/matchRules.js';
 import { matchRowKey } from '../src/logic/matchCodes.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
+import { rectFitsPhone } from '../src/logic/boardFit.js';
 import { OUT_DIR, writeMatchIndexFiles, matchPageNames } from './match-index-files.mjs';
 import { cornerTotalTarget, arityOfKey, featureSpace } from './topup-match-library.mjs';
 
@@ -115,6 +116,24 @@ async function main() {
 
   const names = matchPageNames();
   const pages = names.map((n) => JSON.parse(readFileSync(new URL(n, OUT_DIR), 'utf8')));
+  const dirtyPages = new Set();
+
+  // FIT LEGALITY PASS, first and unconditional (2026-08-15, the day's second
+  // finding): 365 dealable rect boards failed rectFitsPhone, regenerated
+  // overnight from stale pool dims after the width cap moved, because the
+  // match generation path never re-checked fit at consumption. A board a
+  // phone cannot hold is evicted PLAYED OR NOT: the played-never-evicted
+  // rule exists to protect future repeated measures, and an illegal board
+  // must have no future deals to measure. Its Firebase rows are untouched.
+  let illegal = 0;
+  pages.forEach((pg, p) => pg.boards.forEach((b, i) => {
+    if (!live(b) || b.spec.shape !== 'rect') return;
+    if (rectFitsPhone(b.spec.rows, b.spec.cols)) return;
+    pg.boards[i] = { evicted: true, seed: b.seed };
+    dirtyPages.add(p);
+    illegal++;
+  }));
+
   const all = [];   // { b, page, idx }
   pages.forEach((pg, p) => pg.boards.forEach((b, i) => { if (live(b)) all.push({ b, page: p, idx: i }); }));
 
@@ -129,7 +148,6 @@ async function main() {
   });
 
   let evicted = 0, bytes = 0, cornersTrimmed = 0;
-  const dirtyPages = new Set();
   for (const [key, idxs] of corners) {
     const playedIdx = idxs.filter((i) => played.has(matchRowKey(all[i].b.seed)));
     const unplayedIdx = idxs.filter((i) => !played.has(matchRowKey(all[i].b.seed)));
@@ -155,7 +173,9 @@ async function main() {
   }
   const written = writeMatchIndexFiles(pages.map((pg) => pg.boards), modelFingerprint(), { dry: DRY });
   console.log(`evict-match-surplus: ${evicted} unplayed board(s) tombstoned`
-    + ` (${(bytes / 1048576).toFixed(1)} MB) over ${cornersTrimmed} corner(s), ${dirtyPages.size} page(s) rewritten;`
+    + ` (${(bytes / 1048576).toFixed(1)} MB) over ${cornersTrimmed} corner(s)`
+    + (illegal ? ` + ${illegal} phone-illegal rect(s)` : '')
+    + `, ${dirtyPages.size} page(s) rewritten;`
     + ` ${written.boards} dealable board(s) remain in ${written.corners} corner(s)`
     + ` (played set ${played.size}${DRY ? '; dry run, nothing written' : ''})`);
 }
