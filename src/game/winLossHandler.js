@@ -22,7 +22,8 @@ import { extractCrux } from '../logic/cruxExtract.js';
 import { prepareLossReceipt, bombStrikeVerdict } from '../ui/receiptRenderer.js';
 import { computeBombInfoValue } from '../logic/bombInfoValue.js';
 import { getChaosDifficulty, BOMB_PENALTY_BASE, BOMB_PENALTY_RAMP } from '../logic/difficulty.js';
-import { matchAdvance, matchTotals } from '../logic/matchRules.js';
+import { matchAdvance, matchTotals, needsTenths, fmtClock } from '../logic/matchRules.js';
+import { tilingLabel, CLASSIC_SHAPE_LABEL } from '../logic/coastlineLink.js';
 import { powerUpAwardCount, LIFELINE_BONUS_CHANCE } from '../logic/challenge250.js';
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
@@ -414,22 +415,67 @@ function _renderMatchSummary() {
   const el = document.getElementById('match-summary');
   if (!el || !state.match) return;
   const results = (state.match.results || []).filter(Boolean);
+  const entries = state.match.entries || [];
   const uid = getUid();
-  const totals = matchTotals(results, isRatedHandicap(uid) ? getHandicapRatio(uid) : null);
-  const rows = results.map((r, i) => {
-    const strikes = r.strikes > 0
-      ? ` ${spriteImgHTML('strike', 'inline-strike')} ${r.strikes}`
+  const rated = isRatedHandicap(uid);
+  const k = rated ? getHandicapRatio(uid) : null;
+  const totals = matchTotals(results, k);
+
+  // The solo end board wears the shared end board's own clothes (his ask
+  // 2026-08-16: time, adjusted, strikes and par per board, "more like the
+  // other one"): the match-grid table, board labels LEFT with the shape,
+  // metric columns instead of player columns, Total/Adjusted/Par rows in
+  // the tfoot. The adjusted column exists only for a rated player, the
+  // panel's standing rule, and an adjusted time under the board's par
+  // takes the leader green: on a solo run the opponent is Greg.
+  const shapeOf = (i) => {
+    const s = entries[i] && entries[i].spec && entries[i].spec.shape;
+    return !s || s === 'rect' ? CLASSIC_SHAPE_LABEL : (tilingLabel(s) || s);
+  };
+  const parOf = (i) => {
+    const p = (results[i] && results[i].par) || (entries[i] && entries[i].par);
+    return Number.isFinite(p) && p > 0 ? p : null;
+  };
+  const adjOf = (r) => (k ? Math.round((r.time / k) * 10) / 10 : r.time);
+
+  const headerCells = `<th>Time</th>${rated ? '<th>Adjusted</th>' : ''}<th>Strikes</th><th>Par</th>`;
+  // Rows keep their ORIGINAL index (a filter would silently misalign shape
+  // and par past any hole in the results array).
+  const played = (state.match.results || [])
+    .map((r, i) => ({ r, i })).filter((x) => x.r);
+  const bodyRows = played.map(({ r, i }) => {
+    const par = parOf(i);
+    const adj = adjOf(r);
+    const beatPar = par != null && adj < par;
+    const compareCell = rated
+      ? `<td class="${beatPar ? 'match-grid-lead' : ''}">${adj.toFixed(1)}</td>`
       : '';
-    return `<div class="match-summary-row"><span>Board ${i + 1}</span>`
-      + `<span>${r.time.toFixed(1)}s${strikes}</span></div>`;
+    const timeCell = rated
+      ? `<td>${r.time.toFixed(1)}</td>`
+      : `<td class="${beatPar ? 'match-grid-lead' : ''}">${r.time.toFixed(1)}</td>`;
+    return `<tr><th scope="row" class="match-grid-board">${i + 1} · ${shapeOf(i)}</th>`
+      + timeCell + compareCell
+      + `<td class="${r.strikes > 0 ? '' : 'match-grid-none'}">${r.strikes > 0 ? r.strikes : '·'}</td>`
+      + `<td>${par != null ? Math.round(par) : '·'}</td></tr>`;
   }).join('');
-  const totalRow = `<div class="match-summary-row match-summary-total">`
-    + `<span>Total</span><span>${totals.raw.toFixed(1)}s</span></div>`;
+
+  const parTotal = played.reduce((a, { i }) => (parOf(i) != null ? a + parOf(i) : a), 0);
+  const tenths = needsTenths([totals.raw, totals.adjusted ?? totals.raw, parTotal || totals.raw]);
+  const totalRow = `<tr><th scope="row" class="match-grid-board">Total</th>`
+    + `<td>${fmtClock(totals.raw, tenths)}</td>${rated ? '<td></td>' : ''}<td></td><td></td></tr>`;
   const adjRow = totals.adjusted != null
-    ? `<div class="match-summary-row match-summary-adjusted">`
-      + `<span>Adjusted</span><span>${totals.adjusted.toFixed(1)}s</span></div>`
+    ? `<tr><th scope="row" class="match-grid-board">Adjusted</th><td></td>`
+      + `<td>${fmtClock(totals.adjusted, tenths)}</td><td></td><td></td></tr>`
     : '';
-  el.innerHTML = rows + totalRow + adjRow;
+  const parRow = parTotal > 0
+    ? `<tr><th scope="row" class="match-grid-board">Par</th><td></td>${rated ? '<td></td>' : ''}<td></td>`
+      + `<td>${fmtClock(parTotal, tenths)}</td></tr>`
+    : '';
+  el.innerHTML = `<div class="match-grid-wrap"><table class="match-grid">
+      <thead><tr><th class="match-grid-board"></th>${headerCells}</tr></thead>
+      <tbody>${bodyRows}</tbody>
+      <tfoot>${totalRow}${adjRow}${parRow}</tfoot>
+    </table></div>`;
   el.classList.remove('hidden');
 
   // A SHARED match also shows where everyone stands, live. The panel owns its

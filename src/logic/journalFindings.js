@@ -73,7 +73,9 @@ const FEATURE_UNITS = {
   wallEdgeCount: 'wall',
   zeroClusterCount: 'blank patch',
   searchMoves: 'search deduction',
-  patternMoves: 'pattern read',
+  // "Pattern read" confused him ("what is 10 reads?", 2026-08-16); the
+  // parallel word the search unit already uses is the game's own.
+  patternMoves: 'pattern deduction',
   totalMines: 'mine',
   cellCount: 'cell',
   // One wormLoad point is exactly one hundred worm segment-moves
