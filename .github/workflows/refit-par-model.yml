@@ -49,7 +49,12 @@ name: Refit Greg-par
 on:
   schedule:
     - cron: '17 23 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      skip_fill:
+        description: 'Skip board generation (the two library fills and the match top-up); the fit, repricers, harvest index and journal still run'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -167,7 +172,10 @@ jobs:
       # failure — the deal is bounded nightly progress, never a stuck run.
       - name: Fill what the re-bin left short
         id: libfill
-        if: steps.libreprice.outcome == 'success'
+        # skip_fill (his ask 2026-08-16): a dispatch can want just the model
+        # and the re-prices without minutes of generation. Cron runs carry no
+        # inputs, so the expression stays true for them and nothing changes.
+        if: steps.libreprice.outcome == 'success' && !inputs.skip_fill
         continue-on-error: true
         run: |
           START=$(date +%s)
@@ -220,6 +228,7 @@ jobs:
       # gaps.
       - name: Fill the Challenge match library with what the ladder left
         id: matchfill
+        if: ${{ !inputs.skip_fill }}
         continue-on-error: true
         run: |
           USED=${LADDER_SECS:-1200}
