@@ -1807,9 +1807,9 @@
    "lastRun": 2
   },
   "rect|worm|long|standard": {
-   "fails": 2,
-   "attempts": 2,
-   "lastRun": 2
+   "fails": 0,
+   "attempts": 4,
+   "lastRun": 13
   },
   "hex|sonar|short|sparse": {
    "fails": 2,
@@ -2057,9 +2057,9 @@
    "lastRun": 2
   },
   "floret|walls|quick|dense": {
-   "fails": 2,
-   "attempts": 2,
-   "lastRun": 2
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 13
   },
   "rhombille|worm|short|sparse": {
    "fails": 2,
@@ -5117,9 +5117,9 @@
    "lastRun": 1
   },
   "floret|mystery|quick|dense": {
-   "fails": 1,
-   "attempts": 1,
-   "lastRun": 1
+   "fails": 0,
+   "attempts": 15,
+   "lastRun": 13
   },
   "rhombille|locked+mirror|short|sparse": {
    "fails": 1,
@@ -6217,8 +6217,8 @@
    "lastRun": 5
   },
   "rhombille|worm|short|dense": {
-   "fails": 1,
-   "attempts": 52,
+   "fails": 12,
+   "attempts": 63,
    "lastRun": 13
   },
   "cairo||quick|sparse": {
@@ -7328,13 +7328,13 @@
   },
   "hex|compass|short|standard": {
    "fails": 0,
-   "attempts": 45,
-   "lastRun": 11
+   "attempts": 53,
+   "lastRun": 13
   },
   "hex|compass|long|dense": {
    "fails": 0,
-   "attempts": 40,
-   "lastRun": 7
+   "attempts": 52,
+   "lastRun": 13
   },
   "rect|liar+worm|quick|sparse": {
    "fails": 0,
@@ -8922,8 +8922,8 @@
    "lastRun": 4
   },
   "4.8.8|worm|short|standard": {
-   "fails": 1,
-   "attempts": 35,
+   "fails": 12,
+   "attempts": 46,
    "lastRun": 13
   },
   "rect|locked+sonar+walls|quick|standard": {
@@ -8978,8 +8978,8 @@
   },
   "cairo|compass|short|standard": {
    "fails": 0,
-   "attempts": 40,
-   "lastRun": 11
+   "attempts": 45,
+   "lastRun": 13
   },
   "rhombille|locked+sonar|quick|standard": {
    "fails": 0,
@@ -9337,8 +9337,8 @@
    "lastRun": 4
   },
   "hex||short|standard": {
-   "fails": 1,
-   "attempts": 15,
+   "fails": 12,
+   "attempts": 26,
    "lastRun": 13
   },
   "rect|mirror|short|dense": {
@@ -9482,8 +9482,8 @@
    "lastRun": 3
   },
   "cairo||long|standard": {
-   "fails": 1,
-   "attempts": 8,
+   "fails": 12,
+   "attempts": 19,
    "lastRun": 13
   },
   "rhombille||quick|standard": {
@@ -9652,8 +9652,8 @@
    "lastRun": 4
   },
   "4.8.8||short|standard": {
-   "fails": 1,
-   "attempts": 16,
+   "fails": 12,
+   "attempts": 27,
    "lastRun": 13
   },
   "4.8.8|mirror|short|dense": {

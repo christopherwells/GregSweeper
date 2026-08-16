@@ -459,6 +459,13 @@ async function main() {
   // depth (or the corner would read full while dealing thin), and the
   // arity-scaled targets are what stop the trimmed surplus regrowing.
   const existing = pages.flat().filter((b) => b && !b.evicted);
+  // A SEED THE LIBRARY ALREADY HOLDS IS DROPPED, NOT ADDED TWICE (the climb
+  // re-bin's own rule, which this tool lacked until 2026-08-16). Draw seeds
+  // derive from the run counter, and a TARGETED run leaves that counter
+  // alone by design, so two targeted passes over one corner replay the same
+  // deterministic stream and re-draw boards the first pass already banked:
+  // eleven duplicate rows shipped exactly that way before this guard.
+  const seedsHeld = new Set(existing.map((b) => b.seed));
   const played = await fetchPlayed();
   if (!played.ok) {
     console.log(`  WARNING: played set unavailable (${played.why}); every board counts as unplayed,`
@@ -608,8 +615,13 @@ async function main() {
       hit = { spec, board: b };
       break;
     }
-    if (hit) {
+    if (hit && !seedsHeld.has(hit.board.seed)) {
+      seedsHeld.add(hit.board.seed);
       kept.push(hit.board);
+      reachable.push({ ...w, spec: hit.spec });
+    } else if (hit) {
+      // The corner is reachable (a board came back); only this draw's seed
+      // is already banked. Mine it with fresh rounds, record no failure.
       reachable.push({ ...w, spec: hit.spec });
     } else {
       const rec = state.corners[w.key] || { fails: 0, attempts: 0 };
@@ -648,6 +660,8 @@ async function main() {
       const b = drawBoard(w.spec, `${runNo}m${round}`);
       draws++;
       if (!b || cornerOf(b) !== w.key) continue;
+      if (seedsHeld.has(b.seed)) continue;
+      seedsHeld.add(b.seed);
       const lev = leverageOf(vecOf(space, b.features), corpus);
       b.lev = Math.round(lev * 1000) / 1000;
       kept.push(b);
