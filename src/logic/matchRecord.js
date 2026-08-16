@@ -75,9 +75,17 @@ export function matchBoardBreakdown(node, opts = {}) {
       const time = finiteTime(result && result.time);
       if (time === null) continue;
       const ratio = ratioFor(handicaps, uid);
+      // 'Player' in the node is a stored SENTINEL, not a name: the rules
+      // require a name child, so createMatch/joinMatch write that literal for
+      // a player who has not named themselves yet. Here it reads as ABSENT
+      // (null), because an aggregation that treats it as a name lets one old
+      // unnamed join shadow the real name in every newer node (his report
+      // 2026-08-16: Kate's 95 boards labeled "vs Player"). Display layers
+      // resolve uid through playerNames first and fall back on their own.
+      const stored = (p && typeof p.name === 'string') ? p.name : '';
       entries.push({
         uid,
-        name: (p && typeof p.name === 'string' && p.name) ? p.name : 'Player',
+        name: (stored && stored !== 'Player') ? stored : null,
         time,
         penalty: finiteTime(result.penalty) || 0,
         adjusted: Math.round((time / ratio) * 10) / 10,
@@ -205,6 +213,9 @@ export function rivalries(nodes, opts = {}) {
       for (const r of rivals) {
         const rec = byUid.get(r.uid)
           || { uid: r.uid, name: r.name, won: 0, lost: 0, ties: 0, margins: [] };
+        // Adopt a real name from ANY node, newest processed wins; entry names
+        // are null for the unnamed (the sentinel rule above), so an old
+        // nameless join can never overwrite one.
         if (r.name) rec.name = r.name;
         tally(rec, Math.round((row.mine.adjusted - r.adjusted) * 10) / 10);
         byUid.set(r.uid, rec);

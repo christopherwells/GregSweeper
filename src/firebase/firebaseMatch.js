@@ -111,6 +111,10 @@ export async function createMatch(rules, entries) {
   if (!Array.isArray(entries) || entries.length === 0) throw _fail('failed', 'no boards');
 
   const matchId = db().ref('matches').push().key;
+  // 'Player' here is a stored SENTINEL, not a name: the rules require a name
+  // child on every players/{uid}. Readers resolve the uid through playerNames
+  // first (join-at-read), and matchRecord treats this literal as absent so it
+  // can never shadow a real name in another node.
   const name = (getPlayerName() || 'Player').slice(0, 20);
   const node = {
     host: uid,
@@ -216,6 +220,7 @@ export async function joinMatch(matchId, match, code = null) {
   }
   if (verdict !== 'join') throw _fail(verdict);
 
+  // 'Player' is the stored sentinel; see createMatch.
   const name = (getPlayerName() || 'Player').slice(0, 20);
   const count = Number(match.playerCount) || Object.keys(match.players || {}).length;
   const update = {

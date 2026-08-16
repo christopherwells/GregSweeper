@@ -7,7 +7,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { matchStandings, matchFinishedCount, matchFitRows, MATCH_FIT_MIN_TIME } from '../src/logic/matchStandings.js';
+import { matchStandings, matchFinishedCount, matchFitRows, columnLeader, MATCH_FIT_MIN_TIME } from '../src/logic/matchStandings.js';
 import { matchRowKey } from '../src/logic/matchCodes.js';
 
 const node = (players, boards = 3) => ({
@@ -176,4 +176,29 @@ test('garbage in, empty out, never a throw', () => {
   for (const [e, r] of [[null, null], [undefined, []], ['x', 'y'], [[], null]]) {
     assert.deepEqual(matchFitRows(e, r).rows, []);
   }
+});
+
+// ── columnLeader: who the totals rows paint green (his ask 2026-08-16) ──
+
+test('columnLeader picks the best FINISHED value; unfinished never competes', () => {
+  const rows = [
+    { uid: 'a', finished: true, time: 200, adjusted: 100 },
+    { uid: 'b', finished: true, time: 180, adjusted: 120 },
+    { uid: 'c', finished: false, time: 20, adjusted: 10 },  // partial, not a total
+  ];
+  // Raw and adjusted can lead to different players, and both greens show.
+  assert.deepEqual(columnLeader(rows, 'time'), { value: 180, uids: ['b'], tied: false });
+  assert.deepEqual(columnLeader(rows, 'adjusted'), { value: 100, uids: ['a'], tied: false });
+});
+
+test('columnLeader stays silent under two finished players, and flags a tie', () => {
+  // A green on the only posted total would claim a win over nobody.
+  assert.equal(columnLeader([{ uid: 'a', finished: true, time: 100 }], 'time'), null);
+  assert.equal(columnLeader([], 'time'), null);
+  const tie = columnLeader([
+    { uid: 'a', finished: true, adjusted: 90 },
+    { uid: 'b', finished: true, adjusted: 90 },
+  ], 'adjusted');
+  assert.equal(tie.tied, true, 'a tie leads nobody; the painter styles it as tied');
+  assert.deepEqual(tie.uids, ['a', 'b']);
 });
