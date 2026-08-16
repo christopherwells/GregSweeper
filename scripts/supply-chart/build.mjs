@@ -29,14 +29,49 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { timeBandOf, densityBandOf } from '../../src/logic/matchRules.js';
 import { matchPageNames } from '../match-index-files.mjs';
+import { cornerTotalTarget } from '../topup-match-library.mjs';
+import { matchRowKey } from '../../src/logic/matchCodes.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
 const MATCH_DIR = path.join(ROOT, 'scripts', 'data', 'match-library');
 const CLIMB_DIR = path.join(ROOT, 'scripts', 'data', 'climb-library');
 
-/** Target depth per cell, his ruling: 20 unplayed boards. */
-const TARGET = 20;
+/**
+ * Cells the probes measured CLOSED at the legal ceiling (2026-08-16), keyed
+ * shape|time|density, valued with the best par any phone-legal configuration
+ * reached against the band's own bound. A closed cell is EXPECTED empty:
+ * hatched on the grid, never red, never on the attention list. Re-probe
+ * before moving one out (probe-hard-cells / probe-v3 in the session notes);
+ * rhombille's standard cells are deliberately NOT here, they sit one second
+ * under the line at pool sizes and the nightly's synthesized dims will
+ * settle them.
+ */
+const CLOSED_CELLS = new Map([
+  ['hex|short|sparse', 99], ['hex|long|sparse', 99],
+  ['4.8.8|long|sparse', 128], ['rect|long|sparse', 174],
+  ['rhombille|short|sparse', 51], ['rhombille|long|sparse', 51],
+]);
+
+const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
+
+/**
+ * Which boards anyone has finished, keyed the way match fit rows are keyed.
+ * Fails SOFT with a warning: without it every board reads unplayed, so the
+ * corner targets sit at their floors and the header's played stat says so
+ * instead of quietly repeating a stale number (the old build hardcoded 81).
+ */
+async function fetchPlayed() {
+  try {
+    const r = await fetch(`${DB_BASE}/dailyMeta.json?shallow=true`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const keys = Object.keys((await r.json()) || {});
+    return { set: new Set(keys.filter((k) => k.startsWith('match_'))), ok: true };
+  } catch (err) {
+    console.log(`  WARNING: played set unavailable (${err.message}); targets use played = 0`);
+    return { set: new Set(), ok: false };
+  }
+}
 
 /** Row order and player-facing names (TILING_LABELS, plus Classic for rect). */
 const SHAPES = [
@@ -74,7 +109,7 @@ function readBoards() {
     for (const b of page.boards) {
       if (!b || b.evicted) continue;   // a tombstone is not supply
       rows.push({
-        lib: 'm', shape: b.spec.shape,
+        lib: 'm', shape: b.spec.shape, seed: b.seed,
         mods: (b.spec.gimmicks || []).slice().sort(),
         density: densityBandOf(b.spec.mines, b.spec.cells),
         time: timeBandOf(b.par),
@@ -136,43 +171,136 @@ export function buildCells(rows) {
   return cells;
 }
 
-/** The four toggle states, in the order the page's data-v attributes use. */
-export function statsFor(cells) {
-  const all = [...cells.values()];
-  const views = [
-    (v) => v.m, (v) => v.m + v.c, (v) => v.nm, (v) => v.nm + v.nc,
-  ];
-  return views.map((n) => ({
-    at: all.filter((v) => n(v) >= TARGET).length,
-    thin: all.filter((v) => n(v) > 0 && n(v) < TARGET).length,
-    zero: all.filter((v) => n(v) === 0).length,
-  }));
+/**
+ * Per-cell TARGETS per counting mode, derived from the match library's own
+ * corners under the arity ruling: a cell's pooled target is the sum of
+ * cornerTotalTarget(played, arity) over the existing corners its pooled
+ * count draws from, and its narrow target sums only the plain and
+ * single-modifier corners, exactly mirroring how buildCells counts boards.
+ * Only corners that EXIST contribute (empty is not thin, and most empty
+ * corners are physics); the Climb's boards count as supply against the same
+ * match-side bar.
+ */
+export function buildTargets(rows, played) {
+  const corners = new Map();
+  for (const r of rows) {
+    if (r.lib !== 'm') continue;
+    const key = [r.shape, r.mods.join('+'), r.time, r.density].join('|');
+    const c = corners.get(key) || { played: 0, arity: r.mods.length };
+    if (played.has(matchRowKey(r.seed))) c.played++;
+    corners.set(key, c);
+  }
+  const tgt = new Map();
+  const bump = (cellKey, which, v) => {
+    const t = tgt.get(cellKey) || { p: 0, n: 0 };
+    t[which] += v;
+    tgt.set(cellKey, t);
+  };
+  for (const [key, c] of corners) {
+    const [shape, mods, time, density] = key.split('|');
+    const target = cornerTotalTarget(c.played, c.arity);
+    const list = mods ? mods.split('+') : [];
+    if (!list.length) {
+      bump([shape, '(plain)', density, time].join('|'), 'p', target);
+      bump([shape, '(plain)', density, time].join('|'), 'n', target);
+      for (const [mod] of MODS) {
+        if (mod !== '(plain)') bump([shape, mod, density, time].join('|'), 'n', target);
+      }
+    } else {
+      for (const mod of list) {
+        bump([shape, mod, density, time].join('|'), 'p', target);
+        if (list.length === 1) bump([shape, mod, density, time].join('|'), 'n', target);
+      }
+    }
+  }
+  return tgt;
+}
+
+/**
+ * The four per-mode states of one cell, in toggle order (match/pooled,
+ * both/pooled, match/narrow, both/narrow): full, near (>= half), low,
+ * hole (a focused host draws nothing while stacked boards exist), closed
+ * (the probes measured the whole cell out of reach), none (nothing exists
+ * and nothing is owed).
+ */
+export function cellStates(cellKey, v, t) {
+  const [shape, , density, time] = cellKey.split('|');
+  const closed = CLOSED_CELLS.has([shape, time, density].join('|'));
+  const counts = [v.m, v.m + v.c, v.nm, v.nm + v.nc];
+  const pooled = [v.m, v.m + v.c, v.m, v.m + v.c];
+  const targets = [t.p, t.p, t.n, t.n];
+  return counts.map((n, i) => {
+    if (closed && n === 0) return 'closed';
+    if (targets[i] === 0) {
+      if (n > 0) return 'full';
+      return i >= 2 && pooled[i] > 0 ? 'hole' : 'none';
+    }
+    if (n === 0) return 'hole';
+    if (n >= targets[i]) return 'full';
+    return n >= targets[i] * 0.5 ? 'near' : 'low';
+  });
+}
+
+/**
+ * The four toggle states, in the order the page's data-v attributes use.
+ * Walks the FULL grid rather than the occupied cells, because the closed
+ * cells are empty by definition and a stat computed over occupancy alone
+ * would count them nowhere (the vacuity class, in miniature).
+ */
+export function statsFor(cells, targets) {
+  const modes = [0, 1, 2, 3].map(() => ({ full: 0, under: 0, hole: 0, closed: 0, none: 0 }));
+  for (const [sk] of SHAPES) {
+    for (const [mk] of MODS) {
+      for (const [dk] of DENS) {
+        for (const [tk] of TIMES) {
+          const key = [sk, mk, dk, tk].join('|');
+          const v = cells.get(key) || { m: 0, c: 0, nm: 0, nc: 0 };
+          const t = targets.get(key) || { p: 0, n: 0 };
+          cellStates(key, v, t).forEach((s, i) => {
+            if (s === 'near' || s === 'low') modes[i].under++;
+            else modes[i][s]++;
+          });
+        }
+      }
+    }
+  }
+  return modes;
 }
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
   .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const commas = (n) => n.toLocaleString('en-US');
 
-function renderPanels(cells) {
+function renderPanels(cells, targets) {
   let out = '';
   for (const [dk, dl] of DENS) {
     for (const [tk, tl] of TIMES) {
       out += `<section class="panel"><h3><span class="d">${dl}</span>`
-        + `<span class="sep">/</span><span class="t">${tl}</span></h3>`
+        + `<span class="sep">/</span><span class="t">${tl}</span>`
+        + '<span class="verdict"></span></h3>'
         + '<div class="scroll"><table><thead><tr><th class="corner"></th>';
       for (const [, ml] of MODS) out += `<th class="gh"><span>${ml}</span></th>`;
       out += '</tr></thead><tbody>';
       for (const [sk, sl] of SHAPES) {
         out += `<tr><th scope="row">${sl}</th>`;
         for (const [mk, ml] of MODS) {
-          const v = cells.get([sk, mk, dk, tk].join('|')) || { m: 0, c: 0, nm: 0, nc: 0 };
-          const title = mk === '(plain)'
+          const key = [sk, mk, dk, tk].join('|');
+          const v = cells.get(key) || { m: 0, c: 0, nm: 0, nc: 0 };
+          const t = targets.get(key) || { p: 0, n: 0 };
+          const states = cellStates(key, v, t);
+          const closedAt = CLOSED_CELLS.get([sk, tk, dk].join('|'));
+          const title = (mk === '(plain)'
             ? `${sl} / no modifiers — match ${v.m}, climb ${v.c}, combined ${v.m + v.c}`
             : `${sl} / ${ml} — any set containing it: match ${v.m}, climb ${v.c},`
               + ` combined ${v.m + v.c} · only this modifier: match ${v.nm},`
-              + ` climb ${v.nc}, combined ${v.nm + v.nc}`;
+              + ` climb ${v.nc}, combined ${v.nm + v.nc}`)
+            + ` · target pooled ${t.p}, narrow ${t.n}`
+            + (closedAt ? ` · measured closed: best legal config reaches ${closedAt}s` : '');
           out += `<td class="c" data-m="${v.m}" data-c="${v.c}" data-nm="${v.nm}"`
-            + ` data-nc="${v.nc}" title="${esc(title)}"></td>`;
+            + ` data-nc="${v.nc}" data-t="${t.p}|${t.p}|${t.n}|${t.n}"`
+            + ` data-f="${states.join('|')}"`
+            + ` data-lbl="${esc(`${sl} · ${mk === '(plain)' ? 'no modifiers' : ml} · ${dl} ${tl}`)}"`
+            + ` title="${esc(title)}"></td>`;
         }
         out += '</tr>';
       }
@@ -182,7 +310,7 @@ function renderPanels(cells) {
   return out;
 }
 
-function renderStats(rows, stats) {
+function renderStats(rows, stats, playedCount) {
   const nMatch = rows.filter((r) => r.lib === 'm').length;
   const both = rows.length;
   // Library size does not change with the counting mode, so its two values
@@ -193,36 +321,43 @@ function renderStats(rows, stats) {
   return '<div class="stats">'
     + `<div class="stat"><b data-v="${size}">${commas(both)}</b>`
     + `<span data-v="${[label[0], label[1], label[0], label[1]].join('|')}">${label[1]}</span></div>`
-    + '<div class="stat"><b>81</b><span>played by anyone</span></div>'
-    + `<div class="stat ok"><b data-v="${four((s) => s.at)}">${stats[1].at}</b>`
-    + `<span>cells at ${TARGET} or more</span></div>`
-    + `<div class="stat bad"><b data-v="${four((s) => s.thin)}">${stats[1].thin}</b>`
-    + '<span>occupied but thin</span></div>'
-    + `<div class="stat bad"><b data-v="${four((s) => s.zero)}">${stats[1].zero}</b>`
-    + '<span>cells with nothing at all</span></div>'
+    + `<div class="stat"><b>${commas(playedCount)}</b><span>boards played by anyone</span></div>`
+    + `<div class="stat ok"><b data-v="${four((s) => s.full)}">${stats[1].full}</b>`
+    + '<span>cells at their own target</span></div>'
+    + `<div class="stat bad"><b data-v="${four((s) => s.under)}">${stats[1].under}</b>`
+    + '<span>under target</span></div>'
+    + `<div class="stat bad"><b data-v="${four((s) => s.hole)}">${stats[1].hole}</b>`
+    + '<span>holes a focused host feels</span></div>'
+    + `<div class="stat"><b data-v="${four((s) => s.closed)}">${stats[1].closed}</b>`
+    + '<span>closed by measurement</span></div>'
     + '</div>';
 }
 
-function main() {
+async function main() {
   const rows = readBoards();
+  const played = await fetchPlayed();
   const cells = buildCells(rows);
-  const stats = statsFor(cells);
+  const targets = buildTargets(rows, played.set);
+  const stats = statsFor(cells, targets);
+  const matchSeeds = new Set(rows.filter((r) => r.lib === 'm').map((r) => matchRowKey(r.seed)));
+  const playedCount = [...played.set].filter((k) => matchSeeds.has(k)).length;
   const template = fs.readFileSync(path.join(HERE, 'template.html'), 'utf8');
   const page = template
-    .replace('<!--STATS-->', renderStats(rows, stats))
-    .replace('<!--PANELS-->', renderPanels(cells));
+    .replace('<!--STATS-->', renderStats(rows, stats, playedCount))
+    .replace('<!--PANELS-->', renderPanels(cells, targets));
   const out = argVal('--out', path.join(HERE, 'supply.html'));
   fs.writeFileSync(out, page);
 
   const nMatch = rows.filter((r) => r.lib === 'm').length;
   console.log(`${commas(nMatch)} match + ${commas(rows.length - nMatch)} climb`
-    + ` = ${commas(rows.length)} boards, ${cells.size} occupied cells`);
+    + ` = ${commas(rows.length)} boards, ${cells.size} occupied cells, ${playedCount} played`);
   const names = ['match/pooled', 'both/pooled', 'match/narrow', 'both/narrow'];
   stats.forEach((s, i) => console.log(
-    `  ${names[i].padEnd(13)} at target ${s.at}, thin ${s.thin}, empty ${s.zero}`));
+    `  ${names[i].padEnd(13)} full ${s.full}, under ${s.under}, holes ${s.hole},`
+    + ` closed ${s.closed}, none ${s.none}`));
   console.log(`wrote ${out}`);
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
-  main();
+  main().catch((err) => { console.error('supply-chart build failed:', err.message); process.exit(1); });
 }
