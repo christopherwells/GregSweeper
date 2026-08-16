@@ -440,7 +440,7 @@ async function _renderMatchHeadToHead() {
 
   let nodes = null;
   try {
-    const [{ fetchMyMatches }, { matchRecord, rivalries, rankedSplits }, { getHandicapRatioMap }] =
+    const [{ fetchMyMatches }, { matchRecord, matchBoardBreakdown, rivalries, rankedSplits }, { getHandicapRatioMap }] =
       await Promise.all([
         import('../firebase/firebaseMatch.js'),
         import('../logic/matchRecord.js'),
@@ -453,6 +453,15 @@ async function _renderMatchHeadToHead() {
     }
     nodes = rows.map((r) => r.node);
     const rec = matchRecord(nodes, { myUid: getUid(), handicaps: getHandicapRatioMap() });
+
+    // The top of the panel speaks from the NODES, the cross-device truth:
+    // boards cleared, matches played, boards raced. Three different numbers
+    // where the local counters could only show one three times.
+    $('#stat-match-wins').textContent = Math.max(rec.boardsPlayed,
+      Number($('#stat-match-wins').textContent) || 0);
+    $('#stat-match-played').textContent = rec.matchesPlayed;
+    $('#stat-match-streak').textContent = rec.contested;
+    _renderMatchMargins(nodes, matchBoardBreakdown, getHandicapRatioMap());
 
     if (rec.contested === 0) {
       el.innerHTML = `<p class="stats-blurb">${rec.boardsPlayed > 0
@@ -492,6 +501,12 @@ async function _renderMatchHeadToHead() {
       </div>`;
     const rivalRows = [rivalRow('vs anyone', riv.field, true),
       ...riv.rivals.slice(0, 4).map((r) => rivalRow(`vs ${rivalName(r)}`, r, false))].join('');
+    // His question 2026-08-16, "why do they not add up": a board with three
+    // rivals counts in three rows, while vs anyone counts it once. The
+    // surface says so itself rather than reading as a math error.
+    const sumNote = riv.rivals.length > 1
+      ? '<p class="friends-code-hint">A board with several rivals counts in each of their rows; vs anyone counts it once, against whoever was fastest.</p>'
+      : '';
     const more = riv.rivals.length > 4
       ? `<p class="friends-code-hint">and ${riv.rivals.length - 4} more you have raced less.</p>` : '';
 
@@ -508,15 +523,13 @@ async function _renderMatchHeadToHead() {
     const ties = riv.field.ties;
     el.innerHTML = `
       <h4 class="stat-h2h-heading">Your rivalries</h4>
-      ${rivalRows}${more}
+      ${rivalRows}${sumNote}${more}
       <p class="stats-blurb">${rec.contested} board${rec.contested === 1 ? '' : 's'} raced.
         You took ${rec.wonAdjusted} adjusted, ${rec.wonRaw} raw${ties
-  ? `; ${ties} tie${ties === 1 ? '' : 's'} counted for nobody` : ''}.
-        Adjusted divides every time by that player's handicap, so it is the fair
-        comparison; raw is who finished first.</p>
+  ? `; ${ties} tie${ties === 1 ? '' : 's'} counted for nobody` : ''}.</p>
       ${ground}
-      ${solo > 0 ? `<p class="friends-code-hint">${solo} more board${solo === 1 ? '' : 's'} run solo.
-        Nobody raced them, so they carry no record.</p>` : ''}`;
+      ${solo > 0 ? `<p class="friends-code-hint">You played ${solo} more board${solo === 1 ? '' : 's'} in
+        solo runs. With nobody else on them, they have no head-to-head.</p>` : ''}`;
   } catch (err) {
     reportCaughtError('match-h2h', err);
     el.innerHTML = '<p class="stats-blurb">Could not work out your record right now.</p>';
@@ -524,47 +537,78 @@ async function _renderMatchHeadToHead() {
 }
 
 
+// The Recent margins chart (his call 2026-08-16: the old per-board bar
+// chart "says nothing" in a mode with no loss, every bar a win). Each bar
+// is one CONTESTED board, drawn from a zero line: above and green when the
+// adjusted time beat the best rival, below and red when it did not. Solo
+// boards are absent, the same rule the record itself follows.
+function _renderMatchMargins(nodes, matchBoardBreakdown, handicaps) {
+  const chart = $('#stat-match-recent');
+  if (!chart) return;
+  const margins = [];
+  for (const node of nodes || []) {
+    for (const row of matchBoardBreakdown(node, { myUid: getUid(), handicaps })) {
+      if (!row.contested || !row.mine) continue;
+      const rivals = row.entries.filter((e) => !e.isMe);
+      let best = rivals[0];
+      for (const r of rivals) { if (r.adjusted < best.adjusted) best = r; }
+      margins.push(row.mine.adjusted - best.adjusted);
+    }
+  }
+  const recent = margins.slice(-20);
+  if (recent.length === 0) {
+    chart.innerHTML = '<span class="chart-empty">Race a friend and your recent margins show here.</span>';
+    return;
+  }
+  const W = 300, H = 64, mid = H / 2;
+  const maxAbs = Math.max(...recent.map(Math.abs), 1);
+  const step = W / recent.length;
+  const barW = Math.max(4, Math.min(12, step * 0.62));
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('class', 'stat-margin-chart');
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', `Adjusted margin on your last ${recent.length} raced boards`);
+  const zero = document.createElementNS(svgNS, 'line');
+  zero.setAttribute('x1', 0); zero.setAttribute('y1', mid);
+  zero.setAttribute('x2', W); zero.setAttribute('y2', mid);
+  zero.setAttribute('class', 'stat-margin-zero');
+  svg.appendChild(zero);
+  recent.forEach((m, i) => {
+    const h = Math.max(2, (Math.abs(m) / maxAbs) * (mid - 4));
+    const bar = document.createElementNS(svgNS, 'rect');
+    bar.setAttribute('x', (i * step + (step - barW) / 2).toFixed(1));
+    bar.setAttribute('y', (m < 0 ? mid - h : mid).toFixed(1));
+    bar.setAttribute('width', barW.toFixed(1));
+    bar.setAttribute('height', h.toFixed(1));
+    bar.setAttribute('rx', 1.5);
+    bar.setAttribute('class', m < 0 ? 'stat-margin-ahead' : (m > 0 ? 'stat-margin-behind' : 'stat-margin-even'));
+    const title = document.createElementNS(svgNS, 'title');
+    title.textContent = m === 0 ? 'Tied' : `${Math.abs(m).toFixed(1)}s ${m < 0 ? 'ahead' : 'behind'}, adjusted`;
+    bar.appendChild(title);
+    svg.appendChild(bar);
+  });
+  chart.innerHTML = '';
+  chart.appendChild(svg);
+}
+
 function populateMatchPanel() {
   const stats = loadStats();
   const mm = stats.modeStats?.match;
   const chart = $('#stat-match-recent');
   // The head-to-head record needs the match NODES (everyone else's times),
-  // so it loads on its own and paints when it arrives.
+  // so it loads on its own and paints when it arrives, and it owns the top
+  // numbers and the margins chart too: the local counters only know this
+  // device, and his screen showed the same 46 three times because streak,
+  // wins and played are one number in a mode with no loss (2026-08-16).
+  // The local total stands in until the nodes answer; the minis stay a dot
+  // when they never do, an honest unknown rather than a wrong number.
   _renderMatchHeadToHead();
-  if (!mm) {
-    $('#stat-match-played').textContent = '0';
-    $('#stat-match-streak').textContent = '0';
-    $('#stat-match-wins').textContent = '0';
-    if (chart) chart.innerHTML = '<span class="chart-empty">Build a Challenge run to see your history!</span>';
-    return;
-  }
-  $('#stat-match-played').textContent = mm.totalGames || 0;
-  $('#stat-match-streak').textContent = mm.currentStreak || 0;
-  $('#stat-match-wins').textContent = mm.wins || 0;
-
-  // Per-board history, the Climb panel's own bar chart: a match's unit is
-  // the board, and the mode has no level table to key best times on.
-  if (!chart) return;
-  chart.innerHTML = '';
-  const recent = (mm.recentGames || []).slice(-20);
-  if (recent.length === 0) {
-    chart.innerHTML = '<span class="chart-empty">Build a Challenge run to see your history!</span>';
-    return;
-  }
-  const winTimes = recent.filter(g => g.won).map(g => g.time);
-  const maxTime = winTimes.length > 0 ? Math.max(...winTimes, 30) : 30;
-  for (const game of recent) {
-    const bar = document.createElement('div');
-    bar.className = `game-bar ${game.won ? 'win' : 'loss'}`;
-    if (game.won) {
-      bar.style.height = `${Math.max(15, 100 - (game.time / maxTime) * 70)}%`;
-      bar.title = `Win: ${game.time}s`;
-    } else {
-      bar.style.height = '30%';
-      bar.title = 'Loss';
-    }
-    chart.appendChild(bar);
-  }
+  $('#stat-match-wins').textContent = (mm && mm.totalGames) || 0;
+  $('#stat-match-played').textContent = '·';
+  $('#stat-match-streak').textContent = '·';
+  if (chart) chart.innerHTML = '<span class="chart-empty">Race a friend and your recent margins show here.</span>';
 }
 
 async function populateDailyPanel() {

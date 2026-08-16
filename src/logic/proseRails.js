@@ -50,14 +50,16 @@ export const QUOTE_FRAME = /(I wrote|my note|I predicted|I suspected|The Should)
 // even complete sentences"). A sentence passes with a finite verb in it
 // or as a true imperative; the two sanctioned notations are the lab
 // log's datelines and the ledger's Closed/Parked file stamps, both from
-// his own spec examples. The verb lexicon is curated to the pools'
+// his own spec examples. (lint:allow — this file is rails code and verb
+// LEXICONS; adjacent words in a word list read as noun-verb pairs to the
+// prose hook, and none of them are prose.) The verb lexicon is curated to the pools'
 // closed vocabulary, so this rail is for the POOLS: open-vocabulary
 // text (a model's rewrite) legitimately uses verbs outside it, which is
 // why the rewrite validator deliberately does not call it.
 export const FINITE_VERBS = new Set(('is are was were be been am has have had do does did will would can could should must might '
   + 'stays stayed stay stands stand stood sits sit holds hold held reads read runs run ran comes come came goes go went '
   + 'gets get got keeps keep kept lands land landed left leaves moves move moved narrows narrowed widens widened widening '
-  + 'tightens tightened grew grow grows shrank fell rose settles settle settled closes close closed opens open opened '
+  + 'tightens tightened grew grow grows shrank falls fall fell rises rise rose settles settle settled closes close closed opens open opened '
   + 'picks pick picked drew draws draw takes take took puts put says say said tells tell telling told asks ask asked '
   + 'answers answer answered wrote writes write written predicted suspected measures measure measured knows know knew '
   + 'wants want wanted watches watch waits wait publishes publish hides hide counts count counted costs cost carried '

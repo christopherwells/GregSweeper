@@ -285,7 +285,7 @@ function _bandStrip(study) {
   bandRect.setAttribute('rx', 4);
   bandRect.setAttribute('class', 'jf-band');
   const bandStr = est.lo <= 0 ? `0% to ${fmtPct(est.hi)}%` : `${fmtPct(est.lo)}% to ${fmtPct(est.hi)}%`;
-  _titled(bandRect, `The band the model would bet on: ${bandStr}`);
+  _titled(bandRect, `The likely range: ${bandStr}`);
   svg.appendChild(bandRect);
 
   const marker = _point(xFor(midClamped), y, 8, 'jf-strip-marker', 'diamond');
@@ -300,6 +300,171 @@ function _bandStrip(study) {
   return svg;
 }
 
+// ── move-strip ────────────────────────────────────────────────────────
+// Consecutive-fit CHANGES in the estimate, one bar per night, centered on
+// a zero line. The claim is only "how far did the number move", in
+// percentage points of effect, which the trajectory already proves.
+function _moveStrip(study) {
+  const live = (study?.trajectory || []).filter(p => p && p.retro !== true);
+  if (live.length < 3) return null;
+  const pct = (m) => (Math.exp(m) - 1) * 100;
+  const moves = [];
+  for (let i = 1; i < live.length; i++) {
+    moves.push({ date: live[i].date, d: pct(live[i].mean) - pct(live[i - 1].mean) });
+  }
+  const maxAbs = Math.max(...moves.map(m => Math.abs(m.d)), 0.25);
+  const plotW = VB_W - PAD_X * 2;
+  const plotH = VB_H - PAD_TOP - PAD_BOTTOM;
+  const midY = PAD_TOP + plotH / 2;
+  const yFor = (d) => midY - (d / maxAbs) * (plotH / 2);
+  const step = plotW / moves.length;
+  const barW = Math.max(3, Math.min(16, step * 0.6));
+
+  const svg = _svg(VB_H, `How far the estimate moved on each of ${moves.length} nightly fits`);
+
+  const zero = document.createElementNS(svgNS, 'line');
+  zero.setAttribute('x1', PAD_X);
+  zero.setAttribute('y1', midY);
+  zero.setAttribute('x2', VB_W - PAD_X);
+  zero.setAttribute('y2', midY);
+  zero.setAttribute('class', 'jf-baseline');
+  zero.setAttribute('stroke-width', 2);
+  svg.appendChild(zero);
+
+  for (let i = 0; i < moves.length; i++) {
+    const m = moves[i];
+    const x = PAD_X + i * step + (step - barW) / 2;
+    const yTop = Math.min(midY, yFor(m.d));
+    const bar = document.createElementNS(svgNS, 'rect');
+    bar.setAttribute('x', x.toFixed(1));
+    bar.setAttribute('y', yTop.toFixed(1));
+    bar.setAttribute('width', barW.toFixed(1));
+    bar.setAttribute('height', Math.max(1.5, Math.abs(yFor(m.d) - midY)).toFixed(1));
+    bar.setAttribute('rx', 2);
+    bar.setAttribute('class', 'jf-band');
+    const dir = m.d >= 0 ? 'up' : 'down';
+    _titled(bar, `${formatShortDate(m.date)} · ${dir} ${Math.abs(m.d).toFixed(1)} points`);
+    svg.appendChild(bar);
+  }
+
+  svg.appendChild(_label(PAD_X, VB_H - 10, formatShortDate(moves[0].date), 'start', 'jf-label'));
+  svg.appendChild(_label(VB_W - PAD_X, VB_H - 10, formatShortDate(moves[moves.length - 1].date), 'end', 'jf-label'));
+  svg.appendChild(_label(PAD_X, midY - 6, '0', 'start', 'jf-label'));
+  return svg;
+}
+
+// ── then-now ──────────────────────────────────────────────────────────
+// The window's opening band over tonight's band, two range bars on one
+// axis. band-strip's own drawing idiom, doubled; the comparison is the
+// figure's whole content.
+function _thenNow(study) {
+  const live = (study?.trajectory || []).filter(p => p && p.retro !== true);
+  const est = estimateSummary(study);
+  if (live.length < 2 || !est || !(est.hi > 0)) return null;
+  const pct = (m) => (Math.exp(m) - 1) * 100;
+  const first = live[0];
+  const then = {
+    lo: Math.max(0, pct(first.mean - first.sd)),
+    hi: pct(first.mean + first.sd),
+    mid: Math.max(0, pct(first.mean)),
+  };
+  const now = { lo: Math.max(0, est.lo), hi: est.hi, mid: Math.max(0, est.pct) };
+  const axisMax = Math.max(then.hi, now.hi) * 1.18;
+  if (!(axisMax > 0)) return null;
+
+  const padX = 24;
+  const trackW = VB_W - padX * 2;
+  const xFor = (v) => padX + (v / axisMax) * trackW;
+  const rows = [
+    { y: 34, label: formatShortDate(first.date), band: then, dim: true },
+    { y: 66, label: 'now', band: now, dim: false },
+  ];
+
+  const svg = _svg(STRIP_H + 16, 'The estimate band when this window opened, over the band tonight');
+  for (const r of rows) {
+    const track = document.createElementNS(svgNS, 'line');
+    track.setAttribute('x1', padX);
+    track.setAttribute('y1', r.y);
+    track.setAttribute('x2', VB_W - padX);
+    track.setAttribute('y2', r.y);
+    track.setAttribute('class', 'jf-strip-track');
+    track.setAttribute('stroke-width', 2);
+    svg.appendChild(track);
+
+    const rect = document.createElementNS(svgNS, 'rect');
+    rect.setAttribute('x', xFor(r.band.lo));
+    rect.setAttribute('y', r.y - 7);
+    rect.setAttribute('width', Math.max(2, xFor(r.band.hi) - xFor(r.band.lo)));
+    rect.setAttribute('height', 14);
+    rect.setAttribute('rx', 3);
+    rect.setAttribute('class', r.dim ? 'jf-band jf-dot-retro' : 'jf-band');
+    _titled(rect, `${r.label} · ${r.band.lo <= 0 ? '0%' : `${fmtPct(r.band.lo)}%`} to ${fmtPct(r.band.hi)}%`);
+    svg.appendChild(rect);
+
+    const marker = _point(xFor(r.band.mid), r.y, 6, 'jf-strip-marker', 'diamond');
+    _titled(marker, `${r.label} · about ${fmtPct(r.band.mid)}%`);
+    svg.appendChild(marker);
+    svg.appendChild(_label(padX - 6, r.y + 4, r.label, 'end', 'jf-label'));
+  }
+  svg.appendChild(_label(padX, STRIP_H + 8, '0%', 'start', 'jf-label'));
+  svg.appendChild(_label(VB_W - padX, STRIP_H + 8, `${fmtPct(axisMax / 1.18)}%`, 'end', 'jf-label'));
+  return svg;
+}
+
+// ── width-funnel ──────────────────────────────────────────────────────
+// The width of the band per live-era fit, drawn as a ribbon symmetric about a
+// center line: at each fit the ribbon spans ±half the band's width in
+// percentage points. Distinct from sd-trend (a relative line) and from
+// estimate-band (which is about the level, not the width).
+function _widthFunnel(study) {
+  const live = (study?.trajectory || []).filter(p => p && p.retro !== true);
+  if (live.length < 2) return null;
+  const pct = (m) => (Math.exp(m) - 1) * 100;
+  const pts = live.map(p => ({
+    date: p.date,
+    half: (pct(p.mean + p.sd) - pct(p.mean - p.sd)) / 2,
+  }));
+  const maxHalf = Math.max(...pts.map(p => p.half), 0.25);
+
+  const plotW = VB_W - PAD_X * 2;
+  const plotH = VB_H - PAD_TOP - PAD_BOTTOM;
+  const midY = PAD_TOP + plotH / 2;
+  const xFor = (i) => PAD_X + (i / (pts.length - 1)) * plotW;
+  const yFor = (h) => (h / maxHalf) * (plotH / 2);
+
+  const svg = _svg(VB_H, `The width of the plausible range across ${pts.length} nightly fits`);
+
+  const ribbon = document.createElementNS(svgNS, 'path');
+  ribbon.setAttribute('class', 'jf-band');
+  ribbon.setAttribute('d',
+    pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${xFor(i).toFixed(1)},${(midY - yFor(p.half)).toFixed(1)}`).join(' ')
+    + ' ' + [...pts].reverse().map((p, i) => `L${xFor(pts.length - 1 - i).toFixed(1)},${(midY + yFor(p.half)).toFixed(1)}`).join(' ')
+    + ' Z');
+  svg.appendChild(ribbon);
+
+  const center = document.createElementNS(svgNS, 'line');
+  center.setAttribute('x1', PAD_X);
+  center.setAttribute('y1', midY);
+  center.setAttribute('x2', VB_W - PAD_X);
+  center.setAttribute('y2', midY);
+  center.setAttribute('class', 'jf-baseline');
+  center.setAttribute('stroke-width', 2);
+  svg.appendChild(center);
+
+  const dotR = pts.length > 40 ? 3 : 5;
+  for (let i = 0; i < pts.length; i++) {
+    const node = _point(xFor(i), midY - yFor(pts[i].half), i === pts.length - 1 ? 7 : dotR, 'jf-dot', 'circle');
+    _titled(node, `${formatShortDate(pts[i].date)} · range about ${(pts[i].half * 2).toFixed(1)} points wide`);
+    svg.appendChild(node);
+  }
+
+  svg.appendChild(_label(PAD_X, VB_H - 10, formatShortDate(pts[0].date), 'start', 'jf-label'));
+  svg.appendChild(_label(VB_W - PAD_X, VB_H - 10, formatShortDate(pts[pts.length - 1].date), 'end', 'jf-label'));
+  const lastW = pts[pts.length - 1].half * 2;
+  svg.appendChild(_label(VB_W - PAD_X, PAD_TOP + 4, `${lastW.toFixed(1)} points wide`, 'end', 'jf-label jf-end-label'));
+  return svg;
+}
+
 /**
  * Draw the figure a planStudyFigures spec asks for. Returns an SVG node
  * or null when the study can't support that figure (the planner already
@@ -310,6 +475,9 @@ export function renderStudyFigure(study, spec) {
     case 'sd-trend': return _sdTrend(study, spec);
     case 'estimate-band': return _estimateBand(study);
     case 'band-strip': return _bandStrip(study);
+    case 'move-strip': return _moveStrip(study);
+    case 'then-now': return _thenNow(study);
+    case 'width-funnel': return _widthFunnel(study);
     default: return null;
   }
 }

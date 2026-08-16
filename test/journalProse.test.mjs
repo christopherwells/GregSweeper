@@ -899,7 +899,18 @@ test('planStudyFigures: deterministic, eligible-only, sometimes two, shapes rota
   const shapes = new Set();
   let twoFigure = 0;
   for (let i = 0; i < 40; i++) {
-    const s = mkStudy({ feature: `feature${i}`, latest: { date: '2026-08-02', mean: 0.03, sd: 0.019 } });
+    // Three LIVE fits, so every figure type is eligible: move-strip needs
+    // two deltas (2026-08-16), and a two-point fixture could never plan it,
+    // which would fail the all-types sweep below by construction.
+    const s = mkStudy({
+      feature: `feature${i}`,
+      latest: { date: '2026-08-02', mean: 0.03, sd: 0.019 },
+      trajectory: [
+        { date: '2026-07-02', mean: 0.028, sd: 0.024, retro: false },
+        { date: '2026-07-18', mean: 0.031, sd: 0.021, retro: false },
+        { date: '2026-08-02', mean: 0.03, sd: 0.019, retro: false },
+      ],
+    });
     const plan = planStudyFigures(s);
     assert.ok(plan.length >= 1 && plan.length <= 2, `plan size ${plan.length}`);
     assert.equal(new Set(plan.map(p => p.type)).size, plan.length, 'no duplicate figure types on one card');

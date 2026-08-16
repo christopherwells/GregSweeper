@@ -149,9 +149,9 @@ const ARCS = {
   },
   sonarCellCount: {
     lean: 'cost',
-    pos: 'I suspected from the start that a sonar reading helps less than it looks. The data keep agreeing with me.',
-    zero: 'I suspected a sonar reading helps less than it looks. The ledger reads even lower: it barely costs anything at all.',
-    out: 'I still can’t tell whether the wide reading pays for itself. The file stays open.',
+    pos: 'I suspected from the start that a sonar reading is worth less than it looks. The data keep agreeing with me.',
+    zero: 'I suspected a sonar reading is worth less than it looks. The ledger reads even lower: it barely costs anything at all.',
+    out: 'I still can’t tell whether the wide reading is worth its cost. The file stays open.',
   },
   compassCellCount: {
     lean: 'question',
@@ -238,13 +238,13 @@ const ARCS = {
   clueShare4: {
     lean: 'size',
     pos: 'My note asked how big the four costs, not whether it exists. The range settled on a real number, and telling the fours apart from the boards around them is the next job.',
-    zero: 'My note asked how big the four costs, not whether it exists. The answer landed at a rounding error.',
+    zero: 'My note asked how big the four costs, not whether it exists. The answer came to a rounding error.',
     out: 'How big the four costs is the open question in this file. The boards have not sized it yet.',
   },
   clueShare5plus: {
     lean: 'zero',
     pos: 'I wrote that a high number is nearly all mines and resolves fast, so it should barely cost. The range reads higher than that, and I want far more of these boards before I trust it.',
-    zero: 'I wrote that a high number is nearly all mines and resolves fast. The data agree, and the cost lands at a rounding error.',
+    zero: 'I wrote that a high number is nearly all mines and resolves fast. The data agree, and the cost comes to a rounding error.',
     out: 'The fives and up are rare, so their cost is slow to pin down. The file stays open while I gather them.',
   },
 };
@@ -506,7 +506,7 @@ const ESTIMATE_ZERO = [
   'Per {unit}, the cost reads as somewhere between 0% and about {hi}%.',
   'Call it somewhere between 0% and about {hi}% per {unit}.',
   'The charge per {unit} reads between 0% and about {hi}%.',
-  'The cost lies between 0% and about {hi}% per {unit}, which is thin either way.',
+  'The cost falls between 0% and about {hi}% per {unit}, which is thin either way.',
 ];
 
 // The band beat's variant 0 is always study.verdict.copy, the shared
@@ -518,11 +518,17 @@ const BAND_SETTLING = [
   'Uncertainty is down {deltaPct}% since {windowStart}.',
   'The band is {deltaPct}% narrower than it was on {windowStart}.',
 ];
+// Widening reports EXACTLY the way narrowing does (his ruling 2026-08-16:
+// no desired outcome in science; a wider band is a measurement, not a
+// setback). The old pool apologized for these numbers, "published them
+// too", wrote them down "anyway"; Greg now reports both directions in the
+// same flat register, which is the whole correction.
 const BAND_WIDENED = [
-  'More plays came in and my uncertainty went up, by about {deltaPct}%. That’s backwards from how measurement is supposed to go.',
-  'The range is {deltaPct}% wider than when this window opened on {windowStart}. I publish those numbers too.',
-  'Since {windowStart} the band has grown {deltaPct}%. I noted it in ink.',
-  'The spread has grown {deltaPct}% since {windowStart}, and I wrote it down anyway.',
+  'The range has widened {deltaPct}% since {windowStart}.',
+  'Uncertainty is up {deltaPct}% since {windowStart}.',
+  'The band is {deltaPct}% wider than it was on {windowStart}. The newer boards spread more than the earlier ones did.',
+  'More plays widened the range by about {deltaPct}%: the new boards disagree more than the earlier ones did.',
+  'The width is up {deltaPct}% this window. I keep collecting.',
 ];
 const BAND_OPEN = [
   'The band has barely moved since {windowStart}.',
@@ -551,7 +557,7 @@ const IDLE = [
   'I haven’t touched the study since {closedDate} because there’s nothing left to squeeze.',
   'The experiment hasn’t aimed at it since {closedDate}.',
   'The file has sat quiet since {closedDate}.',
-  'Not a single aimed board has gone its way since {closedDate}.',
+  'Since {closedDate} I have aimed every board at other files.',
 ];
 
 const DRIFT = [
@@ -565,24 +571,28 @@ const EARLY_NOTE = [
   'The numbers will come once the boards do.',
 ];
 
-// Closers, per state. The grind pool splits on resolution because "an
-// answer that flatters my hunch" is a lie when the data are siding
-// against it.
+// Closers, per state. The grind pool splits on resolution because a line
+// about a reading that matches the note is a lie when the data run the
+// other way. Both pools hold his 2026-08-16 line: no desired outcome in
+// science, so nothing here roots for a result, enjoys being right, or
+// frames a number as paying its way.
 const GRIND_CLOSERS_SIDED = [
-  'A stubborn answer that flatters my hunch is exactly the kind I double-check.',
-  'You’d think I’d enjoy being right. Mostly I keep checking.',
+  'A result that matches my note is the kind I re-check first.',
+  'Agreement with my note is not the same as evidence for it, so I keep measuring.',
   'The estimate settled. The reason didn’t.',
   'At some point stubborn becomes settled. This one isn’t there yet.',
   'The same reading came back again tonight.',
   'A result this steady still gets re-checked here.',
+  'Steady numbers get the same scrutiny as moving ones.',
 ];
 const GRIND_CLOSERS_OTHER = [
   'The estimate settled. The reason didn’t.',
-  'Consistency isn’t proof, but it does pay the rent.',
+  'Consistency isn’t proof, but it narrows the range.',
   'The same answer came back again, and I’m listening.',
   'A steady no is still information.',
   'The reading stayed put, and I wrote it down again.',
   'The number reads the same, and the file stays open a while longer.',
+  'The same number came back tonight, and I added another line to the file.',
 ];
 const CLOSERS = {
   'active-unresolved': [
@@ -596,21 +606,22 @@ const CLOSERS = {
   grind: GRIND_CLOSERS_SIDED, // resolved per-entry in _closerPool
   anomaly: [
     'I haven’t retracted the hypothesis. But it’s on notice.',
-    'Backwards results get front-page space in this notebook.',
+    'The results I did not expect get the most space in this notebook.',
     'When the data surprise me, I take better notes.',
-    'Wider is still an answer. It’s just not the one I ordered.',
+    'Wider is still an answer, and I record it like any other.',
     'Instruments drift. So do estimates. The notebook is the record.',
+    'A surprise is a measurement I have not explained yet.',
   ],
   'closed-won': [
     'Closed files make room for open ones.',
-    'I’ll take a clean answer over a flattering one any day.',
+    'A clean answer is the whole point of the file.',
     'Into the ledger it goes.',
     'The best files are the ones I can stop writing in.',
   ],
   'closed-lost': [
     'A hunch that dies cleanly teaches more than one that limps along.',
-    'The notebook keeps the losses. They’re what make the wins worth reading.',
-    'I wanted an effect. I got an answer. The answer outranks the wanting.',
+    'Closed is closed, whatever the estimate came to.',
+    'My note guessed an effect. The measurements read otherwise, and the measurements stand.',
     'The data owe me nothing. That’s what makes it worth asking.',
   ],
   resting: [
@@ -661,7 +672,7 @@ const COLLECTING_EARLY = [
 // (the file, the range, the read, the charge) rather than the label.
 const COLLECTING_SETTLING = [
   'The {label} file is closing in: the range has narrowed {deltaPct}% since {windowStart}.',
-  'The {label} range has come down {deltaPct}% since {windowStart}, and boards keep landing.',
+  'The {label} range has come down {deltaPct}% since {windowStart}, and the boards keep coming.',
   'The {label} estimate has narrowed {deltaPct}% since {windowStart}.',
 ];
 const COLLECTING_POS = [
@@ -675,7 +686,7 @@ const COLLECTING_ZERO = [
   'The {label} file reads between 0% and about {hi}% per {unitShort} so far.',
   'The {label} range still runs 0% to about {hi}% per {unitShort}.',
   'The {label} file has not picked a side yet: 0% to about {hi}% per {unitShort}.',
-  'So far the {label} range lands between 0% and about {hi}% per {unitShort}.',
+  'So far the {label} range falls between 0% and about {hi}% per {unitShort}.',
   'The {label} numbers still read 0% to about {hi}% per {unitShort}.',
 ];
 const COLLECTING_NEG = [
@@ -753,26 +764,31 @@ const QUEUE_CLOSED = [
   'Closed or not, the {label} file is thin at {nBoardsWord} {boardsNoun}, so boards still come its way.',
 ];
 
-// Lab-log datelines, one pool per outcome class.
+// Lab-log datelines, one pool per outcome class. The two pools MIRROR each
+// other line for line (his ruling 2026-08-16: no desired outcome in
+// science). The old widened pool apologized ("I don't hide those", "honest
+// ink", "that's science, unfortunately") while the tightened pool
+// celebrated ("a good night", "I'll take it"), and a notebook that cheers
+// one direction is rooting, not measuring.
 const LOG_TIGHTENED = [
   '{RunsWord} {runsNoun} landed. The range narrowed {delta}%.',
   '{RunsWord} {runsNoun} came in, and the band tightened {delta}%.',
-  'It was a good night: {runsWord} {runsNoun} landed and the range came down {delta}%.',
-  '{RunsWord} {runsNoun} landed and left the band {delta}% narrower. I’ll take it.',
+  'A busy night: {runsWord} {runsNoun} landed and the range came down {delta}%.',
+  '{RunsWord} {runsNoun} landed and left the band {delta}% narrower.',
   'The model fit {runsWord} {runsNoun}, and the spread came down {delta}%.',
   '{RunsWord} {runsNoun} landed and the spread shrank {delta}%.',
   'Uncertainty fell {delta}% on {runsWord} {runsNoun}.',
-  'The range fell {delta}% on {runsWord} {runsNoun}. That’s progress you can measure.',
+  'The range fell {delta}% on {runsWord} {runsNoun}.',
 ];
 const LOG_WIDENED = [
-  '{RunsWord} {runsNoun} landed and the range got {delta}% wider. I noted it.',
-  '{RunsWord} {runsNoun} came in and the spread grew {delta}%. The backwards nights get written down too.',
-  'The band grew {delta}% on {runsWord} new {runsNoun}. I don’t hide those.',
-  '{RunsWord} {runsNoun} landed and brought more spread, not less: the band is {delta}% wider.',
-  'The spread rose {delta}% after {runsWord} {runsNoun}. I recorded it all the same.',
-  '{RunsWord} {runsNoun} landed and the range is wider by {delta}%. That’s science, unfortunately.',
-  '{RunsWord} {runsNoun} landed and the spread grew {delta}%. It goes down in honest ink.',
-  'Uncertainty rose {delta}% after {runsWord} {runsNoun}. It goes in the log like everything else.',
+  '{RunsWord} {runsNoun} landed. The range widened {delta}%.',
+  '{RunsWord} {runsNoun} came in, and the band widened {delta}%.',
+  'A busy night: {runsWord} {runsNoun} landed and the range went up {delta}%.',
+  '{RunsWord} {runsNoun} landed and left the band {delta}% wider.',
+  'The model fit {runsWord} {runsNoun}, and the spread went up {delta}%.',
+  '{RunsWord} {runsNoun} landed and the spread grew {delta}%.',
+  'Uncertainty rose {delta}% on {runsWord} {runsNoun}.',
+  'The range rose {delta}% on {runsWord} {runsNoun}.',
 ];
 const LOG_FLAT = [
   '{RunsWord} {runsNoun} landed. The range didn’t blink.',
@@ -1105,28 +1121,53 @@ export function queueLine(coverageTargets, activeFeature, studies) {
 // points) is excluded whenever the series carries retrodicted points,
 // because the dimmed dot IS the retro disclosure.
 
-export const FIGURE_TYPES = ['sd-trend', 'estimate-band', 'band-strip'];
+export const FIGURE_TYPES = ['sd-trend', 'estimate-band', 'band-strip',
+  // His ask 2026-08-16 ("more different graphs... interesting ways to
+  // display the data"): three more types over the same proven trajectory
+  // data, nothing new derived. move-strip plots consecutive-fit changes,
+  // then-now compares the window's opening band against tonight's, and
+  // width-funnel draws the band's width as a symmetric ribbon.
+  'move-strip', 'then-now', 'width-funnel'];
 const DOT_SHAPES = ['circle', 'square', 'diamond', 'tick'];
 
 // Captions are framing copy about the figure (third person allowed,
 // like the sparkline caption always was); each pool rotates with the
 // same seed discipline as the prose. No digits, a caption explains,
 // the figure shows the numbers.
+// Caption language stays literal (his ruling 2026-08-16: no metaphorical
+// noun-verb pairings, no direction called progress). A figure shows; a
+// line, bar or band is described by what is plotted, never by what it
+// wants, carries, or bets.
 const FIGURE_CAPTIONS = {
   'sd-trend': [
-    'This line tracks Greg’s uncertainty, night by night. A falling line means he’s homing in.',
+    'Greg’s uncertainty, plotted night by night. A falling line means a narrowing band.',
     'The line shows how sure Greg is, fit by fit. Lower means surer.',
-    'The uncertainty in this file is plotted over time. Down is progress.',
+    'The uncertainty in this file is plotted over time. Down means a tighter band.',
   ],
   'estimate-band': [
-    'This is the estimate itself, night by night. The shaded band is the spread Greg would bet on.',
-    'The line shows where the estimate has moved since the current model began. The shading is the honest spread.',
+    'This is the estimate itself, night by night. The shaded band is the model’s uncertainty.',
+    'The line shows where the estimate has moved since the current model began. The shading is the uncertainty band.',
     'This is the running read on the effect. The band around the line is Greg’s uncertainty.',
   ],
   'band-strip': [
     'This bar shows the latest read as one range. The mark is Greg’s best single guess.',
-    'The bar shows where the cost per {unit} most likely sits, as of the latest fit.',
-    'One bar carries the whole claim: the band is what the model would bet on today.',
+    'The bar shows the likely range of the cost per {unit}, as of the latest fit.',
+    'One bar shows the whole claim: the estimate and its band, as of tonight.',
+  ],
+  'move-strip': [
+    'Each bar is one nightly fit: how far the estimate moved that night.',
+    'Each bar shows one night’s movement in the estimate. Bars above the line are increases.',
+    'The estimate’s night-to-night changes, plotted as bars around zero.',
+  ],
+  'then-now': [
+    'Two readings of the same range: when this window opened, and tonight.',
+    'Two bars: one is the band when the window opened, the other is the band tonight.',
+    'Then and now: the range as the window opened, against the latest fit.',
+  ],
+  'width-funnel': [
+    'This ribbon shows the width of the plausible range, fit by fit. A narrow ribbon means a settled estimate.',
+    'Uncertainty as a ribbon: wider means a wider range.',
+    'This ribbon is the band’s width over the study, night by night.',
   ],
 };
 
@@ -1149,6 +1190,12 @@ export function planStudyFigures(study) {
   if (t.length >= 2) eligible.push('sd-trend');
   if (live.length >= 2 && est) eligible.push('estimate-band');
   if (est && est.hi > 0 && study?.unit) eligible.push('band-strip');
+  // The three 2026-08-16 types. All gated on est so a study with no
+  // current estimate keeps its original sd-trend-only plan (a pin in the
+  // planner test, and the honest floor: each of these charts is a claim
+  // about the estimate). move-strip needs three live fits for two deltas.
+  if (live.length >= 3 && est) eligible.push('move-strip');
+  if (live.length >= 2 && est) eligible.push('then-now', 'width-funnel');
   if (eligible.length === 0) return [];
 
   const facts = buildFacts(study);
@@ -1284,12 +1331,12 @@ export function activeFeatureFrom(history, meta = null) {
 const INTROS = [
   'Greg times every solve and uses the results to work out what actually makes a board hard. '
   + 'This is his notebook: the experiment he’s running now, and the files he’s closed. '
-  + 'The days that didn’t go his way are in here too.',
+  + 'The results that surprised him are in here too.',
   'Every solve you finish feeds Greg’s nightly model of what makes a board hard. '
   + 'These are his working notes: one live experiment, a shelf of closed files, '
-  + 'and the results that went against him, published all the same.',
+  + 'and the answers he did not expect, kept with the rest.',
   'Greg runs one experiment at a time and keeps the notes public. '
-  + 'The live file is up top; the closed cases sit below it, wins and losses alike.',
+  + 'The live file is up top; the closed files are below it, whatever the estimates came to.',
 ];
 
 export function planJournalScreen(history, meta = null) {
