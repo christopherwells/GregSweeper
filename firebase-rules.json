@@ -702,6 +702,7 @@
           "mods":    { "$idx": { ".validate": "newData.isString() && newData.val().length <= 12" } },
           "time":    { ".validate": "newData.isString() && newData.val().length <= 12" },
           "density": { ".validate": "newData.isString() && newData.val().length <= 12" },
+          "difficulty": { ".validate": "newData.isString() && newData.val().length <= 12" },
           "$other":  { ".validate": false }
         },
         "boards": {

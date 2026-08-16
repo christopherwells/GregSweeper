@@ -486,3 +486,22 @@ test('tenths appear only when a gap is inside one second (his ruling)', () => {
   assert.equal(fmtClock(59.96), '1:00', 'rounding must carry, never print 0:60');
   assert.equal(fmtClock(-3), '');
 });
+
+// ── The rules node whitelist, in lockstep with what the client writes ───
+
+test('REGRESSION: every rules field the client writes is whitelisted in the match node', () => {
+  // The 866683d class, paid again on 2026-08-16: the difficulty axis added a
+  // field to defaultMatchRules and nobody added it to firebase-rules.json's
+  // matches rules block, whose $other refuses unknown children, so every
+  // shared-match create dropped whole with "Try again in a moment". The
+  // client's own rules shape and the server's whitelist must move together.
+  const rules = JSON.parse(readFileSync(new URL('../firebase-rules.json', import.meta.url), 'utf8'));
+  const block = rules.rules.matches.$matchId.rules;
+  const allowed = new Set(Object.keys(block).filter((k) => !k.startsWith('.') && k !== '$other'));
+  const written = sanitizeMatchRules(defaultMatchRules(
+    { shapes: ['rect'], mods: [] }));
+  for (const key of Object.keys(written)) {
+    assert.ok(allowed.has(key),
+      `the client writes rules.${key} but the match node's whitelist lacks it`);
+  }
+});
