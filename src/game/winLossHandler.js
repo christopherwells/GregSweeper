@@ -39,7 +39,9 @@ import {
   getAchievementState, getAllTierNames, getTierIcon, getTierColor,
 } from '../logic/achievements.js';
 import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js';
-import { submitOnlineScore, submitArchiveScore, submitWeeklyScore, fetchWeeklyLeaderboard, submitMatchFitRows } from '../firebase/firebaseLeaderboard.js';
+import { submitOnlineScore, submitArchiveScore, submitWeeklyScore, fetchWeeklyLeaderboard, fetchOnlineLeaderboard, submitMatchFitRows } from '../firebase/firebaseLeaderboard.js';
+import { dailyStanding } from '../logic/leaderboardViews.js';
+import { getHandicapRatioMap } from '../logic/handicaps.js';
 import { matchFitRows, MATCH_FIT_MIN_TIME } from '../logic/matchStandings.js';
 
 // (HTML escaping for the weekly leaderboard rows now comes from
@@ -911,6 +913,40 @@ export async function handleWin() {
       const { streak } = getDailyStreak();
       if (streak > 0) {
         gameoverTime.textContent += ` | \u{1F525} ${streak} day streak`;
+      }
+    }
+    // His ask 2026-08-16: "when you do the daily, you should see how you
+    // stack up." The live field's rank renders when the fetch answers, with
+    // the player's own row spliced in (dailyStanding), because the submit
+    // sits behind its cooldown queue and this line must not wait for it.
+    // Live dailies only: an archive replay is not in today's race, and a
+    // practice lane never files a row. Fail-silent; the win screen never
+    // hangs on a courtesy line, and "so far" is the honest frame for a
+    // field that grows all day.
+    const standingEl = $('#gameover-standing');
+    if (standingEl) {
+      standingEl.classList.add('hidden');
+      if (!isArchivePlay && !state.isLevelPractice) {
+        const boardDate = state.dailySeed;
+        fetchOnlineLeaderboard(boardDate).then((rows) => {
+          // A second board can be underway by the time the field answers;
+          // painting the old board's rank onto it would be the wrong claim.
+          if (!rows || state.dailySeed !== boardDate) return;
+          const s = dailyStanding(rows, {
+            uid: getUid(), myTime: precise, handicaps: getHandicapRatioMap(),
+          });
+          if (!s) return;
+          const nth = (n) => {
+            const t = n % 10;
+            const h = n % 100;
+            return `${n}${t === 1 && h !== 11 ? 'st' : t === 2 && h !== 12 ? 'nd' : t === 3 && h !== 13 ? 'rd' : 'th'}`;
+          };
+          const fieldStr = s.capped ? `of the top ${s.field}` : `of ${s.field}`;
+          standingEl.textContent = s.rankAdj === s.rankRaw
+            ? `${nth(s.rankAdj)} ${fieldStr} on today's board so far.`
+            : `${nth(s.rankAdj)} ${fieldStr} on today's board so far, adjusted (${nth(s.rankRaw)} raw).`;
+          standingEl.classList.remove('hidden');
+        }).catch(() => { /* the line stays hidden */ });
       }
     }
     // Greg's Time = global par from the current PAR_MODEL applied to today's

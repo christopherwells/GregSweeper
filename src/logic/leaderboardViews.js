@@ -44,6 +44,44 @@ export function rankAdjusted(rows, handicapMap) {
   return out;
 }
 
+/**
+ * Where the player stands on today's board (his ask 2026-08-16: "when you
+ * do the daily, you should see how you stack up").
+ *
+ * Ranks are computed over the fetched field WITH the player's own row
+ * spliced in when the fetch has not caught it yet (the submit is queued
+ * behind a cooldown, and the field fetch races it), so the line can render
+ * the moment the board is done. Adjusted is the leaderboard's own default
+ * comparison; raw rides beside it because the two can disagree and showing
+ * one is picking the flattering answer. The leaderboard fetch is capped at
+ * fifty rows, so `capped` tells the caller to speak "of the top 50" rather
+ * than claim a field size it did not measure.
+ *
+ * @param {Array} rows fetched daily rows ({uid, time, ...})
+ * @param {object} opts { uid, myTime, handicaps, cap }
+ * @returns {{rankAdj, rankRaw, field, capped}|null} null when unrankable
+ */
+export function dailyStanding(rows, { uid = null, myTime = null, handicaps = null, cap = 50 } = {}) {
+  if (!Number.isFinite(myTime) || myTime <= 0) return null;
+  const field = (rows || []).filter((r) => r && Number.isFinite(r.time));
+  const mine = uid != null && field.some((r) => r.uid === uid);
+  // The splice is tagged rather than matched back by value: a stranger can
+  // share the exact time, and a null uid must still find its own row.
+  const withMe = mine ? field.slice() : [...field, { uid, time: myTime, _me: true }];
+  const isMe = (r) => (mine ? r.uid === uid : r._me === true);
+  const adj = rankAdjusted(withMe, handicaps);
+  const rankAdj = adj.findIndex(isMe) + 1;
+  const byRaw = withMe.slice().sort((a, b) => a.time - b.time);
+  const rankRaw = byRaw.findIndex(isMe) + 1;
+  if (rankAdj < 1 || rankRaw < 1) return null;
+  return {
+    rankAdj,
+    rankRaw,
+    field: withMe.length,
+    capped: field.length >= cap,
+  };
+}
+
 // Friends-view filter: the viewer always sees themself alongside their
 // friends, even with an empty friend list.
 export function filterToFriends(rows, friendUids, myUid) {

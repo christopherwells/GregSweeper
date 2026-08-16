@@ -318,7 +318,7 @@ function _moveStrip(study) {
   const midY = PAD_TOP + plotH / 2;
   const yFor = (d) => midY - (d / maxAbs) * (plotH / 2);
   const step = plotW / moves.length;
-  const barW = Math.max(3, Math.min(16, step * 0.6));
+  const barW = Math.max(6, Math.min(16, step * 0.6));
 
   const svg = _svg(VB_H, `How far the estimate moved on each of ${moves.length} nightly fits`);
 
@@ -339,9 +339,11 @@ function _moveStrip(study) {
     bar.setAttribute('x', x.toFixed(1));
     bar.setAttribute('y', yTop.toFixed(1));
     bar.setAttribute('width', barW.toFixed(1));
-    bar.setAttribute('height', Math.max(1.5, Math.abs(yFor(m.d) - midY)).toFixed(1));
+    bar.setAttribute('height', Math.max(3, Math.abs(yFor(m.d) - midY)).toFixed(1));
     bar.setAttribute('rx', 2);
-    bar.setAttribute('class', 'jf-band');
+    // Solid marker fill, not the band wash: at bar width the translucent
+    // band color was unreadable on his screen (2026-08-16).
+    bar.setAttribute('class', 'jf-strip-marker');
     const dir = m.d >= 0 ? 'up' : 'down';
     _titled(bar, `${formatShortDate(m.date)} · ${dir} ${Math.abs(m.d).toFixed(1)} points`);
     svg.appendChild(bar);
@@ -376,8 +378,8 @@ function _thenNow(study) {
   const trackW = VB_W - padX * 2;
   const xFor = (v) => padX + (v / axisMax) * trackW;
   const rows = [
-    { y: 34, label: formatShortDate(first.date), band: then, dim: true },
-    { y: 66, label: 'now', band: now, dim: false },
+    { y: 38, label: formatShortDate(first.date), band: then, dim: true },
+    { y: 74, label: 'now', band: now, dim: false },
   ];
 
   const svg = _svg(STRIP_H + 16, 'The estimate band when this window opened, over the band tonight');
@@ -404,7 +406,7 @@ function _thenNow(study) {
     const marker = _point(xFor(r.band.mid), r.y, 6, 'jf-strip-marker', 'diamond');
     _titled(marker, `${r.label} · about ${fmtPct(r.band.mid)}%`);
     svg.appendChild(marker);
-    svg.appendChild(_label(padX - 6, r.y + 4, r.label, 'end', 'jf-label'));
+    svg.appendChild(_label(padX, r.y - 12, r.label, 'start', 'jf-label'));
   }
   svg.appendChild(_label(padX, STRIP_H + 8, '0%', 'start', 'jf-label'));
   svg.appendChild(_label(VB_W - padX, STRIP_H + 8, `${fmtPct(axisMax / 1.18)}%`, 'end', 'jf-label'));

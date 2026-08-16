@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import {
   rankAdjusted, filterToFriends,
   buildFriendAddUpdate, buildFriendRemoveUpdate,
+  dailyStanding,
 } from '../src/logic/leaderboardViews.js';
 
 // handicapMap is now uid -> k (a MULTIPLICATIVE ratio). adjusted = time / k.
@@ -132,4 +133,41 @@ test('add/remove: self-friendship throws; remove nulls exactly both sides', () =
     'users/me123/friends/them456': null,
     'users/them456/friends/me123': null,
   });
+});
+
+// ── The daily standing line (his ask 2026-08-16) ────────────────────────
+
+test('dailyStanding splices the unseen own row and ranks both ways', () => {
+  const rows = [
+    { uid: 'a', time: 30 },
+    { uid: 'b', time: 60 },
+    { uid: 'c', time: 90 },
+  ];
+  // Unrated viewer at 45s: 2nd raw. With b rated k=2 (adjusted 30), the
+  // adjusted rank slips to 3rd; both truths report.
+  const s = dailyStanding(rows, { uid: 'me', myTime: 45, handicaps: { b: 2 } });
+  assert.equal(s.field, 4, 'the spliced row joins the field');
+  assert.equal(s.rankRaw, 2);
+  assert.equal(s.rankAdj, 3);
+  assert.equal(s.capped, false);
+});
+
+test('dailyStanding uses the fetched own row when the submit already landed', () => {
+  const rows = [
+    { uid: 'me', time: 40 },
+    { uid: 'a', time: 30 },
+  ];
+  const s = dailyStanding(rows, { uid: 'me', myTime: 41.5 });
+  assert.equal(s.field, 2, 'no double self');
+  assert.equal(s.rankRaw, 2);
+});
+
+test('dailyStanding is honest about a capped fetch and a stranger sharing the time', () => {
+  const rows = Array.from({ length: 50 }, (_, i) => ({ uid: `u${i}`, time: 10 + i }));
+  const s = dailyStanding(rows, { uid: null, myTime: 12, cap: 50 });
+  assert.equal(s.capped, true, 'fifty fetched rows mean the field is larger than we saw');
+  // A stranger at exactly 12s exists (u2); the tagged splice still finds
+  // its own row rather than the stranger's.
+  assert.equal(s.rankRaw, 4, 'ties keep fetched order ahead of the splice');
+  assert.equal(dailyStanding(rows, { uid: null, myTime: 0 }), null, 'no time, no claim');
 });
