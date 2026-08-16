@@ -469,6 +469,35 @@ function reprice() {
   store.model = modelFingerprint();
   fs.writeFileSync(FEATURES_PATH, JSON.stringify(store));
   if (pruned) console.log(`pruned ${pruned} store entries the pool no longer ships`);
+
+  // ── Write the measured truth back to the SEARCH CACHE for evicted faces ─
+  //
+  // A homeless face leaves the pool and the prune above forgets it, but the
+  // search cache still carries the optimistic candidate price that admitted
+  // it, so the next emit re-picks the same face and the next reprice evicts
+  // it again: hex circled the endless pool exactly that way on 2026-08-16.
+  // The store's 16-seed price is the truth the eviction was judged on, so it
+  // replaces the cache's number (in the cache's own pre-scale unit), and the
+  // corrected face simply stops being a candidate.
+  if (homeless.length) {
+    const CACHE_PATH = path.join(__dirname, 'data', 'spec-search-cache.json');
+    try {
+      const cache = JSON.parse(fs.readFileSync(CACHE_PATH, 'utf8'));
+      let corrected = 0;
+      for (const p of priced) {
+        if (p.finalPool !== null) continue;
+        const c = cache[p.face];
+        if (!c) continue;
+        c.ppc = p.now / scale;
+        c.medPar = p.par / scale;
+        corrected++;
+      }
+      if (corrected) {
+        fs.writeFileSync(CACHE_PATH, JSON.stringify(cache, null, 0));
+        console.log(`corrected ${corrected} search-cache prices for evicted faces`);
+      }
+    } catch { /* no cache in this checkout: nothing to correct */ }
+  }
 }
 
 /** The constructor call as write-challenge-pool emits it, for identity matching. */
