@@ -42,6 +42,9 @@ const SANCTIONED_PHRASES = [
   '<p><strong>Challenge:</strong> build a run of one to ten boards',
   'Daily, Weekly and Challenge are played clean.',
   'Every board you have finished in a Challenge run.',
+  // index.html: the v1.11 What's New entry headlines the head-to-head by
+  // its own name.
+  '<strong>Challenge a friend</strong>',
   // src: the two share cards' mode maps (each names the ladder correctly in
   // the same line, so the line itself proves the distinction), the text
   // card's headline, and the stats panel's empty state.
