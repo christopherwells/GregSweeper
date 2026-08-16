@@ -334,12 +334,21 @@ test('GOLDEN: the first endless block is fixed', () => {
   // and shipped as a duplicate row. A 73-entry endless deck deals a
   // different five, hex-less until a spec search finds hex past the floor
   // under the new equations or the model moves again.
+  // Moved again the same evening: a refit over THREE new rows (his own worm
+  // plays) rippled the whole surface and slid every 4.8.8 endless entry
+  // under the shared admission, the drift alarm's first live catch. The
+  // repair re-set every per-shape floor so the admission margin lands ON
+  // the shape's top decile instead of past it (the first cut put the bar at
+  // the p90 itself, and floor x margin quietly admitted the top eight
+  // percent), measured deciles on current-model cache prices only (stale
+  // rows overstate), and 4.8.8 took its own allowance (2.3). Seven shapes,
+  // 96 entries, a different deck, a different five.
   assert.deepEqual(got, [
-    '4.8.8:98c:35m:[liar+mystery+mirror]',
-    'deltoidal:54c:14m:[wormhole+mirror+worm]',
-    'floret:84c:27m:[mystery+wormhole+sonar]',
-    'cairo:112c:32m:[sonar+worm]',
-    'rhombille:30c:5m:[]',
+    'deltoidal:36c:13m:[sonar]',
+    'floret:84c:31m:[]',
+    'rhombille:48c:18m:[]',
+    'cairo:112c:36m:[locked+sonar+compass]',
+    'hex:104c:37m:[liar+locked+compass]',
   ]);
 
 

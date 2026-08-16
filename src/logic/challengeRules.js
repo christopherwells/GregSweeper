@@ -189,8 +189,19 @@ export const ENDLESS_PPC_FLOOR = 3.5;
 // par model is fit on play that is still learning them: Classic priced far
 // harder early on than it does now. When cairo's per-cell rate rises on real
 // data this entry should shrink toward the shared floor and eventually go.
+// THE FLOOR SITS UNDER THE MARGIN (2026-08-16 evening). Admission is
+// floor x ENDLESS_PPC_FLOOR_MARGIN, and the first cut of these numbers
+// set each floor AT its shape's 90th percentile, so the margin quietly
+// raised the real bar past the decile and the "top decile earns it"
+// ruling admitted the top eight percent: after the evening refit's ripple
+// the drawn endless held ONE 4.8.8 and THREE rhombille. Each entry below
+// is now its shape's p90 divided by the margin, rounded down to 0.05, so
+// the bar the emit actually applies lands ON the decile the ruling names.
+// Tonight's p90s: 4.8.8 2.64, hex 2.28, rect 1.43, rhombille 2.16, cairo
+// 2.56 (deltoidal 4.31 and floret 5.75 clear the shared floor and carry
+// no entry).
 export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
-  cairo: 2.5,
+  cairo: 2.45,
   // 3D Cubes joined on 2026-08-08 for exactly cairo's reason, and it is the
   // clearest case of it. Over 2,486 measured rhombille specs the whole shape
   // reaches ppc 3.58 at its very best, one board, and one that does not hold
@@ -208,7 +219,7 @@ export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
   // Same provisional reading as cairo's: these rates are fit on play that is
   // still learning the lattice. When 3D Cubes' per-cell rate rises on real
   // data this entry should shrink toward the shared floor and eventually go.
-  rhombille: 2.2,
+  rhombille: 2.05,
   // HONEYCOMB joined on 2026-08-16, his top-decile ruling extended to any
   // shape the model prices below the shared floor. The first fit with match
   // rows pooled cheapened hex 10.5% in one night, and its restored endless
@@ -219,7 +230,25 @@ export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
   // the top decile, the same bar the two entries above were set at. Same
   // provisional reading: when hex's rate rises on real data this entry
   // should shrink toward the shared floor.
-  hex: 2.3,
+  hex: 2.2,
+  // OCTAGONS joined on 2026-08-16 evening, the third application of the
+  // top-decile ruling in one day and the cleanest sign yet that the trigger
+  // is fit volatility, not any one shape: the evening refit took THREE new
+  // rows (his own worm plays on this lattice) and the whole-surface ripple
+  // slid every 4.8.8 endless entry under the shared admission at once,
+  // emptying the shape from both endless surfaces. Its 90th percentile
+  // reads 2.64 over 2,698 measured specs; 2.6 is the top decile. The other
+  // allowances still track their own deciles (hex 2.28 against 2.3, rect
+  // 1.43 against 1.5, cairo 2.56 against 2.5), the consistency check that
+  // keeps this mechanism honest. Same provisional reading as the rest:
+  // shrink toward the shared floor as real play accumulates.
+  // Corrected the same night: 2.55 came from a p90 of 2.64 measured over
+  // the WHOLE cache, and most 4.8.8 rows there carry prices no
+  // --reprice-cache can refresh (no stored features), so the decile was
+  // stale-tail optimism. Over current-model prices only (n=158) the p90
+  // reads 2.41 and the max 3.02; the floor sits under the margin as the
+  // block note requires. Measure deciles on current-model prices only.
+  '4.8.8': 2.3,
   // CLASSIC joined on 2026-08-10, and it is the one case that is not about a
   // shape being under-priced while players learn it. Rect's constraints just
   // conflict: it prices so gently that reaching 3.5 s/cell takes 130-156
@@ -246,7 +275,11 @@ export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
   // the top decile. Rect prices gently BECAUSE its boards are familiar, which
   // is exactly the provisional reading above: as real play data accumulates
   // this entry should shrink toward the shared floor.
-  rect: 1.5,
+  // 1.35 put the margin bar at 1.3905 and the emit's two-decimal stored
+  // prices admitted a 1.39, which sits ON the bar and fails the margin
+  // re-check by rounding. One notch down gives stored prices real
+  // headroom; 1.30 x 1.03 = 1.339, still under rect's 1.43 decile.
+  rect: 1.3,
 });
 
 /** The admission floor a shape is held to. */
