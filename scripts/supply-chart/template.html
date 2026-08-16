@@ -89,6 +89,16 @@ td.c{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:center
   background:color-mix(in oklab, var(--heat-0), var(--heat-4) calc(var(--f) * 100%))}
 td.c.void{background:repeating-linear-gradient(45deg,transparent,transparent 3px,var(--void) 3px,var(--void) 4px);
   border:1px dashed var(--void);color:transparent}
+td.c.s-closed{background:repeating-linear-gradient(45deg,transparent,transparent 3px,var(--void) 3px,var(--void) 4px);
+  border:1px dashed var(--void);color:var(--ink-3)}
+td.c.s-closed::after{content:'\00d7'}
+td.c.s-hole{background:transparent;border:2px solid var(--brand);color:var(--brand);font-weight:700}
+.panel .verdict{font-weight:400;font-size:11px;color:var(--ink-3);margin-left:auto;letter-spacing:.02em}
+.panel h3{display:flex;align-items:baseline;gap:6px}
+#attn{margin:6px 0 0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:4px}
+#attn li{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;color:var(--ink-2)}
+#attn li b{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink-1)}
+#attn-more{font-size:12px;color:var(--ink-3);margin-top:6px}
 .switch{display:inline-flex;border:1px solid var(--line);border-radius:3px;overflow:hidden;align-self:flex-start}
 .switches{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
 .switches .lab{font-size:12px;color:var(--ink-3);letter-spacing:.02em}
@@ -179,14 +189,26 @@ footer code{font-family:var(--mono);font-size:12px}
 </section>
 
 <div class="legend">
-  <span>Unplayed boards per cell</span>
+  <span>Fullness against the cell's OWN target (arity-scaled, played-aware)</span>
   <span class="ramp"><i style="background:var(--heat-0)"></i><i style="background:#c96a12"></i><i style="background:#c9a415"></i><i style="background:#5d8f2a"></i><i style="background:var(--heat-4)"></i></span>
-  <span>0 &rarr; 20+</span>
+  <span>0% &rarr; 100%</span>
   <span aria-hidden="true">&middot;</span>
-  <span><span class="swatch"></span> nothing at all</span>
+  <span><span class="swatch"></span> nothing exists, nothing owed</span>
+  <span aria-hidden="true">&middot;</span>
+  <span>&#215; measured closed</span>
+  <span aria-hidden="true">&middot;</span>
+  <span style="border:2px solid var(--brand);border-radius:2px;padding:0 4px">0</span>
+  <span>a hole a focused host feels</span>
 </div>
 
-<div class="grid"><!--PANELS--></div>
+<div class="grid"><!--PANELS-->
+
+<div class="note">
+  <h2>Needs attention in this view</h2>
+  <p>Holes first (a focused host draws nothing while stacked boards exist), then the furthest-under cells against their own targets. Closed cells never appear here: expected empty is not a debt.</p>
+  <ol id="attn"></ol>
+  <p id="attn-more"></p>
+</div></div>
 
 <footer>
   <p><strong>How to read it.</strong> Each panel is one density band crossed with one length band. Rows are shapes, columns are modifiers, and the number is boards nobody has finished yet.</p>
@@ -197,9 +219,11 @@ footer code{font-family:var(--mono);font-size:12px}
 </div>
 <script>
 (function () {
-  var TARGET = 20;
   var cells = Array.prototype.slice.call(document.querySelectorAll('td.c'));
+  var panels = Array.prototype.slice.call(document.querySelectorAll('.panel'));
   var swaps = Array.prototype.slice.call(document.querySelectorAll('[data-v]'));
+  var attn = document.getElementById('attn');
+  var attnMore = document.getElementById('attn-more');
   var bMatch = document.getElementById('b-match');
   var bBoth = document.getElementById('b-both');
   var bPool = document.getElementById('b-pool');
@@ -207,16 +231,53 @@ footer code{font-family:var(--mono);font-size:12px}
   var both = true;
   var narrow = false;
 
+  function stateAt(td, idx) {
+    return (td.getAttribute('data-f') || '').split('|')[idx] || 'none';
+  }
+
   function paint() {
+    var idx = (narrow ? 2 : 0) + (both ? 1 : 0);
+    var needs = [];
     cells.forEach(function (td) {
       var m = +td.dataset[narrow ? 'nm' : 'm'] || 0;
       var c = +td.dataset[narrow ? 'nc' : 'c'] || 0;
       var n = both ? m + c : m;
-      td.textContent = n === 0 ? '' : String(n);
-      td.classList.toggle('void', n === 0);
-      td.style.setProperty('--f', Math.min(1, n / TARGET).toFixed(3));
+      var T = +((td.getAttribute('data-t') || '').split('|')[idx]) || 0;
+      var st = stateAt(td, idx);
+      td.className = 'c' + (st === 'none' ? ' void' : st === 'closed' ? ' s-closed' : st === 'hole' ? ' s-hole' : '');
+      td.textContent = st === 'hole' ? '0' : (st === 'closed' || n === 0) ? '' : String(n);
+      td.style.setProperty('--f', T > 0 ? Math.min(1, n / T).toFixed(3) : (n > 0 ? '1' : '0'));
+      if (st === 'hole' || st === 'low' || st === 'near') {
+        needs.push({ lbl: td.getAttribute('data-lbl') || '?', n: n, t: T, hole: st === 'hole' });
+      }
     });
-    var idx = (narrow ? 2 : 0) + (both ? 1 : 0);
+    panels.forEach(function (p) {
+      var counts = { full: 0, near: 0, low: 0, hole: 0, closed: 0, none: 0 };
+      Array.prototype.forEach.call(p.querySelectorAll('td.c'), function (td) {
+        counts[stateAt(td, idx)] += 1;
+      });
+      var bits = [];
+      if (counts.hole) bits.push(counts.hole + (counts.hole === 1 ? ' hole' : ' holes'));
+      if (counts.low) bits.push(counts.low + ' low');
+      if (counts.near) bits.push(counts.near + ' near');
+      if (counts.closed) bits.push(counts.closed + ' closed');
+      var v = p.querySelector('.verdict');
+      if (v) v.textContent = bits.length ? bits.join(' · ') : 'all at target';
+    });
+    if (attn) {
+      needs.sort(function (a, b) {
+        if (a.hole !== b.hole) return a.hole ? -1 : 1;
+        return (a.n / (a.t || 1)) - (b.n / (b.t || 1));
+      });
+      var top = needs.slice(0, 12);
+      attn.innerHTML = top.map(function (x) {
+        var val = x.hole ? 'nothing a focused host can draw' : (x.n + ' of ' + x.t);
+        return '<li><span>' + x.lbl + '</span><b>' + val + '</b></li>';
+      }).join('') || '<li><span>Nothing under target in this view.</span></li>';
+      attnMore.textContent = needs.length > top.length
+        ? 'and ' + (needs.length - top.length) + ' more under target in this view'
+        : '';
+    }
     swaps.forEach(function (el) {
       var parts = el.getAttribute('data-v').split('|');
       el.textContent = parts[idx] !== undefined ? parts[idx] : parts[parts.length - 1];
