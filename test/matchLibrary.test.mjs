@@ -140,6 +140,11 @@ test('the summary counts what the deal can actually reach', () => {
       time: TIMES[t % TIMES.length],
       density: DENSITIES[(t >> 2) % DENSITIES.length],
       difficulty: DIFFICULTIES[(t >> 1) % DIFFICULTIES.length],
+      // The scroll opt-in joined 2026-08-17: its counts ride the per-corner
+      // `over` split the way difficulty rides `diff`. Swept in both states
+      // so the day the library first holds an oversized board, an
+      // over-split error here is a red suite, not a wrong sheet count.
+      scroll: ((t >> 3) & 1) === 1,
       count: 5,
     };
     if (!rules.shapes.length) continue;

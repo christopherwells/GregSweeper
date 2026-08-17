@@ -107,6 +107,20 @@ test('the Challenge card opens the setup sheet, and its supply line is real', as
   expect(withDiff).toBeLessThanOrEqual(narrowed);
   await expect(diffChips.filter({ hasText: 'Mean' })).toHaveAttribute('aria-pressed', 'true');
 
+  // The scroll opt-in (the marathon lane, 2026-08-17): two chips, Off
+  // default, and Allow can only WIDEN the count (it admits oversized boards
+  // beside everything else, never instead of it). Equality would also pass
+  // today, with no oversized supply yet, but the invariant that survives
+  // the lane filling is the widening, so that is what is pinned.
+  const scrollChips = page.locator('#match-scroll .match-chip');
+  await expect(scrollChips).toHaveCount(2);
+  await expect(scrollChips.filter({ hasText: 'Off' })).toHaveAttribute('aria-pressed', 'true');
+  await scrollChips.filter({ hasText: 'Allow' }).click();
+  await expect(scrollChips.filter({ hasText: 'Allow' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(supply).toHaveText(/\d+ boards fit these rules/);
+  const withScroll = Number((await supply.textContent()).match(/(\d+)/)[1]);
+  expect(withScroll).toBeGreaterThanOrEqual(withDiff);
+
   expect(errors, `console errors: ${errors.join(' | ')}`).toHaveLength(0);
 });
 
