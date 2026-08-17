@@ -26,7 +26,7 @@ import { state } from '../state/gameState.js';
 import { fetchLibraryJson } from './climbDeal.js';
 import {
   parseMatchIndex, parseMatchSummary, matchShardFilesFor, resolveMatchPicks,
-  parseClimbMatchIndex, CLIMB_SHARD_PREFIX,
+  parseClimbMatchIndex, CLIMB_SHARD_PREFIX, nextMatchSeen,
 } from '../logic/matchRules.js';
 import { planMatchDeal, currentSteerMissions } from '../logic/matchSteering.js';
 import { loadExperimentTarget } from '../logic/experimentDesign.js';
@@ -234,7 +234,9 @@ export async function dealMatchEntries(rules) {
   }
 
   if (!state.isLevelPractice && entries.length > 0) {
-    setMatchSeen(cycled ? keys : [...seen, ...keys]);
+    // Cycle PER ELIGIBLE SPACE (issue #305): exhausting a narrow filter
+    // resets only that space's keys, never the library-wide record.
+    setMatchSeen(nextMatchSeen(seen, eligible.map((r) => r.key), keys, cycled));
   }
   return { entries, eligible };
 }

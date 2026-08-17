@@ -505,3 +505,30 @@ test('REGRESSION: every rules field the client writes is whitelisted in the matc
       `the client writes rules.${key} but the match node's whitelist lacks it`);
   }
 });
+
+// ── The per-space seen reset (issue #305) ────────────────────────────────
+
+test('REGRESSION #305: exhausting a narrow filter resets only that space, never the library-wide record', async () => {
+  const { nextMatchSeen } = await import('../src/logic/matchRules.js');
+  // A player with history across the library plays a two-board Petals-only
+  // corner to exhaustion. The old reset replaced the WHOLE list with the
+  // dealt keys; the fix removes only the exhausted space's keys.
+  const seen = ['0:1', '0:2', '7:4', 'c:seed-a', 'p:1', 'p:2'];
+  const eligible = ['p:1', 'p:2', 'p:3'];
+  const dealt = ['p:3', 'p:1'];
+  const next = nextMatchSeen(seen, eligible, dealt, true);
+  for (const k of ['0:1', '0:2', '7:4', 'c:seed-a']) {
+    assert.ok(next.includes(k), `${k} was played under other rules and must keep its no-repeat standing`);
+  }
+  assert.ok(next.includes('p:3') && next.includes('p:1'), 'the re-dealt space records its new cycle');
+  assert.ok(!next.includes('p:2'), 'the exhausted corner\'s undealt key resets');
+});
+
+test('a non-cycled deal appends, and no key ever doubles', async () => {
+  const { nextMatchSeen } = await import('../src/logic/matchRules.js');
+  const next = nextMatchSeen(['0:1', '0:2'], ['0:1', '0:2', '0:3', '0:4'], ['0:3'], false);
+  assert.deepEqual(next, ['0:1', '0:2', '0:3']);
+  // A cycled deal that re-serves a still-listed key keeps one copy.
+  const again = nextMatchSeen(['a', 'x:1'], ['x:1', 'x:2'], ['x:1'], true);
+  assert.deepEqual(again, ['a', 'x:1']);
+});
