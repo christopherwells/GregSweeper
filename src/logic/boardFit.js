@@ -16,11 +16,12 @@
 // all four Laves tilings so a cell's INSCRIBED DIAMETER is exactly one pitch,
 // which makes the pitch directly comparable to --cell-size on a rectangle: it
 // IS the click target. The 4.8.8 is the one exception and keeps its own tuning,
-// so at OCT_CUT 0.42 its octagon is 0.820 pitch and its interstitial diamond
-// only 0.594. Those numbers are DERIVED here from the shipped geometry rather
-// than written down, because OCT_CUT is tuned by eye and has already moved once
-// (0.37 -> 0.42, 2026-07-28); a hardcoded ratio would have gone quietly wrong
-// that day, and would be wrong again for a seventh tiling nobody thought to add
+// so at OCT_CUT 0.38 its octagon is 0.877 pitch and its interstitial diamond
+// only 0.537. Those numbers are DERIVED here from the shipped geometry rather
+// than written down, because OCT_CUT is tuned by eye and has moved twice
+// (0.37 -> 0.42 on 2026-07-28, 0.42 -> 0.38 on 2026-08-17, his "the small
+// sides are too small"); a hardcoded ratio would have gone quietly wrong both
+// days, and would be wrong again for a seventh tiling nobody thought to add
 // to a table. clip-path gates pointer events, so the polygon really is the
 // target and its inscribed circle really is what you can be sure of hitting.
 //
@@ -28,7 +29,7 @@
 // too. The majority cell of a board must clear MIN_TAP_MAJORITY; a minority
 // cell class may go down to MIN_TAP_MINORITY. On the five isohedral tilings
 // there is only one cell class and both reduce to the majority floor. The split
-// exists for the 4.8.8, whose two cell sizes differ by 38% and whose diamonds
+// exists for the 4.8.8, whose two cell sizes differ by 39% and whose diamonds
 // are ~45% of the board, a single floor there either lets the diamonds shrink
 // to 21px (majority-only) or costs the shape its presence in the end game
 // (28px on the diamond removes Octagons from the ladder above L50 and from the
@@ -166,7 +167,7 @@ const _ratioMemo = new Map();
  * class) and the MIN (the smallest class present).
  *
  * Both are 1.000 for the hexagon and all four Laves tilings, by construction:
- * assembleTiling normalizes to exactly this. The 4.8.8 returns 0.820 / 0.594.
+ * assembleTiling normalizes to exactly this. The 4.8.8 returns 0.877 / 0.537.
  *
  * @param {string} type a TILING_TYPES entry
  * @returns {{median: number, min: number}}
