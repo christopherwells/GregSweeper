@@ -41,6 +41,7 @@ import { getTargetGimmickName, getMissionForSeed, missionStamp, getCurrentTarget
 import { resolveDailyShape, buildTilingDailyBoard, getDailyShapeOverride } from '../logic/shapeRotation.js';
 import { buildParLabBoard } from '../logic/parLab.js';
 import { loadDailyBoard, saveDailyBoard, serializeBoard, deserializeBoard } from '../firebase/dailyBoardSync.js';
+import { legacyStartSearch, resolveStoredAnchor, chooseStartAnchor } from '../logic/startAnchor.js';
 import { loadWeeklyBoard, saveWeeklyBoard } from '../firebase/weeklyBoardSync.js';
 import { fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
 import { getUid, markWeeklyDayAttempted } from '../firebase/firebaseProgress.js';
@@ -883,6 +884,13 @@ export async function newGame() {
           firstClick: tilingBuilt.firstClick,
         });
         Object.assign(fallbackPayload, missionStamp(tilingBuilt.mission));
+        // The fallback is a real canonical writer, so it stores the anchor
+        // exactly as the precompute does (same policy, same bytes, the
+        // differential in test/shapeRotation.test.mjs holds the pair).
+        const tilingAnchor = chooseStartAnchor(state.board, state.rows, state.cols);
+        if (tilingAnchor) {
+          fallbackPayload.bestStart = tilingAnchor.r * state.cols + tilingAnchor.c;
+        }
         saveDailyBoard(state.dailySeed, fallbackPayload)
           .catch(err => reportCaughtError('daily-board-save', err));
       }
@@ -999,6 +1007,12 @@ export async function newGame() {
         // Shared with the precompute's buildCanonicalPayload via missionStamp
         // so the two writers describe a board the same way.
         Object.assign(fallbackPayload, missionStamp(dailyMission));
+        // And the stored Start-here anchor, same policy as the precompute
+        // (whoever writes a canonical picks the anchor once).
+        const rectAnchor = chooseStartAnchor(state.board, state.rows, state.cols);
+        if (rectAnchor) {
+          fallbackPayload.bestStart = rectAnchor.r * state.cols + rectAnchor.c;
+        }
         saveDailyBoard(state.dailySeed, fallbackPayload)
           .catch(err => reportCaughtError('daily-board-save', err));
       }
@@ -1041,46 +1055,31 @@ export async function newGame() {
     state.dailyMoves = check.totalClicks;
     saveDailyPar(state.dailySeed, state.dailyPar, state.dailyMoves, state.dailyFeatures);
 
-    // Compute best starting cell for "Start here" indicator.
-    const nbrCache = buildNeighborCache(state.board, state.rows, state.cols);
-    const startCandidates = [];
-    for (let r = 0; r < state.rows; r++) {
-      for (let c = 0; c < state.cols; c++) {
-        if (!state.board[r][c].isMine && !state.board[r][c].isLocked) {
-          startCandidates.push({ r, c, adj: state.board[r][c].adjacentMines });
-        }
-      }
-    }
-    const zeroFirst = startCandidates.filter(c => c.adj === 0);
-    const nonZero = startCandidates.filter(c => c.adj > 0);
-    const ordered = [...zeroFirst, ...nonZero];
-
-    let bestStart = null;
-    let bestStartUnknowns = Infinity;
-    let bestStartCheck = null;
-    for (const cand of ordered) {
-      const result = isBoardSolvable(state.board, state.rows, state.cols, cand.r, cand.c, nbrCache);
-      if (result.solvable && result.remainingUnknowns === 0) {
-        bestStart = cand;
-        bestStartCheck = result;
-        break;
-      }
-      if (result.remainingUnknowns < bestStartUnknowns) {
-        bestStartUnknowns = result.remainingUnknowns;
-        bestStart = cand;
-      }
-    }
-    cleanSolverArtifacts(state.board);
+    // The "Start here" anchor. STORED-FIRST (his 2026-08-17 ruling: "This
+    // should definitely not be client-side ever"): the precompute chooses
+    // the friendliest certifying anchor and ships it in the canonical as
+    // `bestStart`; the client verifies it with ONE solve (bounds, not a
+    // mine, its own full solve certifies, the chip's witness) and renders
+    // it verbatim. The legacy zeros-first search survives ONLY for
+    // canonicals written before the field existed and for locally built
+    // fallback boards, as the one copy in startAnchor.js. The corner-start
+    // incident this replaces: the client loop broke at the FIRST certifying
+    // cell in reading order, which put the marker on (0,0) over a 9-cell
+    // opening whose next moves were four tank-class deductions.
+    const storedAnchor = reconstructed && reconstructed.bestStart != null
+      ? resolveStoredAnchor(state.board, state.rows, state.cols, reconstructed.bestStart)
+      : null;
+    const anchor = storedAnchor || legacyStartSearch(state.board, state.rows, state.cols);
     // The Certified chip's claim is "solvable without guessing from the
     // marked start", so the certificate is the marked start's OWN full
     // solve, not the center check above, which feeds features/par. A
     // board with no full-solve anchor stamps nothing (chip absent).
-    state.boardCertificate = certificateFromCheck(bestStartCheck);
+    state.boardCertificate = certificateFromCheck(anchor ? anchor.check : null);
     state.revealedCount = 0;
-    if (bestStart) {
-      state.board[bestStart.r][bestStart.c].suggestedStart = true;
+    if (anchor) {
+      state.board[anchor.r][anchor.c].suggestedStart = true;
     }
-    setDailySuggestedCell(bestStart);
+    setDailySuggestedCell(anchor ? { r: anchor.r, c: anchor.c } : null);
   }
 
   // Weekly mode: same canonical-board pattern as daily, but using
@@ -1231,12 +1230,24 @@ export async function newGame() {
       // leaves us where this code has always been, offline, or on a test build
       // whose writes are gated, and playing our own deterministic board is
       // still the best available answer there.
-      const wrote = await saveWeeklyBoard(state.weeklySeed, serializeBoard({
+      const fallbackWeeklyPayload = serializeBoard({
         board: state.board, rows: state.rows, cols: state.cols,
         totalMines: state.totalMines, rngSeed: state.weeklyRngSeed,
         activeGimmicks: state.activeGimmicks,
         codeVersion: state.codeVersion || 'unknown',
-      })).catch(err => { reportCaughtError('weekly-board-save', err); return false; });
+      });
+      // The first-client fallback is a real canonical writer, so it stores
+      // the anchor the same way the precompute does (his ruling: never
+      // client-side means never RE-DERIVED per client; whoever writes the
+      // board picks the anchor once and everyone renders it). Omitted
+      // rather than guessed when nothing certifies, which the legacy
+      // fallback covers.
+      const fallbackAnchor = chooseStartAnchor(state.board, state.rows, state.cols);
+      if (fallbackAnchor) {
+        fallbackWeeklyPayload.bestStart = fallbackAnchor.r * state.cols + fallbackAnchor.c;
+      }
+      const wrote = await saveWeeklyBoard(state.weeklySeed, fallbackWeeklyPayload)
+        .catch(err => { reportCaughtError('weekly-board-save', err); return false; });
       if (staleRun()) return; // a newer newGame superseded this run mid-write
 
       if (!wrote) {
@@ -1315,44 +1326,23 @@ export async function newGame() {
       }
     }
 
-    // Best-start cell for the Start-here label, same as daily.
-    const nbrCache = buildNeighborCache(state.board, state.rows, state.cols);
-    const startCandidates = [];
-    for (let r = 0; r < state.rows; r++) {
-      for (let c = 0; c < state.cols; c++) {
-        if (!state.board[r][c].isMine && !state.board[r][c].isLocked) {
-          startCandidates.push({ r, c, adj: state.board[r][c].adjacentMines });
-        }
-      }
-    }
-    const zeroFirst = startCandidates.filter(c => c.adj === 0);
-    const nonZero = startCandidates.filter(c => c.adj > 0);
-    const ordered = [...zeroFirst, ...nonZero];
-
-    let bestStart = null;
-    let bestStartUnknowns = Infinity;
-    let bestStartCheck = null;
-    for (const cand of ordered) {
-      const result = isBoardSolvable(state.board, state.rows, state.cols, cand.r, cand.c, nbrCache);
-      if (result.solvable && result.remainingUnknowns === 0) {
-        bestStart = cand;
-        bestStartCheck = result;
-        break;
-      }
-      if (result.remainingUnknowns < bestStartUnknowns) {
-        bestStartUnknowns = result.remainingUnknowns;
-        bestStart = cand;
-      }
-    }
-    cleanSolverArtifacts(state.board);
+    // The Start-here anchor, same stored-first contract as the daily (his
+    // 2026-08-17 ruling): the weekly precompute and the first-client
+    // fallback writer both store `bestStart`, the client verifies it with
+    // one solve and renders it verbatim, and the legacy search serves only
+    // canonicals that predate the field.
+    const weeklyStoredAnchor = reconstructed && reconstructed.bestStart != null
+      ? resolveStoredAnchor(state.board, state.rows, state.cols, reconstructed.bestStart)
+      : null;
+    const weeklyAnchor = weeklyStoredAnchor || legacyStartSearch(state.board, state.rows, state.cols);
     // Same contract as daily: the certificate is the marked start's own
     // full solve, or nothing.
-    state.boardCertificate = certificateFromCheck(bestStartCheck);
+    state.boardCertificate = certificateFromCheck(weeklyAnchor ? weeklyAnchor.check : null);
     state.revealedCount = 0;
-    if (bestStart) {
-      state.board[bestStart.r][bestStart.c].suggestedStart = true;
+    if (weeklyAnchor) {
+      state.board[weeklyAnchor.r][weeklyAnchor.c].suggestedStart = true;
     }
-    setDailySuggestedCell(bestStart);
+    setDailySuggestedCell(weeklyAnchor ? { r: weeklyAnchor.r, c: weeklyAnchor.c } : null);
   }
 
   // Load per-mode power-ups

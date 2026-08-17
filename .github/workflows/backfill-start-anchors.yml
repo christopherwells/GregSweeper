@@ -1,0 +1,31 @@
+name: Backfill Start Anchors
+
+# One-shot after the stored-anchor pipeline ships (his 2026-08-17 ruling:
+# the Start-here anchor is never chosen client-side): adds `bestStart` to
+# the already-written FUTURE canonicals so players get stored anchors
+# tomorrow rather than when the prefetch horizon rolls over. Byte-
+# preserving on the board and writtenAt; only bestStart and the re-signed
+# sig change. Safe to re-run: nodes already carrying the field are
+# skipped, today and the live week are never touched.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Report what would change without writing
+        type: boolean
+        default: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Backfill anchors onto future canonicals
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          CANONICAL_SIGNING_KEY: ${{ secrets.CANONICAL_SIGNING_KEY }}
+        run: node scripts/backfill-start-anchors.mjs ${{ inputs.dry_run && '--dry-run' || '' }}

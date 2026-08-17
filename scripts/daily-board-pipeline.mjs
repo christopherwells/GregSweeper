@@ -20,6 +20,7 @@ import { drawDailyTargetPar, DAILY_PAR_BAND } from '../src/logic/parBand.js';
 import { resolveDailyShape, buildTilingDailyBoard } from '../src/logic/shapeRotation.js';
 import { DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from '../src/logic/difficulty.js';
 import { serializeBoard } from '../src/firebase/dailyBoardSync.js';
+import { chooseStartAnchor } from '../src/logic/startAnchor.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -257,6 +258,20 @@ export function buildCanonicalPayload(cand, codeVersion) {
     firstClick: cand.firstClick,
   });
   Object.assign(payload, missionStamp(cand.mission));
+  // The STORED "Start here" anchor (his 2026-08-17 ruling: "This should
+  // definitely not be client-side ever"). Chosen here, once, for the
+  // friendliest certifying opening (longest pass-A run before the first
+  // hard move, then cascade size, then centrality), and signed with the
+  // payload. Distinct from firstClick, the certification opener that
+  // feeds features and par. The center certification this pipeline
+  // already requires guarantees SOME anchor certifies, so a null here is
+  // an inconsistency worth dying on, never a reason to ship a canonical
+  // whose marker the certificate does not stand behind.
+  const anchor = chooseStartAnchor(cand.board, cand.rows, cand.cols);
+  if (!anchor) {
+    throw new Error('buildCanonicalPayload: no certifying start anchor on a center-certified board');
+  }
+  payload.bestStart = anchor.r * cand.cols + anchor.c;
   return payload;
 }
 
