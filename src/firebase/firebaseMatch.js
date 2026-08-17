@@ -53,6 +53,7 @@ import {
   generateCode, normalizeCode, planMatchJoin, matchExpiresAt,
   snoozeUntilFrom, inviteShouldPopUp,
 } from '../logic/matchCodes.js';
+import { matchBoardCountOf } from '../logic/matchRules.js';
 
 export { matchExpiresAt };
 
@@ -508,9 +509,19 @@ export async function fetchMatchInvites() {
  * resolves through matchBoardCountOf's rules.count fallback, which the
  * rules require on every node ever written. Real opens (openMatchById,
  * joins, installs) keep fetching the whole node: they deal the boards.
+ * WITH SPECS, on request: the head-to-head record's shape, density and
+ * modifier splits bucket each board by its spec, which lives under
+ * boards/{i}/spec. Those are fetched as per-index child reads sized by the
+ * board COUNT (rules.count, required by the rules on every node), never as a
+ * read of `boards` itself, which is the payload bytes #331 rationed; a spec
+ * is ~100 bytes. The result carries them as a boards array of bare
+ * `{spec}` entries so matchBoardBreakdown reads a summary and a full node
+ * the same way. A spec read that fails leaves a null slot, and the splits
+ * sit that board out while the times still count.
+ *
  * @returns {Promise<object|null>} {rules, players, host, createdAt} or null
  */
-export async function fetchMatchSummary(matchId) {
+export async function fetchMatchSummary(matchId, { withSpecs = false } = {}) {
   const ready = await _readyOrNull();
   if (!ready || !matchId) return null;
   try {
@@ -521,7 +532,17 @@ export async function fetchMatchSummary(matchId) {
       db().ref(`matches/${matchId}/createdAt`).once('value').then((x) => x.val()),
     ]);
     if (!rules && !players) return null;
-    return { rules: rules || null, players: players || null, host: host || null, createdAt: createdAt || null };
+    const summary = { rules: rules || null, players: players || null, host: host || null, createdAt: createdAt || null };
+    if (withSpecs) {
+      const count = matchBoardCountOf(summary);
+      if (count > 0) {
+        summary.boards = await Promise.all(Array.from({ length: count }, (_, i) =>
+          db().ref(`matches/${matchId}/boards/${i}/spec`).once('value')
+            .then((x) => ({ spec: x.val() || null }))
+            .catch(() => ({ spec: null }))));
+      }
+    }
+    return summary;
   } catch {
     return null;
   }
@@ -550,25 +571,43 @@ export async function recordMyMatch(matchId, code, isHost) {
   }
 }
 
-/** The player's matches, newest first, each with its live node attached. */
-export async function fetchMyMatches(limit = 10) {
+/**
+ * Every match this player is in, newest first, as bare references (matchId,
+ * code, joinedAt, host flag) with nothing fetched. The full list is one small
+ * owner-node read, so the callers that page (the finished list's Show older)
+ * and the ones that need an honest total (the stats panel's window line) read
+ * it once and choose which summaries to pay for.
+ */
+export async function fetchMyMatchRefs() {
   const ready = await _readyOrNull();
   const uid = getUid();
   if (!ready || !uid) return null;
-  let rows = [];
   try {
     const snap = await db().ref(`users/${uid}/matches`).once('value');
-    rows = Object.entries(snap.val() || {})
+    return Object.entries(snap.val() || {})
       .map(([matchId, v]) => ({ matchId, ...(v || {}) }))
-      .sort((a, b) => (Number(b.joinedAt) || 0) - (Number(a.joinedAt) || 0))
-      .slice(0, limit);
+      .sort((a, b) => (Number(b.joinedAt) || 0) - (Number(a.joinedAt) || 0));
   } catch {
     return null;
   }
-  // Each node is fetched separately rather than denormalized into the list,
-  // so a standing row can never disagree with the match it names.
-  // Summaries, never whole nodes: the payloads are the other 95% of the
-  // bytes and nothing on the list reads them (issue #331).
-  const nodes = await Promise.all(rows.map((r) => fetchMatchSummary(r.matchId)));
+}
+
+/**
+ * Attach a summary to each reference. Each node is fetched separately rather
+ * than denormalized into the list, so a standing row can never disagree with
+ * the match it names. Summaries, never whole nodes: the payloads are the
+ * other 95% of the bytes and nothing on a list reads them (issue #331).
+ * References whose node could not be read are dropped.
+ */
+export async function fetchMatchSummaries(refs, opts = {}) {
+  const rows = Array.isArray(refs) ? refs : [];
+  const nodes = await Promise.all(rows.map((r) => fetchMatchSummary(r.matchId, opts)));
   return rows.map((r, i) => ({ ...r, node: nodes[i] })).filter((r) => r.node);
+}
+
+/** The player's matches, newest first, each with its summary attached. */
+export async function fetchMyMatches(limit = 10, opts = {}) {
+  const refs = await fetchMyMatchRefs();
+  if (!refs) return null;
+  return fetchMatchSummaries(refs.slice(0, limit), opts);
 }

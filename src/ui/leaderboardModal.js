@@ -7,6 +7,7 @@
 
 import { state } from '../state/gameState.js';
 import { $, $$, escapeHtml } from './domHelpers.js';
+import { hideModal } from './modalManager.js';
 import { spriteImgHTML, uiSpriteImgHTML } from './spriteLoader.js';
 import { getLocalDateString, getWeekStart } from '../logic/seededRandom.js';
 import {
@@ -393,6 +394,7 @@ async function _renderFriendsView() {
       const row = document.createElement('div');
       row.className = 'friends-row';
       row.innerHTML = `<span class="friends-row-name">${escapeHtml(resolveDisplayName(f.uid, f.name, names))}</span>`
+        + `<button class="friends-btn friends-challenge" data-friend-uid="${escapeHtml(f.uid)}" title="Challenge this friend">Challenge</button>`
         + `<button class="friends-remove" data-friend-uid="${escapeHtml(f.uid)}" title="Remove friend" aria-label="Remove friend">${uiSpriteImgHTML('uiClose', 'ui-icon')}</button>`;
       listEl.appendChild(row);
     }
@@ -471,6 +473,18 @@ $('#friends-add-btn')?.addEventListener('click', async () => {
 // Remove buttons are created per-render: delegate. First tap arms the
 // button ("Sure?"), second tap removes, both sides unlink.
 $('#friends-list')?.addEventListener('click', async (e) => {
+  // Challenge this friend (his PR 6 pick): hop to the setup sheet's New run
+  // tab with the friend remembered, so the invite sends itself once the
+  // match is created. One fewer trip through codes for the standing rivals.
+  const challengeBtn = e.target.closest('.friends-challenge');
+  if (challengeBtn) {
+    try {
+      const setup = await import('./matchSetup.js');
+      hideModal('leaderboard-modal');
+      setup.openMatchSetup({ challengeFriend: challengeBtn.dataset.friendUid, tab: 'new' });
+    } catch { /* the sheet stays reachable from its own card */ }
+    return;
+  }
   const btn = e.target.closest('.friends-remove');
   if (!btn) return;
   if (!btn.dataset.armed) {

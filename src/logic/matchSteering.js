@@ -216,7 +216,13 @@ export function planMatchDeal(rows, rules, opts = {}) {
   const cap = Math.min(steeredSlotCap(count), count);
   if (cap === 0 || missions.length === 0 || eligible.length === 0) {
     const plain = pickMatchBoards(eligible, count, rand, seenKeys);
-    return { picks: plain.picks, cycled, eligible: eligible.length, steered: [] };
+    // `eligible` is the ROW ARRAY, on both return paths. It shipped as a
+    // count once, and the seam went untested: #359 taught dealMatchEntries
+    // to read the rows' keys for the per-space seen reset, every real deal
+    // crashed on `eligible.map`, and the sheet blamed the connection. The
+    // rows are what the name says and what the one consumer needs; a count
+    // is `.length` away.
+    return { picks: plain.picks, cycled, eligible, steered: [] };
   }
 
   // How many of this deal's slots must come from boards the player has already
@@ -283,5 +289,5 @@ export function planMatchDeal(rows, rules, opts = {}) {
   // equally likely at any position in the match, which is what keeps the
   // ~20% invisible; clustering them at the front would announce them.
   const picks = shuffle(claimed.concat(fill.picks), rand);
-  return { picks, cycled, eligible: eligible.length, steered };
+  return { picks, cycled, eligible, steered };
 }

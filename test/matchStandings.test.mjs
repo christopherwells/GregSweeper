@@ -241,8 +241,13 @@ test('matchStandings works on a summary node: of from rules.count, finished via 
 test('the review list and the invite card fetch summaries, never whole nodes (source scan)', async () => {
   const { readFileSync } = await import('node:fs');
   const fb = readFileSync(new URL('../src/firebase/firebaseMatch.js', import.meta.url), 'utf8');
-  assert.match(fb, /rows\.map\(\(r\) => fetchMatchSummary\(r\.matchId\)\)/,
-    'fetchMyMatches must map rows through fetchMatchSummary');
+  // PR 6 moved the mapping into fetchMatchSummaries so the paged finished
+  // list shares it; the contract is unchanged: list rows go through the
+  // summary fetch, and only real opens read whole nodes.
+  assert.match(fb, /rows\.map\(\(r\) => fetchMatchSummary\(r\.matchId, opts\)\)/,
+    'fetchMatchSummaries must map rows through fetchMatchSummary');
+  assert.match(fb, /return fetchMatchSummaries\(refs\.slice\(0, limit\), opts\)/,
+    'fetchMyMatches must page refs through fetchMatchSummaries');
   const lobby = readFileSync(new URL('../src/ui/matchLobby.js', import.meta.url), 'utf8');
   assert.match(lobby, /m\.fetchMatchSummary\(invite\.matchId\)/,
     'the invite offer reads the summary');

@@ -494,6 +494,42 @@ test('finished is decided by the same rule the join verdict uses', () => {
   assert.equal(planMatchJoin({ match: done.node, uid: 'me', now: REVIEW_NOW }), 'finished');
 });
 
+test('an EXPIRED unfinished run rests in finished, marked ended (PR 6)', () => {
+  // Past the seven days the rules refuse every result write, so "carry on
+  // with this" is an intention the server no longer honors. The run moves to
+  // the finished place with `ended` set, where the row can say the run
+  // closed at board N; an unexpired unfinished run stays under active.
+  const old = {
+    matchId: 'm-stale', joinedAt: 5, code: 'ABC234',
+    node: nodeWith({ me: { name: 'Me', joinedAt: 1, results: [{ time: 30 }] } },
+      REVIEW_NOW - MATCH_TTL_MS - 1),
+  };
+  const live = myMatch('m-live');
+  const v = partitionMatchReview({ invites: [], matches: [old, live], uid: 'me', now: REVIEW_NOW });
+  assert.deepEqual(v.active.map((e) => e.match.matchId), ['m-live']);
+  assert.deepEqual(v.finished.map((e) => [e.match.matchId, e.ended]), [['m-stale', true]]);
+});
+
+test('solo records interleave into finished by date, every entry stamped `at` (PR 6)', () => {
+  const shared = myMatch('m-done', {
+    joinedAt: 2000,
+    players: { me: { name: 'Me', joinedAt: 1, finishedAt: 1750000050000 } },
+  });
+  const soloNew = { finishedAt: 3000, rules: { count: 1 }, boards: [{ seed: 's' }], results: [{ time: 9 }] };
+  const soloOld = { finishedAt: 1000, rules: { count: 1 }, boards: [{ seed: 't' }], results: [{ time: 9 }] };
+  const v = partitionMatchReview({
+    invites: [], matches: [shared], uid: 'me', now: REVIEW_NOW,
+    solo: [soloNew, soloOld],
+  });
+  assert.deepEqual(v.finished.map((e) => e.kind), ['solo', 'match', 'solo'],
+    'newest first across BOTH kinds, by the shared `at` stamp');
+  assert.ok(v.finished.every((e) => Number.isFinite(e.at)),
+    'every finished entry must be groupable by its own at');
+  // Solo records never reach the other places.
+  assert.deepEqual(v.active, []);
+  assert.deepEqual(v.declined, []);
+});
+
 test('an unreadable match is dropped, never guessed at', () => {
   const v = partitionMatchReview({
     invites: [],

@@ -29,6 +29,8 @@ import { matchStandings, columnLeader } from '../logic/matchStandings.js';
 import { isPresenceFresh, fmtGap } from '../logic/matchRace.js';
 import { matchBoardBreakdown } from '../logic/matchRecord.js';
 import { normalizeCode, planMatchJoin, matchDaysRemaining, matchExpiresAt, partitionMatchReview, matchResumePoint } from '../logic/matchCodes.js';
+import { runOutcome, groupRunsByMonth, shortDate, soloNodeShape, SOLO_UID } from '../logic/matchHistory.js';
+import { loadSoloRuns } from '../storage/matchHistoryStorage.js';
 import { tilingLabel, CLASSIC_SHAPE_LABEL } from '../logic/coastlineLink.js';
 import { getGimmickDefs } from '../logic/gimmicks.js';
 import { PROD_SITE_BASE } from '../config.js';
@@ -174,6 +176,18 @@ function _startPending() {
   });
 }
 
+// The friend a leaderboard Challenge button named, waiting for the next
+// created match to invite them automatically (his Challenge-from-Friends
+// pick, PR 6). Session state, consumed by the first invite render after the
+// match publishes; openMatchSetup re-sets or clears it on every sheet open,
+// so it can never leak into an unrelated later match.
+let _challengeFriend = null;
+
+/** Name the friend the next created match should invite unasked. */
+export function setChallengeFriend(uid) {
+  _challengeFriend = uid || null;
+}
+
 // His second invite route: send the invite straight to a friend already on
 // the list, with no code read aloud at all.
 async function _renderInviteFriends() {
@@ -196,19 +210,32 @@ async function _renderInviteFriends() {
     </div>`).join('');
   el.addEventListener('click', async (e) => {
     const btn = e.target.closest('.match-invite-send');
-    if (!btn || btn.disabled || !_pending) return;
-    btn.disabled = true;
-    const { sendMatchInvite } = await import('../firebase/firebaseMatch.js');
-    const outcome = await sendMatchInvite(btn.dataset.uid, _pending.matchId, _pending.code);
-    // 'exists' is a refusal, but not a failure the player should retry: the
-    // invite is already sitting in their friend's list, and the rules refuse
-    // the overwrite precisely so a re-send cannot wipe an answer they have
-    // already given. Only a genuinely offline attempt is worth another tap.
-    btn.textContent = outcome === 'sent' ? 'Invited'
-      : outcome === 'exists' ? 'Already invited'
-      : 'Try again';
-    if (outcome === 'offline') btn.disabled = false;
+    if (!btn || btn.disabled) return;
+    _sendInviteTo(btn);
   });
+  // The leaderboard route's promise, kept: the friend whose Challenge button
+  // began this flow gets their invite without another tap, and their row
+  // says so. A friend since removed has no row, and nothing is sent.
+  if (_challengeFriend) {
+    const auto = el.querySelector(`.match-invite-send[data-uid="${CSS.escape(_challengeFriend)}"]`);
+    _challengeFriend = null;
+    if (auto) _sendInviteTo(auto);
+  }
+}
+
+async function _sendInviteTo(btn) {
+  if (!btn || !_pending) return;
+  btn.disabled = true;
+  const { sendMatchInvite } = await import('../firebase/firebaseMatch.js');
+  const outcome = await sendMatchInvite(btn.dataset.uid, _pending.matchId, _pending.code);
+  // 'exists' is a refusal, but not a failure the player should retry: the
+  // invite is already sitting in their friend's list, and the rules refuse
+  // the overwrite precisely so a re-send cannot wipe an answer they have
+  // already given. Only a genuinely offline attempt is worth another tap.
+  btn.textContent = outcome === 'sent' ? 'Invited'
+    : outcome === 'exists' ? 'Already invited'
+    : 'Try again';
+  if (outcome === 'offline') btn.disabled = false;
 }
 
 // ── Taking an invite ────────────────────────────────────────────────────
@@ -261,7 +288,15 @@ export async function openMatchById(matchId, code = null) {
     return;
   }
   const verdict = planMatchJoin({ match, uid: getUid(), now: Date.now() });
-  if (verdict !== 'join' && verdict !== 'resume' && verdict !== 'finished') {
+  // A run this player finished is a report, not a join: the report modal is
+  // the one home for how a run went (his PR 6 ruling), so the join card
+  // hands over instead of painting standings in its own clothes.
+  if (verdict === 'finished') {
+    hideModal('match-join-modal');
+    openMatchReport(matchId);
+    return;
+  }
+  if (verdict !== 'join' && verdict !== 'resume') {
     _status('#match-join-status', JOIN_MESSAGES[verdict] || JOIN_MESSAGES.failed, true);
     return;
   }
@@ -290,9 +325,14 @@ async function _lookupJoinCode() {
   }
 
   const verdict = planMatchJoin({ match: found.match, uid: getUid(), now: Date.now() });
-  // 'finished' is a destination, not a refusal: the run is over and the
-  // preview shows where everyone landed instead of dealing the boards again.
-  if (verdict !== 'join' && verdict !== 'resume' && verdict !== 'finished') {
+  // 'finished' is a destination, not a refusal: the run is over, and the run
+  // report is where a finished run reads (one home, his PR 6 ruling).
+  if (verdict === 'finished') {
+    hideModal('match-join-modal');
+    openMatchReport(found.matchId);
+    return;
+  }
+  if (verdict !== 'join' && verdict !== 'resume') {
     _status('#match-join-status', JOIN_MESSAGES[verdict] || JOIN_MESSAGES.failed, true);
     return;
   }
@@ -323,21 +363,6 @@ function _renderJoinPreview() {
          ${escapeHtml(unmetNames.join(', '))}. You will get an introduction before each one.</p>`
     : '';
 
-  // A run this player already finished shows the standings and no way back
-  // onto the boards. Replaying it would restart at board 1 and overwrite the
-  // times they actually set, so the button is absent rather than disabled:
-  // there is nothing here for them to do again.
-  if (_joinFound.verdict === 'finished') {
-    preview.innerHTML = `<div class="friends-code-block">
-        <p class="friends-code-label">${n} board${n === 1 ? '' : 's'}</p>
-        <p class="friends-code-hint">${escapeHtml(shapes)}</p>
-      </div>
-      <p class="friends-code-hint">You have played this one. Here is how it went.</p>
-      <div id="match-join-standings" class="match-standings"></div>`;
-    renderMatchStandingsInto($('#match-join-standings'), _joinFound.matchId);
-    return;
-  }
-
   preview.innerHTML = `<div class="friends-code-block">
       <p class="friends-code-label">${n} board${n === 1 ? '' : 's'}</p>
       <p class="friends-code-hint">${escapeHtml(shapes)}</p>
@@ -360,8 +385,9 @@ async function _acceptJoin() {
     // dealing the boards again would overwrite the results it just posted.
     const verdict = await joinMatch(found.matchId, found.match, found.code);
     if (verdict === 'finished') {
-      _joinFound = { ...found, verdict };
-      _renderJoinPreview();
+      _joinFound = null;
+      hideModal('match-join-modal');
+      openMatchReport(found.matchId);
       return;
     }
   } catch (err) {
@@ -472,9 +498,13 @@ const _ordinal = (n) => _ORDINALS[n - 1] || `${n}th`;
  * where a gap is inside one second (his ruling); a tie leads nobody; an
  * unplayed board is a dot, honest absence rather than zero.
  */
-function _paintStandings(el, node, names = {}) {
-  const handicaps = getHandicapRatioMap();
-  const myUid = getUid();
+function _paintStandings(el, node, names = {}, opts = {}) {
+  // The overrides exist for the SOLO report: its one player sits under the
+  // fixed SOLO_UID (records outlive account switches), so the caller passes
+  // that uid and a handicap map keyed to it. Every live surface uses the
+  // defaults.
+  const handicaps = opts.handicaps || getHandicapRatioMap();
+  const myUid = opts.myUid !== undefined ? opts.myUid : getUid();
   const rows = matchStandings(node, { handicaps, myUid });
   if (rows.length === 0) {
     el.innerHTML = '<div class="match-standings-row"><span>Nobody has joined yet.</span></div>';
@@ -502,7 +532,9 @@ function _paintStandings(el, node, names = {}) {
       head = `<div class="match-headline">${_ordinal(place + 1)} of ${rows.length}</div>
         <div class="match-headline-sub">${_fmtGap(gap)} behind ${escapeHtml(nameOf(finished[0]))}, adjusted</div>`;
     }
-  } else if (me && me.finished) {
+  } else if (me && me.finished && rows.length > 1) {
+    // Others exist and have not finished. A one-player node (a solo report)
+    // has nobody to wait on, so it takes no headline and the grid speaks.
     head = '<div class="match-headline-sub">Run complete · waiting on the others</div>';
   }
 
@@ -584,6 +616,93 @@ function _paintStandings(el, node, names = {}) {
       </tfoot>
     </table></div>
     ${swing}${note}`;
+}
+
+// ── The run report ──────────────────────────────────────────────────────
+//
+// One home for how any past run went (his PR 6 ruling): the clean
+// comparison in its own titled modal, with the run's date and a way to
+// play the rules again. A SHARED run paints live through the standings
+// subscription, because results can still land inside the seven days; a
+// SOLO run paints once from this device's own record.
+
+/** Open a shared run's report by match id. */
+export async function openMatchReport(matchId) {
+  showModalFromTitle('match-report-modal');
+  const body = $('#match-report-body');
+  if (!body || !matchId) return;
+  body.innerHTML = '<p class="friends-code-hint">Looking up the run…</p>';
+  let summary = null;
+  try {
+    const { fetchMatchSummary } = await import('../firebase/firebaseMatch.js');
+    summary = await fetchMatchSummary(matchId);
+  } catch (err) {
+    reportCaughtError('match-report-fetch', err);
+  }
+  if (!summary) {
+    body.innerHTML = '<p class="friends-status friends-status-error">'
+      + 'Could not load that run. Check your connection.</p>';
+    return;
+  }
+  const when = Number(summary.createdAt) ? ` · ${shortDate(summary.createdAt)}` : '';
+  const rules = summary.rules || null;
+  body.innerHTML = `
+    <p class="friends-code-hint match-report-sub">${escapeHtml(_matchSummaryLine(summary))}${when}</p>
+    <div id="match-report-standings" class="match-standings"></div>
+    ${rules ? '<button id="match-report-rematch" class="match-start-btn">Rematch: new boards, same rules</button>' : ''}`;
+  renderMatchStandingsInto($('#match-report-standings'), matchId);
+  // Rematch keeps his standing ruling: a NEW deal under the same rules, so
+  // more data and a fair fight. The rules come off the node verbatim, the
+  // same way the end card's rematch reads them.
+  $('#match-report-rematch')?.addEventListener('click', () => {
+    hideModal('match-report-modal');
+    stopMatchStandings();
+    createSharedMatch(rules);
+  });
+}
+
+/** Open a solo run's report from one of this device's stored records. */
+export function openSoloReport(record) {
+  showModalFromTitle('match-report-modal');
+  const body = $('#match-report-body');
+  if (!body) return;
+  const node = soloNodeShape(record);
+  if (!node) {
+    body.innerHTML = '<p class="friends-status friends-status-error">That run could not be read.</p>';
+    return;
+  }
+  const when = Number(record.finishedAt) ? ` · ${shortDate(record.finishedAt)}` : '';
+  body.innerHTML = `
+    <p class="friends-code-hint match-report-sub">Solo run · ${escapeHtml(_matchSummaryLine(node))}${when}</p>
+    <div id="match-report-standings" class="match-standings"></div>
+    <div class="match-report-actions">
+      <button id="match-report-again" class="match-start-btn">Play these rules again</button>
+      <button id="match-report-share" class="friends-btn">Challenge a friend</button>
+    </div>`;
+  // The viewer's CURRENT rating, mapped onto the record's fixed uid: records
+  // outlive account switches, so they store no identity, and the adjusted
+  // rows read the shipped fit exactly the way every live surface does.
+  const hc = getHandicapRatioMap();
+  const uid = getUid();
+  const k = typeof hc.get === 'function' ? hc.get(uid) : (uid ? hc[uid] : undefined);
+  const handicaps = (typeof k === 'number' && Number.isFinite(k) && k > 0)
+    ? { [SOLO_UID]: k } : {};
+  _paintStandings($('#match-report-standings'), node, {}, { myUid: SOLO_UID, handicaps });
+  const rules = record.rules || null;
+  $('#match-report-again')?.addEventListener('click', () => {
+    if (!rules) return;
+    hideModal('match-report-modal');
+    setReturnToTitle(false);
+    hideTitleScreen();
+    launchMatch(rules);
+  });
+  // His ask (2026-08-17): a way to challenge somebody from the report. The
+  // shared-invite flow already begins at exactly these rules.
+  $('#match-report-share')?.addEventListener('click', () => {
+    if (!rules) return;
+    hideModal('match-report-modal');
+    createSharedMatch(rules);
+  });
 }
 
 // ── Incoming friend invites ─────────────────────────────────────────────
@@ -729,7 +848,7 @@ function wire() {
     });
   }
 
-  for (const id of ['match-invite-modal', 'match-join-modal']) {
+  for (const id of ['match-invite-modal', 'match-join-modal', 'match-report-modal']) {
     const modal = $(`#${id}`);
     if (!modal) continue;
     modal.querySelector('.modal-close')?.addEventListener('click', () => closeModalAndReturn(id));
@@ -760,6 +879,16 @@ let _place = 'active';
 let _review = null;
 let _reviewNamesCache = {};
 
+// PAGED, never capped (his Months + Show older pick, PR 6): the refs list is
+// one small owner-node read and is fetched WHOLE, so the true run count is
+// on hand from the start; summaries are paid for a page at a time. Solo
+// records are local and free, so they are all present from the first paint.
+const REVIEW_PAGE = 10;
+let _refs = null;        // every match ref, newest first; null = unreachable
+let _loaded = [];        // refs with summaries attached, refs order
+let _invites = [];       // the invite fetch, kept for re-partitions
+let _soloCache = [];     // this device's solo records, newest first
+
 const PLACE_EMPTY = {
   active: 'Nothing waiting. Start a run on the New run tab, or use a code a friend sent you.',
   finished: 'No finished runs yet. They collect here once you play one through.',
@@ -783,13 +912,36 @@ function _paintPlace() {
   if (!el) return;
   if (!_review) { el.innerHTML = '<p class="friends-empty">Loading…</p>'; return; }
   const rows = _review[_place] || [];
+  const older = _place === 'finished' ? _olderButtonHTML() : '';
   if (rows.length === 0) {
-    el.innerHTML = `<p class="friends-empty">${escapeHtml(PLACE_EMPTY[_place])}</p>`;
+    el.innerHTML = `<p class="friends-empty">${escapeHtml(PLACE_EMPTY[_place])}</p>${older}`;
+    return;
+  }
+  if (_place === 'finished') {
+    // Month sections (his pick): the entries arrive newest first with an
+    // `at` stamp on every kind, so the grouping is one pass and solo and
+    // shared runs interleave by when they happened.
+    const months = groupRunsByMonth(rows, (e) => e.at);
+    el.innerHTML = months.map((g) =>
+      `<p class="match-review-month">${escapeHtml(g.label)}</p>`
+      + g.entries.map((entry) => (entry.kind === 'solo'
+        ? _soloRowHTML(entry)
+        : _finishedRowHTML(entry))).join('')).join('') + older;
     return;
   }
   el.innerHTML = rows.map((entry) => (entry.kind === 'invite'
     ? _inviteRowHTML(entry.invite, _reviewNamesCache, _place, entry.snoozed)
     : _myMatchRowHTML(entry.match))).join('');
+}
+
+// The page boundary, said out loud: summaries are fetched a page at a time,
+// and a truncated list that reads as complete would claim runs the player
+// does not see. The count is exact because the refs list is fetched whole.
+function _olderButtonHTML() {
+  if (!_refs || _loaded.length >= _refs.length) return '';
+  const left = _refs.length - _loaded.length;
+  return `<button type="button" id="match-review-older" class="friends-btn match-review-older">
+      Show older (${left} more)</button>`;
 }
 
 /**
@@ -801,23 +953,40 @@ function _paintPlace() {
  */
 export async function renderMatchReview() {
   _review = null;
+  _refs = null;
+  _loaded = [];
+  _invites = [];
+  _soloCache = loadSoloRuns();
   _paintPlace();
 
   let invites = null;
-  let mine = null;
+  let refs = null;
   try {
     const m = await import('../firebase/firebaseMatch.js');
-    [invites, mine] = await Promise.all([m.fetchMatchInvites(), m.fetchMyMatches()]);
+    [invites, refs] = await Promise.all([m.fetchMatchInvites(), m.fetchMyMatchRefs()]);
+    _refs = refs;
+    _loaded = await m.fetchMatchSummaries((refs || []).slice(0, REVIEW_PAGE));
   } catch (err) {
     reportCaughtError('match-review-fetch', err);
+    // Solo records are this device's own, so they still list offline; only
+    // the shared runs need the network, and the copy says which is missing.
+    if (_soloCache.length > 0) {
+      _invites = [];
+      _review = partitionMatchReview({
+        invites: [], matches: [], uid: getUid(), now: Date.now(), solo: _soloCache,
+      });
+      _paintPlace();
+      return;
+    }
     const el = $('#match-review');
     if (el) el.innerHTML = '<p class="friends-empty">Could not reach your runs. Check your connection.</p>';
     return;
   }
 
   _reviewNamesCache = await _reviewNames();
+  _invites = invites || [];
   _review = partitionMatchReview({
-    invites: invites || [], matches: mine || [], uid: getUid(), now: Date.now(),
+    invites: _invites, matches: _loaded, uid: getUid(), now: Date.now(), solo: _soloCache,
   });
   _paintPlace();
 
@@ -896,13 +1065,108 @@ function _myMatchRowHTML(row) {
     </div>`;
 }
 
+/**
+ * A finished shared run's row: who it was against, how it went, and when.
+ * The verdict comes from runOutcome over the same ranked standings the
+ * report paints, so the row and the report can never disagree about who won.
+ */
+function _finishedRowHTML(entry) {
+  const row = entry.match;
+  const node = row.node;
+  const standings = matchStandings(node, { handicaps: getHandicapRatioMap(), myUid: getUid() });
+  const out = runOutcome(standings);
+  const nameOfUid = (uid) => {
+    const p = node.players && node.players[uid];
+    const stored = (p && typeof p.name === 'string' && p.name && p.name !== 'Player') ? p.name : null;
+    return _reviewNamesCache[uid] || stored || 'A friend';
+  };
+  const rivals = standings.filter((r) => !r.isMe);
+  const vs = rivals.length === 0
+    ? 'Nobody joined'
+    : `vs ${rivals.slice(0, 2).map((r) => nameOfUid(r.uid)).join(', ')}`
+      + (rivals.length > 2 ? ` +${rivals.length - 2}` : '');
+  const verdicts = {
+    won: () => `You won by ${_fmtGap(out.gap)}`,
+    tied: () => `Tied with ${nameOfUid(out.rivalUid)}`,
+    behind: () => `${_ordinal(out.place)} of ${out.of}, ${_fmtGap(out.gap)} back`,
+    waiting: () => 'Waiting on the others',
+    alone: () => 'Nobody raced you',
+    unfinished: () => (entry.ended
+      ? `Run ended · ${out.done} of ${out.of} played` : `Board ${out.done + 1} of ${out.of}`),
+    none: () => '',
+  };
+  const verdict = (verdicts[out.kind] || verdicts.none)();
+  const note = [verdict, _matchSummaryLine(node), shortDate(entry.at)]
+    .filter(Boolean).join(' · ');
+  return `<div class="match-review-row match-review-run" data-report="${escapeHtml(row.matchId)}">
+      <span class="match-review-name">${escapeHtml(vs)}
+        <span class="match-review-note">${escapeHtml(note)}</span></span>
+      <span class="match-review-actions">
+        <button type="button" class="friends-btn match-review-open">Open</button>
+      </span>
+    </div>`;
+}
+
+/** A solo run's row, from this device's own record. */
+function _soloRowHTML(entry) {
+  const node = soloNodeShape(entry.record);
+  const idx = _soloCache.indexOf(entry.record);
+  const me = node ? matchStandings(node, { myUid: SOLO_UID }).find((r) => r.isMe) : null;
+  const total = (me && me.finished && Number.isFinite(me.time)) ? fmtClock(me.time, false) : '';
+  const note = [total, node ? _matchSummaryLine(node) : '', shortDate(entry.at)]
+    .filter(Boolean).join(' · ');
+  return `<div class="match-review-row match-review-run" data-solo="${idx}">
+      <span class="match-review-name">Solo run
+        <span class="match-review-note">${escapeHtml(note)}</span></span>
+      <span class="match-review-actions">
+        <button type="button" class="friends-btn match-review-open">Open</button>
+      </span>
+    </div>`;
+}
+
+/** Fetch the next page of summaries and re-partition. */
+async function _loadOlder() {
+  if (!_refs || _loaded.length >= _refs.length) return;
+  const btn = $('#match-review-older');
+  if (btn) { btn.disabled = true; btn.textContent = 'Loading…'; }
+  try {
+    const m = await import('../firebase/firebaseMatch.js');
+    const next = await m.fetchMatchSummaries(_refs.slice(_loaded.length, _loaded.length + REVIEW_PAGE));
+    _loaded = [..._loaded, ...next];
+  } catch (err) {
+    reportCaughtError('match-review-older', err);
+  }
+  _review = partitionMatchReview({
+    invites: _invites, matches: _loaded, uid: getUid(), now: Date.now(), solo: _soloCache,
+  });
+  _paintPlace();
+}
+
 // One delegated listener, bound with the rest of the wiring: the rows
 // re-render on every open, so per-button listeners would leak.
 async function _onReviewClick(e) {
-  const joinBtn = e.target.closest('.match-review-join, .match-review-open');
-  const declineBtn = e.target.closest('.match-review-decline');
+  const older = e.target.closest('#match-review-older');
+  if (older) { _loadOlder(); return; }
   const row = e.target.closest('.match-review-row');
   if (!row) return;
+
+  // The finished places: the WHOLE row opens the report, one tap (his "not
+  // having to move about in an annoying way").
+  if (row.dataset.report) {
+    hideModal('match-setup-modal');
+    openMatchReport(row.dataset.report);
+    return;
+  }
+  if (row.dataset.solo !== undefined) {
+    const record = _soloCache[Number(row.dataset.solo)];
+    if (!record) return;
+    hideModal('match-setup-modal');
+    openSoloReport(record);
+    return;
+  }
+
+  const joinBtn = e.target.closest('.match-review-join, .match-review-open');
+  const declineBtn = e.target.closest('.match-review-decline');
   const m = await import('../firebase/firebaseMatch.js');
 
   if (declineBtn) {

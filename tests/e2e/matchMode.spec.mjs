@@ -155,6 +155,35 @@ test('the matchboard override deals the exact stored board, frozen and certified
     expect(errors, `console errors: ${errors.join(' | ')}`).toHaveLength(0);
   });
 
+test('REGRESSION: Start Challenge runs the REAL deal through to a playing board', async ({ page }) => {
+  // Every other spec here pins ?matchboard=, the practice lane, which skips
+  // dealMatchEntries entirely. So when #359 changed the deal's reading of
+  // planMatchDeal's `eligible` and the two disagreed (a count where rows were
+  // expected), every REAL deal crashed, solo and shared alike, the sheet said
+  // "check your connection", and the whole suite stayed green. This journey
+  // is the seam: sheet, Start Challenge, live library fetch, certification,
+  // a board on screen.
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+
+  await prepareInteractionSpec(page);
+  await page.goto('/?isTest=1');
+  await page.waitForSelector('#boot-overlay', { state: 'detached', timeout: 30_000 });
+  await page.locator('.mode-card[data-mode="match"]').click();
+  await expect(page.locator('#match-setup-modal')).toBeVisible();
+  await page.locator('#match-tab-new').click();
+
+  const start = page.locator('#match-start');
+  await expect(start).toBeEnabled({ timeout: 30_000 });
+  await start.click();
+
+  // The deal fetches shards and re-certifies stored boards; give it room.
+  await page.waitForSelector('#board .cell', { timeout: 45_000 });
+  await expect(page.locator('#level-display')).toHaveText(/Board 1/);
+  await expect(page.locator('#board .cell.suggested-start')).toHaveCount(1);
+  expect(errors, `page errors: ${errors.join(' | ')}`).toHaveLength(0);
+});
+
 test('a match board cannot be restarted, and offers no power-ups', async ({ page }) => {
   // Both follow from the mode's economy: the per-board clock feeds the match
   // total, so a fresh clock on a seen board is the daily's own cheat, and an

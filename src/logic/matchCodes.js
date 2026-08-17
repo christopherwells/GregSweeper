@@ -324,11 +324,25 @@ export function partitionInvites(invites, now) {
  * A match whose node could not be read is dropped rather than guessed at: an
  * unreadable run cannot be said to be finished OR waiting.
  *
- * @param {{invites: Array, matches: Array, uid: string|null, now: number}} args
- *   `matches` are fetchMyMatches rows, each with its live `node` attached.
+ * TWO LATER RULINGS this partition carries (2026-08-17):
+ *
+ *  - SOLO RUNS SIT IN FINISHED beside the shared ones, from this device's own
+ *    records (his ask: "it'd be nice if you could see your solo runs").
+ *    They interleave by date; every finished entry has an `at` stamp so the
+ *    list can group months without re-deriving which field each kind uses.
+ *  - AN EXPIRED UNFINISHED RUN IS FINISHED, NOT WAITING. Past the seven days
+ *    the rules refuse every result write, so "carry on with this" is an
+ *    intention the server no longer honors; the run rests in finished with
+ *    `ended` set so the row can say the run closed before the last board.
+ *    Reads stay open forever, which is exactly what the finished place is.
+ *
+ * @param {{invites: Array, matches: Array, uid: string|null, now: number,
+ *   solo?: Array}} args
+ *   `matches` are fetchMyMatches rows, each with its `node` attached;
+ *   `solo` are this device's stored solo-run records, newest first.
  * @returns {{active: Array, finished: Array, declined: Array, expired: Array}}
  */
-export function partitionMatchReview({ invites, matches, uid, now }) {
+export function partitionMatchReview({ invites, matches, uid, now, solo = [] }) {
   const parts = partitionInvites(invites, now);
   const expired = (invites || []).filter((inv) => inviteState(inv, now) === 'expired');
 
@@ -341,11 +355,18 @@ export function partitionMatchReview({ invites, matches, uid, now }) {
     const mine = uid ? players[uid] : null;
     const done = !!(mine && typeof mine.finishedAt === 'number'
       && Number.isFinite(mine.finishedAt) && mine.finishedAt > 0);
-    (done ? finished : active).push({ ...row, done });
+    const ended = !done && matchIsExpired(matchExpiresAt(row.node.createdAt), now);
+    const at = Number(row.joinedAt) || 0;
+    if (done || ended) finished.push({ kind: 'match', match: { ...row, done }, ended, at });
+    else active.push({ ...row, done });
+  }
+  for (const record of solo || []) {
+    if (!record) continue;
+    finished.push({ kind: 'solo', record, at: Number(record.finishedAt) || 0 });
   }
   const newestFirst = (a, b) => (Number(b.joinedAt) || 0) - (Number(a.joinedAt) || 0);
   active.sort(newestFirst);
-  finished.sort(newestFirst);
+  finished.sort((a, b) => b.at - a.at);
 
   return {
     // Invites first inside active: an unanswered ask is more urgent than a
@@ -355,7 +376,7 @@ export function partitionMatchReview({ invites, matches, uid, now }) {
       ...parts.snoozed.map((invite) => ({ kind: 'invite', invite, snoozed: true })),
       ...active.map((match) => ({ kind: 'match', match })),
     ],
-    finished: finished.map((match) => ({ kind: 'match', match })),
+    finished,
     declined: parts.declined.map((invite) => ({ kind: 'invite', invite })),
     expired,
   };
