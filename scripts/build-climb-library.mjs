@@ -203,10 +203,16 @@ function legalPatches() {
       }
     }
   }
-  // Classic: the width cap is 13 columns; height is free until the board stops
-  // fitting, which the probe finds by pricing.
+  // Classic: held to rectFitsPhone the same way the lattice branch above is
+  // held to boardFitsPhone, so both halves ask one question (issue #350: this
+  // branch kept enumerating 12-13 columns after the 2026-08-15 cap moved to
+  // 11, and every nightly fill re-manufactured the boards the eviction had
+  // just removed). The candidate range is deliberately wider than the rule so
+  // the rule, not the enumeration, decides; height is free until the board
+  // stops fitting, which the probe finds by pricing.
   for (let rows = 8; rows <= 20; rows++) {
     for (const cols of [10, 11, 12, 13]) {
+      if (!rectFitsPhone(rows, cols)) continue;
       out.push({ shape: 'rect', rows, cols, cells: rows * cols });
     }
   }
