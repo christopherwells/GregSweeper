@@ -169,12 +169,20 @@ export const TILING_BAND_CONFIGS = {
     { id: 'f96d18', M: 4, N: 4, mines: 17, constructive: true, features: { cellCount: 96, totalMines: 17, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 4 } }, // ~119s
     { id: 'f72d28', M: 3, N: 4, mines: 20, features: { cellCount: 72, totalMines: 20, canonicalSubsetMoves: 1, genericSubsetMoves: 1.5, advancedLogicMoves: 0, zeroClusterCount: 3 } },   // ~182s
   ],
+  // Recalibrated 2026-08-17 at the correction fit's equations. The grid
+  // ends at 72 cells by his ruling (90-cell rhombille measured 13.7s
+  // worst-case generation), which caps the shape's daily window at
+  // ~53-91s: a DOCUMENTED REACH LIMIT, the deltoidal pattern. The band
+  // steers inside that window and the kernel clamps targets outside it.
   rhombille: [
-    { id: 'r48d23', M: 4, N: 4, mines: 11, features: { cellCount: 48, totalMines: 11, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 1.5 } },   // ~47s
-    { id: 'r60d23', M: 4, N: 5, mines: 14, fallback: true, features: { cellCount: 60, totalMines: 14, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } }, // ~61s
-    { id: 'r72d24', M: 6, N: 4, mines: 17, features: { cellCount: 72, totalMines: 17, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~78s
-    { id: 'r60d28', M: 4, N: 5, mines: 17, features: { cellCount: 60, totalMines: 17, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~88s
-    { id: 'r72d28', M: 6, N: 4, mines: 20, features: { cellCount: 72, totalMines: 20, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~113s
+    { id: 'r48d27', M: 4, N: 4, mines: 13, features: { cellCount: 48, totalMines: 13, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 1 } },     // ~53s
+    { id: 'r48d25', M: 4, N: 4, mines: 12, features: { cellCount: 48, totalMines: 12, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 1 } },     // ~55s
+    { id: 'r48d23', M: 4, N: 4, mines: 11, fallback: true, features: { cellCount: 48, totalMines: 11, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 1.5 } }, // ~63s
+    { id: 'r60d28', M: 4, N: 5, mines: 17, features: { cellCount: 60, totalMines: 17, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~71s
+    { id: 'r60d23', M: 4, N: 5, mines: 14, features: { cellCount: 60, totalMines: 14, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~79s
+    { id: 'r72d28', M: 6, N: 4, mines: 20, features: { cellCount: 72, totalMines: 20, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~82s
+    { id: 'r72d25', M: 6, N: 4, mines: 18, features: { cellCount: 72, totalMines: 18, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~88s
+    { id: 'r72d24', M: 6, N: 4, mines: 17, features: { cellCount: 72, totalMines: 17, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~91s
   ],
   // Deltoidal's cheapest proven config prices ~63 s, the lattice cannot
   // reach the easy hill's lower half, so sub-63 targets ship the 63 s entry

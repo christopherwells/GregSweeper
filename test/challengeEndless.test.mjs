@@ -343,12 +343,18 @@ test('GOLDEN: the first endless block is fixed', () => {
   // percent), measured deciles on current-model cache prices only (stale
   // rows overstate), and 4.8.8 took its own allowance (2.3). Seven shapes,
   // 96 entries, a different deck, a different five.
+  // Moved on 2026-08-17 by the correction fit's artifact wake: the targeted
+  // parameterization plays collapsed rhombille's totalMines deviation
+  // (-0.300 to -0.021) and moved every shape's surface, so the floors
+  // re-measured at current-model deciles (floret under the shared floor for
+  // the first time, at 2.6) and the convergence loop re-emitted the pool at
+  // 64 entries across all seven shapes. Different deck, different five.
   assert.deepEqual(got, [
-    'deltoidal:36c:13m:[sonar]',
-    'floret:84c:31m:[]',
-    'rhombille:48c:18m:[]',
-    'cairo:112c:36m:[locked+sonar+compass]',
-    'hex:104c:37m:[liar+locked+compass]',
+    'deltoidal:36c:10m:[mirror+sonar+compass]',
+    'cairo:112c:13m:[locked+mirror+sonar]',
+    'rect:30c:11m:[mystery+compass]',
+    'hex:104c:38m:[liar+mirror+sonar]',
+    '4.8.8:50c:18m:[walls+locked+mirror]',
   ]);
 
 

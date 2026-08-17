@@ -88,6 +88,12 @@ const CANDIDATES = {
     densities: [0.18, 0.21, 0.24, 0.28],
   },
   rhombille: {
+    // The grid ends at 72 cells BY RULING (his 90-cell fixture measured
+    // 13.7s worst-case generation: "rotation rhombille never exceeds the
+    // proven 72-cell scale"). Under the 2026-08-17 correction fit that
+    // caps the shape's daily par window at ~53-91s, under the x2 span the
+    // band prefers; rhombille therefore carries a documented reach limit
+    // in the band test, the deltoidal pattern, rather than a bigger grid.
     sizes: [[4, 4], [4, 5], [6, 4]],
     densities: [0.23, 0.255, 0.28],
   },

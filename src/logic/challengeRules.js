@@ -230,7 +230,9 @@ export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
   // the top decile, the same bar the two entries above were set at. Same
   // provisional reading: when hex's rate rises on real data this entry
   // should shrink toward the shared floor.
-  hex: 2.2,
+  // Re-measured 2026-08-17 after the correction fit (the three-player
+  // targeted rows): current-model p90 fell to 1.37. Same method, new night.
+  hex: 1.3,
   // OCTAGONS joined on 2026-08-16 evening, the third application of the
   // top-decile ruling in one day and the cleanest sign yet that the trigger
   // is fit volatility, not any one shape: the evening refit took THREE new
@@ -248,7 +250,8 @@ export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
   // stale-tail optimism. Over current-model prices only (n=158) the p90
   // reads 2.41 and the max 3.02; the floor sits under the margin as the
   // block note requires. Measure deciles on current-model prices only.
-  '4.8.8': 2.3,
+  // Re-measured 2026-08-17 after the correction fit: current-model p90 1.59.
+  '4.8.8': 1.5,
   // CLASSIC joined on 2026-08-10, and it is the one case that is not about a
   // shape being under-priced while players learn it. Rect's constraints just
   // conflict: it prices so gently that reaching 3.5 s/cell takes 130-156
@@ -280,6 +283,13 @@ export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
   // re-check by rounding. One notch down gives stored prices real
   // headroom; 1.30 x 1.03 = 1.339, still under rect's 1.43 decile.
   rect: 1.3,
+  // PETALS joined on 2026-08-17, the correction fit's own doing: with
+  // rhombille and hex re-priced sane, floret's current-model p90 reads
+  // 2.68 against the shared 3.5 floor, under it for the first time. The
+  // top-decile ruling covers any shape the model prices below the shared
+  // floor, so the same method applies: p90 over current-model prices,
+  // divided by the margin, rounded down.
+  floret: 2.6,
 });
 
 /** The admission floor a shape is held to. */

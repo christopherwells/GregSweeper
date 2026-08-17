@@ -218,10 +218,14 @@ test('REGRESSION: the endless floor guard fires on an under-priced entry', () =>
 
 test('the per-shape ceilings and floors are respected, not the shared ones', () => {
   // A guard that used the shared numbers everywhere would reject Classic and
-  // Paving Stones (720s ceilings) and 3D Cubes (2.2 floor) wholesale — his
-  // per-shape rulings exist precisely so those shapes can be in the zone.
+  // Paving Stones (720s ceilings) wholesale — his per-shape rulings exist
+  // precisely so those shapes can be in the zone. The floor ordering is a
+  // MEASURED FACT (p90/1.03 of current-model cache prices), so it re-pins
+  // whenever the floors re-measure: as of the 2026-08-17 correction fit,
+  // rhombille (2.05) prices dearer per cell than hex (1.3) — the old model
+  // had them the other way around.
   assert.ok(endlessParCeiling('rect') > endlessParCeiling('hex'));
-  assert.ok(endlessPpcFloor('rhombille') < endlessPpcFloor('hex'));
+  assert.ok(endlessPpcFloor('rhombille') > endlessPpcFloor('hex'));
   for (const e of ENDLESS_POOL) {
     assert.ok(e.ppc >= endlessPpcFloor(e.shape),
       `${specFace(e)} sits under its own shape's floor`);
