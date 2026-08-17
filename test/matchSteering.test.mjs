@@ -468,8 +468,29 @@ test('an empty eligible set deals nothing rather than throwing', () => {
   const plan = planMatchDeal([row({ shape: 'rect' })], RULES({ count: 5, shapes: ['deltoidal'] }),
     { rand: lcg(1), missions: steerMissions(shapeSpec('deltoidal', 1)) });
   assert.deepEqual(plan.picks, []);
-  assert.equal(plan.eligible, 0);
+  assert.deepEqual(plan.eligible, []);
   assert.deepEqual(plan.steered, []);
+});
+
+test('REGRESSION: plan.eligible is the ROW ARRAY on both return paths, keys included', () => {
+  // It shipped as a COUNT once, on both paths, and #359 taught
+  // dealMatchEntries to read the rows' keys off it for the per-space seen
+  // reset (`eligible.map((r) => r.key)`). Every real deal then crashed,
+  // solo and shared alike, and the sheet said "check your connection". No
+  // test crossed the seam: this one pins the interface the consumer reads.
+  const rows = [row({ shape: 'rect' }), row({ shape: 'rect' }), row({ shape: 'deltoidal' })];
+  const rules = RULES({ count: 2, shapes: ['rect'], mods: [] });
+  // The plain path (no missions)...
+  const plain = planMatchDeal(rows, rules, { rand: lcg(1), missions: [] });
+  // ...and the steered path (a mission that can claim a slot).
+  const steered = planMatchDeal(rows, RULES({ count: 5, shapes: ['rect'], mods: [] }),
+    { rand: lcg(1), missions: steerMissions(shapeSpec('rect', 0)) });
+  for (const plan of [plain, steered]) {
+    assert.ok(Array.isArray(plan.eligible), 'eligible must be the row array');
+    assert.ok(plan.eligible.length >= 1);
+    assert.ok(plan.eligible.every((r) => typeof r.key === 'string' && r.key.length > 0),
+      'every eligible row must expose the key the seen reset scopes by');
+  }
 });
 
 test('currentSteerMissions reads the loaded file without throwing on a cold cache', () => {
@@ -519,7 +540,7 @@ test('the deal applies the filter itself, so no caller can hand it raw rows', ()
   const rows = [row({ shape: 'rect' }), row({ shape: 'deltoidal' })];
   const rules = RULES({ count: 2, shapes: ['rect'], mods: [] });
   const plan = planMatchDeal(rows, rules, { rand: lcg(1), missions: [] });
-  assert.equal(plan.eligible, 1);
+  assert.equal(plan.eligible.length, 1);
   assert.equal(plan.picks.length, 1);
   assert.equal(eligibleRows(rows, rules).length, 1);
 });
