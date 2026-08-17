@@ -1,61 +1,61 @@
 {
-  "updatedAt": "2026-08-16T21:55:59Z",
-  "target": "wormholePairCount",
-  "reason": "highest posterior CV (0.457) excluding last 3 targets",
+  "updatedAt": "2026-08-17T00:57:44Z",
+  "target": "clueShare2",
+  "reason": "highest posterior CV (0.415) excluding last 3 targets",
   "lastRevalidationDate": "2026-08-15",
   "recentTargets": [
+    "clueShare2",
     "wormholePairCount",
-    "clueShare4",
-    "wormLoad"
+    "clueShare4"
   ],
   "candidates": [
     {
       "feature": "wormLoad",
-      "mean": 0.027,
-      "sd": 0.013,
+      "mean": 0.028,
+      "sd": 0.014,
       "cv": 0.491
     },
     {
       "feature": "wormholePairCount",
       "mean": 0.038,
       "sd": 0.017,
-      "cv": 0.457
-    },
-    {
-      "feature": "clueShare4",
-      "mean": 0.121,
-      "sd": 0.05,
-      "cv": 0.412
+      "cv": 0.451
     },
     {
       "feature": "clueShare2",
-      "mean": 0.052,
-      "sd": 0.021,
-      "cv": 0.41
+      "mean": 0.048,
+      "sd": 0.02,
+      "cv": 0.415
+    },
+    {
+      "feature": "clueShare4",
+      "mean": 0.131,
+      "sd": 0.052,
+      "cv": 0.401
     },
     {
       "feature": "compassCellCount",
       "mean": 0.049,
       "sd": 0.019,
-      "cv": 0.393
+      "cv": 0.385
     }
   ],
   "coverage_targets": [],
   "shape_coverage": [
     {
       "shape": "deltoidal",
-      "n_boards": 6,
-      "deficit_weight": 0.1429
+      "n_boards": 14,
+      "deficit_weight": 0.0667
     },
     {
       "shape": "floret",
-      "n_boards": 13,
-      "deficit_weight": 0.0714
+      "n_boards": 16,
+      "deficit_weight": 0.0588
     },
     {
       "shape": "rhombille",
-      "n_boards": 18,
-      "deficit_weight": 0.0526
+      "n_boards": 16,
+      "deficit_weight": 0.0588
     },
     {
       "shape": "cairo",
@@ -64,8 +64,8 @@
     },
     {
       "shape": "4.8.8",
-      "n_boards": 22,
-      "deficit_weight": 0.0435
+      "n_boards": 27,
+      "deficit_weight": 0.0357
     },
     {
       "shape": "hex",

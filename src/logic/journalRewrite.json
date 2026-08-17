@@ -1,36 +1,28 @@
 {
   "format": "journal-rewrite-v2",
-  "date": "2026-08-16",
+  "date": "2026-08-17",
   "entries": {
-    "patternMoves": {
-      "sourceHash": 3109592653,
-      "paragraph": "Back into the pattern reasoning file, I noticed that the number I left there isn't the number I found. The parked estimate moved significantly: from about 11% per ten pattern deductions on Jul 13, it now reads 40%. The cost estimate also widened to about 40% per ten pattern deductions. The band runs from 32% to 49%. I wrote that a practiced read should cost seconds, not tens of seconds. The data agree: the effect is real and small. A number that moves while nobody feeds it has my full attention."
+    "clueShare2": {
+      "sourceHash": 3286450384,
+      "paragraph": "Two study days in, twos keep telling me the same thing. I wrote that a two should read almost as fast as a one, but the range puts it a little above that. I cannot yet split the twos from the boards they sit on, but I’m closing in: my range for this has narrowed by 28% since July 18. The estimate stands at about 5% per extra two in ten numbers, between 3% and 7%. The same answer came back again, and I’m listening."
     },
-    "liarCellCount": {
-      "sourceHash": 3208308017,
-      "paragraph": "The liar cells case is closed. My note presented the data with two possibilities: poison or a rounding error, and the evidence picked the latter. A liar barely shifts the clock, so the observed changes are likely due to rounding. The books show ten study days from April 22 to June 28, with the cost falling between 0% and about 3% per ten liar cells. This small range underscores the clean answer the file seeks."
+    "patternMoves": {
+      "sourceHash": 1082924309,
+      "paragraph": "Back into the pattern reasoning file, the number I left there isn't the number I found. On July 13, this file read about 11% per ten pattern deductions, but now it reads about 41%. The cost per ten pattern deductions runs about 41%, with a floor around 32% and a ceiling around 50%. I wrote that a practiced read should cost seconds, not tens of seconds, and the data agree: the effect is real and small. Closed is supposed to be a state, not a mood."
     },
     "wormholePairCount": {
-      "sourceHash": 1517497003,
-      "paragraph": "The wormholes file is doing the thing measurement is not supposed to do, with the width up 861% this window. I keep collecting data, as I predicted that splitting one number across two places would slow the reading down, and it does. Ten wormhole pairs add about 46% to your time, likely between 23% and 73%. Whenever the data surprise me, I take better notes."
+      "sourceHash": 4057007322,
+      "paragraph": "The wormholes numbers moved the wrong way, and I want that on the record. Uncertainty is up 856% since Jul 2, and the estimate stands at about 46% per ten wormhole pairs, ranging between 23% and 74%. I predicted that splitting one number across two places would slow the reading down, and it does. The results I did not expect get the most space in this notebook."
     },
     "mirrorPairCount": {
-      "sourceHash": 1710130689,
-      "paragraph": "The mirrors numbers moved the wrong way, and I want that on the record. In this file, I wrote that a player who spots the pair should lose almost no time. The top of the range does not read as almost no time, so the Should is on notice. The range has widened by 73% since July 2. Ten mirror pairs add about 83% to your time, likely between 52% and 121%. A surprise is a measurement I have not explained yet."
+      "sourceHash": 97632920,
+      "paragraph": "The mirrors band is widening when it should be narrowing. The top of the range does not read as almost no time. More plays widened the range by about 71%: the new boards disagree more than the earlier ones did. The estimate stands at about 83% per ten mirror pairs, between 52% and 120%. Instruments drift, and so do estimates. The notebook is the record."
     },
-    "mysteryCellCount": {
-      "sourceHash": 918755007,
-      "paragraph": "The mystery cells file reads the same almost every night I open it, and I wrote that missing information has a price. I measured this price, and the data show it is close to free, with the charge per ten mystery cells reading between 0% and about 3%. The band has barely moved since July 2, and the same answer came back again, which I am listening to."
-    },
-    "clueShare2": {
-      "sourceHash": 401027844,
-      "paragraph": "Every fresh look at twos gives the same reading: each extra two in ten numbers adds about 5% to your time, likely between 3% and 8%. This range is 24% narrower than it was on Jul 18. I wrote that a two should read almost as fast as a one, but the current range puts it a little above that estimate. I cannot yet split the twos from the boards they sit on, so a steady no remains valuable information."
-    },
-    "compassCellCount": {
-      "sourceHash": 1484122313,
-      "paragraph": "24 study days into the experiment, and the compass estimate remains unresolved. My current read is about 63% per ten compass cells, likely between 34% and 97%, a range that has not moved. I wrote that I couldn’t tell whether players read the arrow quickly or take their time with it, and so far, neither can the model. I can wait; more boards arrive every night."
+    "liarCellCount": {
+      "sourceHash": 2355585009,
+      "paragraph": "The liar cells question got its answer, and the data narrowed the possibilities to two: poison, or a rounding error. The study picked the latter, as a liar barely moves the clock. The experiment ran for ten study days, from April 22 to June 28, with per ten liar cells costing somewhere between 0% and about 3%. Into the ledger it goes."
     }
   },
   "model": "qwen2.5-7b-instruct-q4km-local",
-  "generatedAt": "2026-08-16T22:01:06.126Z"
+  "generatedAt": "2026-08-17T01:03:10.889Z"
 }
