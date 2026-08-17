@@ -202,3 +202,51 @@ test('columnLeader stays silent under two finished players, and flags a tie', ()
   assert.equal(tie.tied, true, 'a tie leads nobody; the painter styles it as tied');
   assert.deepEqual(tie.uids, ['a', 'b']);
 });
+
+// ── The summary read (issue #331) ────────────────────────────────────────
+// The review list fetches rules and players, never the frozen board
+// payloads (a ten-board node runs 18-148 KB and the list reads three lines
+// of it). A summary-shaped node carries NO boards array, so the board count
+// resolves through matchBoardCountOf's rules.count fallback, which the
+// rules REQUIRE on every node ever written.
+
+test('matchBoardCountOf: boards array wins, rules.count covers a summary, junk reads 0', async () => {
+  const { matchBoardCountOf } = await import('../src/logic/matchRules.js');
+  assert.equal(matchBoardCountOf({ boards: [1, 2, 3], rules: { count: 5 } }), 3,
+    'the dealt list is the ground truth where present');
+  assert.equal(matchBoardCountOf({ rules: { count: 5 } }), 5, 'a summary falls back to rules.count');
+  assert.equal(matchBoardCountOf({ rules: { count: 99 } }), 0, 'an out-of-band count is refused');
+  assert.equal(matchBoardCountOf({}), 0);
+  assert.equal(matchBoardCountOf(null), 0);
+});
+
+test('matchStandings works on a summary node: of from rules.count, finished via finishedAt', () => {
+  const summary = {
+    host: 'host-uid-1234567890',
+    rules: { count: 4 },
+    players: {
+      'host-uid-1234567890': { name: 'Host', results: [{ timeSec: 60 }, { timeSec: 70 }], finishedAt: 0 },
+      'guest-uid-123456789': { name: 'Guest', results: [{ timeSec: 50 }], finishedAt: 1234 },
+    },
+  };
+  const rows = matchStandings(summary, { myUid: 'host-uid-1234567890' });
+  assert.equal(rows.length, 2);
+  for (const r of rows) {
+    assert.equal(r.of, 4, 'the board count must come from rules.count on a summary');
+  }
+  const guest = rows.find((r) => r.uid === 'guest-uid-123456789');
+  assert.equal(guest.finished, true, 'finishedAt still resolves finished with no boards array');
+});
+
+test('the review list and the invite card fetch summaries, never whole nodes (source scan)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const fb = readFileSync(new URL('../src/firebase/firebaseMatch.js', import.meta.url), 'utf8');
+  assert.match(fb, /rows\.map\(\(r\) => fetchMatchSummary\(r\.matchId\)\)/,
+    'fetchMyMatches must map rows through fetchMatchSummary');
+  const lobby = readFileSync(new URL('../src/ui/matchLobby.js', import.meta.url), 'utf8');
+  assert.match(lobby, /m\.fetchMatchSummary\(invite\.matchId\)/,
+    'the invite offer reads the summary');
+  // The full-node fetch survives ONLY where boards are dealt or installed.
+  assert.doesNotMatch(fb, /rows\.map\(\(r\) => fetchMatch\(/,
+    'the list path must never fetch whole nodes again');
+});

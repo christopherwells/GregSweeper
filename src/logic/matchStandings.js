@@ -8,7 +8,7 @@
 //   matchStandings  turns a fetched node into ranked rows for the panel
 //   matchFitRows    turns this player's finished boards into par-fit rows
 
-import { matchTotals } from './matchRules.js';
+import { matchTotals, matchBoardCountOf } from './matchRules.js';
 import { rankAdjusted } from './leaderboardViews.js';
 import { matchRowKey } from './matchCodes.js';
 
@@ -54,7 +54,7 @@ export function matchStandings(node, opts = {}) {
   const { handicaps = null, myUid = null } = opts;
   const players = (node && node.players && typeof node.players === 'object')
     ? node.players : {};
-  const of = Array.isArray(node && node.boards) ? node.boards.length : 0;
+  const of = matchBoardCountOf(node);
   const host = (node && node.host) || null;
 
   const base = Object.entries(players).map(([uid, p]) => {

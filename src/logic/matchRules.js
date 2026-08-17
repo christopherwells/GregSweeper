@@ -28,6 +28,23 @@ export const MATCH_BOARD_MAX = 10;
 // variety. The cap is the standing contract; the steering itself arrives
 // with the match node (the refit's mission spec has nothing to steer while
 // solo matches record nothing).
+/**
+ * How many boards a match holds, from whatever the caller has. The boards
+ * array is the ground truth where present; a SUMMARY read (issue #331: the
+ * review list fetches rules and players, never the frozen payloads) falls
+ * back to rules.count, which the rules REQUIRE on every node ever written.
+ * The two disagree only on a shortened SOLO match (a shared match may never
+ * shorten), where the row's "of N" reads the requested count; the finished
+ * flag still resolves through finishedAt, so the degradation is cosmetic.
+ * @param {object|null} node a match node or summary
+ * @returns {number}
+ */
+export function matchBoardCountOf(node) {
+  if (node && Array.isArray(node.boards)) return node.boards.length;
+  const c = node && node.rules && node.rules.count;
+  return Number.isInteger(c) && c >= MATCH_BOARD_MIN && c <= MATCH_BOARD_MAX ? c : 0;
+}
+
 export function steeredSlotCap(boardCount) {
   return Math.floor((Number(boardCount) || 0) / 5);
 }

@@ -24,7 +24,7 @@ import { dealMatchEntries } from '../game/matchDeal.js';
 import { loadStats } from '../storage/statsStorage.js';
 import { getUid } from '../firebase/firebaseProgress.js';
 import { getHandicapRatioMap } from '../logic/handicaps.js';
-import { matchUnlocks, unmetMatchRules, fmtClock, needsTenths } from '../logic/matchRules.js';
+import { matchUnlocks, unmetMatchRules, fmtClock, needsTenths, matchBoardCountOf } from '../logic/matchRules.js';
 import { matchStandings, columnLeader } from '../logic/matchStandings.js';
 import { matchBoardBreakdown } from '../logic/matchRecord.js';
 import { normalizeCode, planMatchJoin, matchDaysRemaining, matchExpiresAt, partitionMatchReview, matchResumePoint } from '../logic/matchCodes.js';
@@ -615,7 +615,9 @@ async function _senderName(uid) {
 /** One line describing what a match actually is: how many boards, what shapes. */
 function _matchSummaryLine(node) {
   if (!node) return '';
-  const n = Array.isArray(node.boards) ? node.boards.length : 0;
+  // matchBoardCountOf: a summary read carries no boards array, the count
+  // resolves through rules.count (issue #331).
+  const n = matchBoardCountOf(node);
   const shapes = ((node.rules && node.rules.shapes) || []).map(shapeLabelOf).join(', ');
   const boards = `${n} board${n === 1 ? '' : 's'}`;
   return shapes ? `${boards} · ${shapes}` : boards;
@@ -639,7 +641,9 @@ async function _offerInvite(invite) {
   // opens the join card, which previews the match in full before committing.
   const [who, node] = await Promise.all([
     _senderName(invite.from),
-    import('../firebase/firebaseMatch.js').then((m) => m.fetchMatch(invite.matchId)).catch(() => null),
+    // The summary, not the node: the card's one detail line reads the board
+    // count and shapes, never a payload (issue #331).
+    import('../firebase/firebaseMatch.js').then((m) => m.fetchMatchSummary(invite.matchId)).catch(() => null),
   ]);
 
   text.textContent = `${who} invited you to a Challenge.`;
@@ -854,7 +858,7 @@ function _myMatchRowHTML(row) {
   const players = node.players && typeof node.players === 'object' ? node.players : {};
   const rows = matchStandings(node, { myUid: getUid() });
   const me = rows.find((r) => r.isMe);
-  const of = Array.isArray(node.boards) ? node.boards.length : 0;
+  const of = matchBoardCountOf(node);
   const done = me ? me.done : 0;
   const others = Math.max(0, Object.keys(players).length - 1);
   const progress = done >= of && of > 0
