@@ -21,6 +21,7 @@ import { selectTilingMission, candidateSeed, missionStamp } from '../src/logic/e
 import { TILING_TYPES, buildTiling, containerIsStorable } from '../src/logic/tilingGeometry.js';
 import { TILING_SAFE_GIMMICKS } from '../src/logic/tilingGenerator.js';
 import { DAILY_SAFE_GIMMICKS } from '../src/logic/gimmicks.js';
+import { chooseStartAnchor } from '../src/logic/startAnchor.js';
 import { serializeBoard, deserializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
 import { cleanSolverArtifacts } from '../src/logic/boardGenerator.js';
@@ -250,6 +251,13 @@ test('DIFFERENTIAL: the pipeline tiling branch is the shared builder verbatim', 
     firstClick: built.firstClick,
   });
   Object.assign(clientPayload, missionStamp(built.mission));
+  // The stored Start-here anchor, mirroring the client fallback writer in
+  // gameActions exactly (his 2026-08-17 ruling: whoever writes a canonical
+  // picks the anchor once; the deterministic policy makes the bytes agree).
+  const clientAnchor = chooseStartAnchor(built.board, built.rows, built.cols);
+  if (clientAnchor) {
+    clientPayload.bestStart = clientAnchor.r * built.cols + clientAnchor.c;
+  }
   assert.equal(JSON.stringify(pipelinePayload), JSON.stringify(clientPayload),
     'precompute and client fallback must write the SAME canonical, byte for byte');
 

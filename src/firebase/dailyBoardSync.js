@@ -359,6 +359,17 @@ export function deserializeBoard(raw) {
     ? raw.firstClick
     : centerIndex;
 
+  // The STORED "Start here" anchor (his 2026-08-17 ruling: the anchor is
+  // chosen at precompute, never searched client-side). Distinct from
+  // firstClick, which is the certification opener feeding features and par:
+  // bestStart is the rendered marker and the Certified chip's witness. null
+  // for every canonical written before the field existed; the client then
+  // runs the ONE legacy search in startAnchor.js.
+  const bestStart = Number.isInteger(raw.bestStart)
+    && raw.bestStart >= 0 && raw.bestStart < rows * cols
+    ? raw.bestStart
+    : null;
+
   return {
     board,
     rows,
@@ -367,6 +378,7 @@ export function deserializeBoard(raw) {
     activeGimmicks: Array.isArray(activeGimmicks) ? activeGimmicks : [],
     rngSeed: typeof rngSeed === 'string' ? rngSeed : '',
     firstClick,
+    bestStart,
   };
 }
 

@@ -49,6 +49,7 @@ import { pathToFileURL } from 'node:url';
 import { deserializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { recomputeDisplayedMines, recalcAllAdjacency } from '../src/logic/gimmicks.js';
 import { isBoardSolvable, findDeducibleFrontier } from '../src/logic/boardSolver.js';
+import { resolveStoredAnchor } from '../src/logic/startAnchor.js';
 import { cleanSolverArtifacts } from '../src/logic/boardGenerator.js';
 import { computeDailyFeatures, SOLVER_DERIVED_FEATURE_KEYS } from '../src/logic/dailyFeatures.js';
 import { getLocalDateString, getWeekStart } from '../src/logic/seededRandom.js';
@@ -239,6 +240,21 @@ export function verifyCanonicalPayload(raw) {
   if (!(check.solvable || check.remainingUnknowns === 0)) {
     reasons.push(`board does NOT certify from center (${check.remainingUnknowns} unknowns left)`);
     return { ok: false, reasons, check };
+  }
+
+  // 4. The STORED Start-here anchor, when present (his 2026-08-17 ruling:
+  // chosen at precompute, rendered verbatim). A stored anchor the board
+  // does not stand behind is a marker lying to every player at once, so
+  // it is verified the way the client verifies it: bounds, not a mine,
+  // and its OWN full solve certifies. Absence is fine (pre-ship vintage;
+  // the client's legacy fallback covers it), a bad one is a hard failure.
+  if (d.bestStart != null) {
+    const anchor = resolveStoredAnchor(board, rows, cols, d.bestStart);
+    cleanSolverArtifacts(board);
+    if (!anchor) {
+      reasons.push(`stored bestStart ${d.bestStart} does not certify (bounds, mine, or an incomplete solve)`);
+      return { ok: false, reasons, check };
+    }
   }
   return { ok: true, reasons: [], check };
 }
