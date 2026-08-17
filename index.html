@@ -78,6 +78,19 @@
   (function () {
     try {
       var saved = localStorage.getItem('minesweeper_theme');
+      // THE THEME SHELF (2026-08-16): only the five live themes may apply
+      // at first paint on a production build; a saved shelved theme would
+      // otherwise style the boot overlay and then visibly flip to classic
+      // when main.js's own shelf guard runs. This list mirrors LIVE_THEMES
+      // in themeManager.js and test/themeUnlockLadder.test.mjs pins the
+      // two in lockstep. The preview door (localhost or /test/, plus
+      // ?previewthemes=1) mirrors isThemePreview for the same reason.
+      var LIVE = ['classic', 'dark', 'forest', 'matrix', 'nest'];
+      var h = location.hostname;
+      var preview = (h === 'localhost' || h === '127.0.0.1' || h === '' ||
+        location.pathname.indexOf('/test/') >= 0) &&
+        /[?&]previewthemes(=|&|$)/.test(location.search);
+      if (saved && LIVE.indexOf(saved) < 0 && !preview) saved = null;
       // First-time visitors: respect their system color-scheme preference.
       // Dark mode is the more common preference and the more visually distinct
       // theme; nudging dark-mode users into the light "classic" default loses

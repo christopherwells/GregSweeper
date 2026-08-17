@@ -36,30 +36,40 @@ export function loadThemeCSS(themeName) {
   return p;
 }
 
-// ── Theme Unlock Progression ──────────────────────────
-// Themes unlock based on highest level ever beaten (permanent).
-// Dying in normal mode resets current level to 1 but keeps unlocks.
+// ── The Theme Shelf (his ruling, 2026-08-16) ──────────
+// FIVE themes ship, all unlocked from the start: classic, dark, forest,
+// matrix, nest (the five that got the title-polish pass). The other 21
+// are SHELVED, not cut: their CSS, sprites, sound palettes, effects and
+// confetti entries all stay in the codebase (the 26-theme count doctrine
+// is untouched), and none of them renders anywhere on a production
+// build. They stay reachable on localhost and the /test/ deployment via
+// ?previewthemes=1 (isThemePreview below), which is where they get
+// worked on until they return. His words: "Maybe we ship with a few
+// themes (classic, dark, forest, matrix, and nest) and then we do the
+// rest later" and "I think I want them just unlocked for now. No need
+// to earn that for now."
 //
-// THE LADDER RULE: classic + dark are free at level 0; the other 24
-// themes unlock one per checkpoint, every 5 challenge levels, L5
-// through L120, ordered by IN-YOUR-FACE-NESS. Quiet print-and-paper
-// worlds come first so new players have classic-feeling boards; the
-// loud, animated, high-saturation worlds are late-game rewards. When
-// adding or cutting a theme, keep the levels exactly the multiples of
-// 5 with no gaps or doubles, and place it by visual intensity (color
-// saturation + ambient motion + background busyness), not by age,
-// test/themeUnlockLadder.test.mjs enforces the structure. Entries are
-// listed in unlock order; the Collection grid renders in this order.
+// The unlock LADDER is DORMANT, not deleted: shelved entries keep their
+// old levelRequired values as the historical record, but nothing reads
+// them as earnable: getUnlockedThemes reports every shelved theme
+// locked (outside preview) and checkThemeUnlocks never fires a moment
+// for one. Re-laddering when themes return is a fresh design decision,
+// not a revert. Entries are listed live-first; the Collection grid
+// renders in this order.
 //
 // (2026-06 catalog trim note: cut themes live in git history; restoring
 // one means restoring its CSS file + entries here, in THEME_EFFECTS,
 // and in the confetti palette, bringing it up to the objects+moments
-// contract, AND giving it a ladder slot, which bumps everything after
-// it.)
+// contract.)
+export const LIVE_THEMES = ['classic', 'dark', 'forest', 'matrix', 'nest'];
+
 export const THEME_UNLOCKS = {
   classic:          { levelRequired: 0,   displayName: 'Classic',        mine: '💣', flag: '🚩', smiley: '😊', smileyWin: '😎', smileyLoss: '😵' },
   dark:             { levelRequired: 0,   displayName: 'Dark',           mine: '💣', flag: '🚩', smiley: '😊', smileyWin: '😎', smileyLoss: '😵' },
-  // Quiet print & paper, muted palettes, little or no ambient motion.
+  forest:           { levelRequired: 0,   displayName: 'Forest',         mine: '🌰', flag: '🐿️', strikeCell: '🌳', smiley: '🌲', smileyWin: '🦉', smileyLoss: '🪵' },
+  matrix:           { levelRequired: 0,   displayName: 'Matrix',         mine: '🟢', flag: '🔴', strikeCell: '❌', smiley: '👁️', smileyWin: '🔓', smileyLoss: '🔒' },
+  nest:             { levelRequired: 0,   displayName: 'Nest',           mine: '🥚', flag: '🪶', strikeCell: '🍳', smiley: '🪺', smileyWin: '🐥', smileyLoss: '🪹' },
+  // ── Shelved below this line (old ladder values kept, dormant) ──
   editorial:        { levelRequired: 25,  displayName: 'Editorial',      mine: '⬛', flag: '✒️', strikeCell: '💢', smiley: '📰', smileyWin: '🎩', smileyLoss: '☕' },
   sumie:            { levelRequired: 30,  displayName: 'Sumi-e',         mine: '⚫', flag: '🖌️', strikeCell: '💢', smiley: '🎴', smileyWin: '🌸', smileyLoss: '🌑' },
   blueprint:        { levelRequired: 40,  displayName: 'Blueprint',      mine: '🔩', flag: '📍', strikeCell: '⚠️', smiley: '📐', smileyWin: '✏️', smileyLoss: '❌' },
@@ -67,22 +77,15 @@ export const THEME_UNLOCKS = {
   origami:          { levelRequired: 60,  displayName: 'Origami',        mine: '🕊️', flag: '🔖', strikeCell: '🗯️', smiley: '🦢', smileyWin: '🎏', smileyLoss: '🗯️' },
   chalkboard:       { levelRequired: 70,  displayName: 'Chalkboard',     mine: '☠️', flag: '⚑', strikeCell: '💨', smiley: '✏️', smileyWin: '💯', smileyLoss: '💨' },
   noir:             { levelRequired: 80,  displayName: 'Noir',           mine: '🎱', flag: '🔍', strikeCell: '🩸', smiley: '🕵️', smileyWin: '🥃', smileyLoss: '🚬' },
-  // Gentle nature, soft color, slow ambient drift.
   ocean:            { levelRequired: 90,  displayName: 'Ocean',          mine: '🐡', flag: '⚓', strikeCell: '🌊', smiley: '🐟', smileyWin: '🐬', smileyLoss: '🫧' },
-  forest:           { levelRequired: 100, displayName: 'Forest',         mine: '🌰', flag: '🐿️', strikeCell: '🌳', smiley: '🌲', smileyWin: '🦉', smileyLoss: '🪵' },
   sakura:           { levelRequired: 110, displayName: 'Sakura',         mine: '🎴', flag: '🏮', strikeCell: '🌸', smiley: '🌸', smileyWin: '🎎', smileyLoss: '🍂' },
   apothecary:       { levelRequired: 120, displayName: 'Apothecary',     mine: '🧪', flag: '🗝️', strikeCell: '☠️', smiley: '⚗️', smileyWin: '✨', smileyLoss: '💀' },
   splitflap:        { levelRequired: 130, displayName: 'Split-Flap',     mine: '🧳', flag: '🏷️', strikeCell: '💥', smiley: '🛫', smileyWin: '🛬', smileyLoss: '⛔' },
-  // Rich light, saturated color and glow, steady motion.
   stainedglass:     { levelRequired: 140, displayName: 'Stained Glass',  mine: '🕯️', flag: '⚜️', strikeCell: '🔥', smiley: '⛪', smileyWin: '😇', smileyLoss: '💀' },
   aurora:           { levelRequired: 150, displayName: 'Aurora',         mine: '❄️', flag: '🌌', strikeCell: '🌨️', smiley: '🌀', smileyWin: '🌈', smileyLoss: '🌫️' },
   galaxy:           { levelRequired: 160, displayName: 'Galaxy',         mine: '☄️', flag: '🛸', strikeCell: '💫', smiley: '🪐', smileyWin: '🌟', smileyLoss: '🌑' },
   candy:            { levelRequired: 170, displayName: 'Candy',          mine: '🍬', flag: '🍭', strikeCell: '💥', smiley: '🧁', smileyWin: '🎂', smileyLoss: '🍩' },
-  // Loud, high contrast, busy ambient animation, maximum saturation.
-  // (Nest is the gentle exception in this band, it inherited comic's L85 slot.)
-  nest:             { levelRequired: 180, displayName: 'Nest',           mine: '🥚', flag: '🪶', strikeCell: '🍳', smiley: '🪺', smileyWin: '🐥', smileyLoss: '🪹' },
   circuitboard:     { levelRequired: 190, displayName: 'Circuit Board',  mine: '🐛', flag: '🔧', strikeCell: '⚡', smiley: '🤖', smileyWin: '💡', smileyLoss: '🔥' },
-  matrix:           { levelRequired: 200, displayName: 'Matrix',         mine: '🟢', flag: '🔴', strikeCell: '❌', smiley: '👁️', smileyWin: '🔓', smileyLoss: '🔒' },
   neon:             { levelRequired: 210, displayName: 'Neon',           mine: '⚡', flag: '🎯', strikeCell: '💥', smiley: '💡', smileyWin: '🔆', smileyLoss: '💤' },
   synthwave:        { levelRequired: 220, displayName: 'Synthwave',      mine: '🎹', flag: '🎧', strikeCell: '📺', smiley: '🎛️', smileyWin: '🎶', smileyLoss: '📴' },
   inferno:          { levelRequired: 230, displayName: 'Inferno',        mine: '🔥', flag: '💀', strikeCell: '🌋', smiley: '😈', smileyWin: '👹', smileyLoss: '💀' },
@@ -105,13 +108,22 @@ function isThemePreview() {
   }
 }
 
+// A shelved theme is invisible on a production build and fully available
+// under the dev preview door. Every selectable-theme surface (Collection,
+// carousel, in-game cycle, the boot fallback) must consult this, because a
+// surface that lists a shelved theme un-shelves it.
+export function isThemeShelved(theme) {
+  return !LIVE_THEMES.includes(theme) && !isThemePreview();
+}
+
 export function getUnlockedThemes() {
   const stats = loadStats();
   const maxLevel = stats.maxLevelReached || 1;
   const preview = isThemePreview();
   const unlocked = {};
   for (const [theme, info] of Object.entries(THEME_UNLOCKS)) {
-    unlocked[theme] = preview || maxLevel >= info.levelRequired;
+    unlocked[theme] = preview
+      || (LIVE_THEMES.includes(theme) && maxLevel >= info.levelRequired);
   }
   return unlocked;
 }
@@ -157,6 +169,12 @@ export function updateThemeSwatches() {
 export function checkThemeUnlocks(prevMaxLevel, currentMaxLevel) {
   const newlyUnlocked = [];
   for (const [theme, info] of Object.entries(THEME_UNLOCKS)) {
+    // Shelved themes never fire an unlock moment: their levelRequired is
+    // the dormant historical ladder, not an earnable threshold, and a
+    // toast for a theme the Collection does not show would be a lie.
+    // (With the five live themes all free at 0, this loop currently
+    // yields nothing at all; it stays for the day themes re-ladder.)
+    if (!LIVE_THEMES.includes(theme)) continue;
     if (info.levelRequired > 0 && prevMaxLevel < info.levelRequired && currentMaxLevel >= info.levelRequired) {
       newlyUnlocked.push({ theme, displayName: info.displayName });
     }

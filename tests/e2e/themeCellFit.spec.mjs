@@ -36,7 +36,14 @@ test('REGRESSION: cycling to candy (wider --grid-gap) keeps the board inside its
   // fitF → deterministic 12x12 practice daily: at 390px the fit is
   // width-bound, so a 1px-per-gap widening (11px total) must be absorbed
   // by a refit or it spills. (The seed param only works with mode=daily.)
-  await page.goto('/?mode=daily&seed=fitF&isTest=1');
+  //
+  // previewthemes=1: candy is SHELVED (the 2026-08-16 five-theme shelf),
+  // and the carousel honors the shelf, so the production cycle can no
+  // longer reach it. The refit-after-css-load machinery this spec pins is
+  // theme-agnostic and still ships; the preview door is the sanctioned
+  // way a test build reaches a shelved theme, and candy stays the subject
+  // because its 3px gap is the widest override in the catalog.
+  await page.goto('/?mode=daily&seed=fitF&isTest=1&previewthemes=1');
   await expect(page.locator('#board .cell').first()).toBeVisible({ timeout: 30_000 });
 
   // Cycle LEFT with the in-game arrow until candy is active (the reported
