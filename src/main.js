@@ -17,7 +17,7 @@ import { updatePowerUpBar } from './ui/powerUpBar.js';
 import { showModal, hideModal } from './ui/modalManager.js';
 import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastManager.js';
 import { showCelebration, haptic } from './ui/effectsRenderer.js';
-import { THEME_UNLOCKS, getUnlockedThemes, loadThemeCSS, updateThemeColor, enterChaosTheme } from './ui/themeManager.js';
+import { THEME_UNLOCKS, getUnlockedThemes, isThemeShelved, loadThemeCSS, updateThemeColor, enterChaosTheme } from './ui/themeManager.js';
 import { applyThemeEffects, applyTitleSceneEffects } from './ui/themeEffects.js';
 import { newGame, revealCell, toggleFlag, handleChordReveal, rearmPlateTimers } from './game/gameActions.js';
 import './game/winLossHandler.js'; // side-effect: registers handleWin with powerUpActions
@@ -183,13 +183,19 @@ for (const btn of $$('.settings-tab')) {
 function renderCollectionModal() {
   // Themes only, the emoji-pack / effects / titles tabs were cut
   // 2026-06-12 (selection chaff; themes carry the whole identity).
-  for (const t of Object.keys(THEME_UNLOCKS)) loadThemeCSS(t);
+  // Shelved themes are skipped ENTIRELY (not rendered locked): the shelf
+  // means they do not exist on a production build, and the preview door
+  // (isThemeShelved consults it) is how they render on test builds.
+  for (const t of Object.keys(THEME_UNLOCKS)) {
+    if (!isThemeShelved(t)) loadThemeCSS(t);
+  }
   const themeGrid = $('#collection-theme-grid');
   themeGrid.innerHTML = '';
   const unlocked = getUnlockedThemes();
   const currentTheme = state.theme;
 
   for (const [theme, info] of Object.entries(THEME_UNLOCKS)) {
+    if (isThemeShelved(theme)) continue;
     const btn = document.createElement('button');
     btn.className = 'theme-swatch' + (theme === currentTheme ? ' active' : '') + (unlocked[theme] === false ? ' locked' : '');
     btn.dataset.theme = theme;
@@ -2093,18 +2099,23 @@ async function init() {
   const unlocked = getUnlockedThemes();
 
   let activeTheme = theme;
-  // Guard BOTH not-yet-unlocked and no-longer-existing themes. A saved
-  // theme that was cut from the catalog (the 2026-06 trim to the kept
-  // set) is undefined in `unlocked`, without the `in` check it would
-  // apply with no CSS file behind it and render unstyled.
-  if (!(theme in THEME_UNLOCKS) || unlocked[theme] === false) {
-    const stats = loadStats();
-    const maxLevel = stats.maxLevelReached || 1;
-    const sortedThemes = Object.entries(THEME_UNLOCKS)
-      .filter(([, info]) => maxLevel >= info.levelRequired)
-      .sort((a, b) => b[1].levelRequired - a[1].levelRequired);
-    activeTheme = sortedThemes.length > 0 ? sortedThemes[0][0] : 'classic';
+  // Guard cut, shelved, and locked saved themes, with two different fates:
+  // a theme that was CUT from the catalog (the 2026-06 trim) is undefined
+  // in `unlocked` and its stored preference is overwritten (there is
+  // nothing to come back to; without the `in` check it would apply with no
+  // CSS file behind it and render unstyled), while a SHELVED or locked
+  // theme renders classic but KEEPS the stored preference, so a theme that
+  // returns from the shelf comes back on its own with no player action.
+  // Both fates fall back the way index.html's pre-boot script does (dark
+  // for a dark-scheme system, classic otherwise), so the first-paint theme
+  // and the settled theme agree and the boot never visibly flips.
+  const schemeFallback = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+    ? 'dark' : 'classic';
+  if (!(theme in THEME_UNLOCKS)) {
+    activeTheme = schemeFallback;
     saveTheme(activeTheme);
+  } else if (unlocked[theme] === false) {
+    activeTheme = schemeFallback;
   }
 
   state.theme = activeTheme;
