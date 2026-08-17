@@ -165,6 +165,20 @@ function renderBands() {
         + (phrases[b.key] ? `<span class="match-chip-sub">${phrases[b.key]}</span>` : ''),
         (_rules.difficulty || 'any') === b.key, b.label)).join('');
   }
+  const scrollEl = $('#match-scroll');
+  if (scrollEl) {
+    // The marathon opt-in (his phrase: "ok with scrolling boards"). Two
+    // chips, not a checkbox, so the row speaks the sheet's own language.
+    // Off is the default and today's behavior; Allow widens the deal to
+    // oversized boards the camera scrolls, it never requires them.
+    scrollEl.innerHTML = [
+      { key: 'off', label: 'Off', sub: 'fits the screen', on: false },
+      { key: 'on', label: 'Allow', sub: 'boards past the screen edge', on: true },
+    ].map((b) => chipHTML(b.key,
+      `<span class="match-chip-label">${b.label}</span>`
+      + `<span class="match-chip-sub">${b.sub}</span>`,
+      (_rules.scroll === true) === b.on, b.label)).join('');
+  }
 }
 
 function renderCount() {
@@ -306,6 +320,20 @@ function wire() {
       const btn = e.target.closest('.match-chip');
       if (!btn || btn.disabled) return;
       _rules[field] = btn.dataset.key;
+      saveRules(_rules);
+      renderBands();
+      renderSupply();
+    });
+  }
+
+  // The scroll opt-in is a BOOLEAN on the rules, so it gets its own handler
+  // rather than a row in the string-keyed loop above.
+  const scrollEl = $('#match-scroll');
+  if (scrollEl) {
+    scrollEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('.match-chip');
+      if (!btn || btn.disabled) return;
+      _rules.scroll = btn.dataset.key === 'on';
       saveRules(_rules);
       renderBands();
       renderSupply();

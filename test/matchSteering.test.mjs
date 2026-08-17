@@ -109,6 +109,12 @@ test('every pick clears the filter across a sweep of rule sets and missions', ()
       }
     }
   }
+  // OVERSIZED rows (the marathon lane) join the lattice so the scroll axis
+  // of the sweep below is exercised by real rows, not vacuously: a steered
+  // slot must be as unable to reach one as the ordinary deal is.
+  for (const shape of ['rect', 'hex']) {
+    rows.push({ ...row({ shape, mods: ['compass'], par: 300, mines: 60, cells: 600 }), oversized: true });
+  }
   // Every shape and every gimmick starved at once, the most aggressive
   // mission list the refit could possibly emit.
   const missions = steerMissions({
@@ -124,22 +130,31 @@ test('every pick clears the filter across a sweep of rule sets and missions', ()
   assert.ok(missions.length >= 9, 'sweep needs a full mission slate to be real');
 
   let sawSteer = false;
+  let sawOversizedPick = false;
   const rand = lcg(11);
   for (const shapes of [['rect'], ['hex'], ['rect', 'floret'], ['rect', ...TILING_TYPES]]) {
     for (const mods of [[], ['compass'], ['compass', 'sonar', 'liar']]) {
       for (const time of ['any', 'quick', 'long']) {
-        const rules = RULES({ count: 10, shapes, mods, time });
-        const plan = planMatchDeal(rows, rules, { rand, missions });
-        if (plan.steered.length > 0) sawSteer = true;
-        for (const p of plan.picks) {
-          assert.ok(boardMatchesRules(p, rules),
-            `${p.key} (${p.shape} ${JSON.stringify(p.mods)} par ${p.par}) escaped ${JSON.stringify(rules)}`);
+        for (const scroll of [undefined, false, true]) {
+          const rules = RULES({ count: 10, shapes, mods, time });
+          if (scroll !== undefined) rules.scroll = scroll;
+          const plan = planMatchDeal(rows, rules, { rand, missions });
+          if (plan.steered.length > 0) sawSteer = true;
+          for (const p of plan.picks) {
+            assert.ok(boardMatchesRules(p, rules),
+              `${p.key} (${p.shape} ${JSON.stringify(p.mods)} par ${p.par}`
+              + `${p.oversized ? ' oversized' : ''}) escaped ${JSON.stringify(rules)}`);
+            if (p.oversized === true) sawOversizedPick = true;
+          }
         }
       }
     }
   }
-  // Non-vacuity: a sweep where steering never fired would prove nothing.
+  // Non-vacuity: a sweep where steering never fired would prove nothing,
+  // and one where no opted-in rule set ever drew an oversized row would
+  // leave the scroll axis untested from the admitting side.
   assert.ok(sawSteer, 'the sweep must actually steer somewhere');
+  assert.ok(sawOversizedPick, 'some scroll:true rule set must actually deal an oversized row');
 });
 
 // ── The cap is his ruling ───────────────────────────────────────────────

@@ -363,10 +363,20 @@ function _renderJoinPreview() {
          ${escapeHtml(unmetNames.join(', '))}. You will get an introduction before each one.</p>`
     : '';
 
+  // The scroll opt-in is named BEFORE the join (his difficulty-axis pattern:
+  // an informed answer): a run built under it can deal boards bigger than
+  // the screen, played through the camera. Not an unlock warning, so it is
+  // its own line rather than a row in `warning`.
+  const scrollNote = rules.scroll === true
+    ? `<p class="friends-code-hint match-join-warning">May include scrolling boards,
+         bigger than the screen. Double-tap a number you are finished with to
+         center the view on it.</p>`
+    : '';
+
   preview.innerHTML = `<div class="friends-code-block">
       <p class="friends-code-label">${n} board${n === 1 ? '' : 's'}</p>
       <p class="friends-code-hint">${escapeHtml(shapes)}</p>
-    </div>${warning}
+    </div>${warning}${scrollNote}
     <button id="match-join-go" class="match-start-btn">
       ${_joinFound.verdict === 'resume' ? 'Back to this run' : 'Join and play'}</button>`;
   const go = $('#match-join-go');
@@ -747,7 +757,10 @@ function _matchSummaryLine(node) {
   const n = matchBoardCountOf(node);
   const shapes = ((node.rules && node.rules.shapes) || []).map(shapeLabelOf).join(', ');
   const boards = `${n} board${n === 1 ? '' : 's'}`;
-  return shapes ? `${boards} · ${shapes}` : boards;
+  // The scroll opt-in reads off the RULES (this line serves summary reads,
+  // which never carry the boards), same as everything else here.
+  const scroll = node.rules && node.rules.scroll === true ? ' · scrolling boards' : '';
+  return (shapes ? `${boards} · ${shapes}` : boards) + scroll;
 }
 
 async function _offerInvite(invite) {

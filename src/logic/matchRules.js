@@ -29,7 +29,7 @@ export const MATCH_BOARD_MAX = 10;
 // with the match node (the refit's mission spec has nothing to steer while
 // solo matches record nothing).
 /**
- * How many boards a match holds, from whatever the caller has. The boards
+ * How many boards are in a match, from whatever the caller has. The boards
  * array is the ground truth where present; a SUMMARY read (issue #331: the
  * review list fetches rules and players, never the frozen payloads) falls
  * back to rules.count, which the rules REQUIRE on every node ever written.
@@ -243,7 +243,7 @@ export function matchUnlockLevel(kind, key) {
 
 // ── Rules ───────────────────────────────────────────────────────────────
 //
-// A match's rules: { count, shapes, mods, time, density }.
+// A match's rules: { count, shapes, mods, time, density, difficulty, scroll }.
 //   count    1-10 boards
 //   shapes   array of shape keys a board may be (at least one)
 //   mods     array of modifier keys permitted on a board: a board
@@ -252,6 +252,16 @@ export function matchUnlockLevel(kind, key) {
 //            a permissive list too (allowed, never required)
 //   time     a MATCH_TIME_BANDS key or 'any'
 //   density  a MATCH_DENSITY_BANDS key or 'any'
+//   difficulty a MATCH_DIFFICULTY_BANDS key or 'any' (par/cells, not in the
+//            corner key)
+//   scroll   boolean opt-in to OVERSIZED boards (the marathon lane: bigger
+//            than the phone fit, played through the camera). Allowed, never
+//            required, like mods: true admits oversized rows alongside
+//            everything else, false/absent deals the fit-legal library only.
+//            A BOOLEAN with an exact `=== true` test everywhere, never the
+//            difficulty axis's truthiness idiom, because a guest plays the
+//            host's rules UNSANITIZED (matchRulesForLaunch) and absent and
+//            false must both read as excluded.
 
 export function defaultMatchRules(unlocks) {
   return {
@@ -261,6 +271,7 @@ export function defaultMatchRules(unlocks) {
     time: 'any',
     density: 'any',
     difficulty: 'any',
+    scroll: false,
   };
 }
 
@@ -296,6 +307,7 @@ export function sanitizeMatchRules(raw, unlocks) {
     time: timeOk ? raw.time : 'any',
     density: densOk ? raw.density : 'any',
     difficulty: diffOk && raw.difficulty ? raw.difficulty : 'any',
+    scroll: raw.scroll === true,
   };
 }
 
@@ -415,9 +427,18 @@ export function matchIndexFeatureKeys(entries) {
 
 export function matchIndexRow(page, idx, entry, featureKeys = []) {
   const f = (entry && entry.features) || {};
-  return [page, idx, entry.spec.shape, entry.spec.cells, entry.spec.mines,
+  const row = [page, idx, entry.spec.shape, entry.spec.cells, entry.spec.mines,
     entry.par, (entry.spec.gimmicks || []).slice().sort(),
     featureKeys.map((k) => _round(f[k]))];
+  // Element 8, present ONLY on oversized boards (the marathon lane): a 1 the
+  // parser reads back as `oversized: true`. Appended rather than always
+  // emitted so fit-legal rows keep their exact bytes, and read from the PAGE
+  // ENTRY's own stamp because the nightly reprice regenerates the index FROM
+  // the pages; deriving it here from dims is impossible anyway, since
+  // features.rows/cols are the storage CONTAINER on lattices, not the shape
+  // on screen.
+  if (entry.oversized === true) row.push(1);
+  return row;
 }
 
 /**
@@ -445,7 +466,15 @@ export function parseMatchIndex(index) {
         if (Number.isFinite(n)) features[featureKeys[i]] = n;
       }
     }
-    rows.push({ page, idx, shape, cells, mines, par, mods, features, key: `${page}:${idx}` });
+    rows.push({
+      page, idx, shape, cells, mines, par, mods, features,
+      // Absent on every row written before the marathon lane, and on every
+      // fit-legal row after it, both read false: only a stored 1 makes a
+      // board oversized. (Harvest rows never carry it; the Climb library is
+      // fit-legal by its own contract.)
+      oversized: r[8] === 1,
+      key: `${page}:${idx}`,
+    });
   }
   return rows;
 }
@@ -511,10 +540,26 @@ export function matchShardFile(shape, time, density, mods, prefix = MATCH_SHARD_
   return `${prefix}-${shape}-${time}-${density}-${mods || 'none'}.json`;
 }
 
+// OVERSIZED rows live in their own shard class: the corner's prefix gains an
+// 'o' (mx- becomes mxo-, never colliding with the /^mx-/ scans, which require
+// the dash). Segregating by FILE rather than only by row flag does two jobs
+// the flag alone cannot. A client that predates the scroll toggle never
+// fetches a file whose name it cannot construct, so a stale client can never
+// deal an oversized board to a player who has no camera preference and no way
+// to opt out. And a player who leaves the toggle off never downloads a byte
+// of oversized metadata, the same honest pricing the per-corner split bought.
+// The corner KEY itself is untouched (shards and seen-cycles stay put); this
+// is a second file CLASS over the same corners.
+export function oversizedShardPrefix(prefix = MATCH_SHARD_PREFIX) {
+  return `${prefix}o`;
+}
+
 /** The shard file a row belongs in, straight from its own corner. */
 export function matchShardFileForRow(row) {
   const [shape, mods, time, density] = matchCornerKey(row);
-  return matchShardFile(shape, time, density, mods);
+  const prefix = row && row.oversized === true
+    ? oversizedShardPrefix() : MATCH_SHARD_PREFIX;
+  return matchShardFile(shape, time, density, mods, prefix);
 }
 
 // ── THE HARVEST: the Climb library as a second shelf ────────────────────
@@ -605,17 +650,40 @@ export function matchShardFilesFor(rules, corners, prefix = MATCH_SHARD_PREFIX) 
   // parseMatchSummary hands `mods` back as an ARRAY, so it is re-joined here
   // rather than compared as a string. Comparing the array directly matches
   // nothing and would silently request the full cross product.
-  const live = corners
-    ? new Set(corners.map((c) => [c.shape, (c.mods || []).slice().sort().join('+'),
-      c.time, c.density].join('|')))
+  //
+  // Two live sets over the same corners: a corner's BASE shard exists when it
+  // has any fit-legal board (count above its oversized total), its OVERSIZED
+  // shard when it has any oversized one, and the second class is requested
+  // only under the scroll opt-in. A summary from before the split (over
+  // null) reads as all-base: the base file is requested as always, and the
+  // oversized one is not, which understates gracefully until the summary
+  // refreshes rather than spending round trips on files that may not exist.
+  // The no-summary fallback (corners null) requests the full BASE cross
+  // product as before and no oversized files at all, for the same reason:
+  // the oversized class is sparse, and a blind cross product over it is
+  // round trips spent learning nothing.
+  const overTotal = (c) => (Array.isArray(c.over) ? c.over.reduce((a, x) => a + x, 0) : 0);
+  const liveBase = corners
+    ? new Set(corners.filter((c) => c.count - overTotal(c) > 0)
+      .map((c) => [c.shape, (c.mods || []).slice().sort().join('+'), c.time, c.density].join('|')))
     : null;
+  const liveOver = corners
+    ? new Set(corners.filter((c) => overTotal(c) > 0)
+      .map((c) => [c.shape, (c.mods || []).slice().sort().join('+'), c.time, c.density].join('|')))
+    : null;
+  const wantOver = !!(rules && rules.scroll === true);
   const out = [];
   for (const s of shapes) {
     for (const t of times) {
       for (const d of dens) {
         for (const m of modKeys) {
-          if (live && !live.has([s, m, t, d].join('|'))) continue;
-          out.push(matchShardFile(s, t, d, m, prefix));
+          const key = [s, m, t, d].join('|');
+          if (!liveBase || liveBase.has(key)) {
+            out.push(matchShardFile(s, t, d, m, prefix));
+          }
+          if (wantOver && liveOver && liveOver.has(key)) {
+            out.push(matchShardFile(s, t, d, m, oversizedShardPrefix(prefix)));
+          }
         }
       }
     }
@@ -639,16 +707,33 @@ export function buildMatchCorners(rows) {
   const diffIdx = new Map(MATCH_DIFFICULTY_BANDS.map((b, i) => [b.key, i]));
   for (const r of rows || []) {
     const k = JSON.stringify(matchCornerKey(r));
-    const rec = n.get(k) || { count: 0, diff: MATCH_DIFFICULTY_BANDS.map(() => 0) };
+    const rec = n.get(k) || {
+      count: 0,
+      diff: MATCH_DIFFICULTY_BANDS.map(() => 0),
+      over: MATCH_DIFFICULTY_BANDS.map(() => 0),
+    };
     rec.count += 1;
     // The corner KEY deliberately excludes difficulty (shards and seen-cycles
     // must not move); the summary carries a per-corner split instead so the
     // sheet's count under a difficulty chip stays exact.
-    rec.diff[diffIdx.get(difficultyBandOf(r.par, r.cells))] += 1;
+    const di = diffIdx.get(difficultyBandOf(r.par, r.cells));
+    rec.diff[di] += 1;
+    // The OVERSIZED split is per difficulty band too, not a bare total,
+    // because the sheet can filter on difficulty AND scroll at once and the
+    // count must stay exact under both (the countEligibleCorners contract).
+    if (r.oversized === true) rec.over[di] += 1;
     n.set(k, rec);
   }
   return [...n.entries()]
-    .map(([k, rec]) => [...JSON.parse(k), rec.count, rec.diff])
+    // The over split is emitted only where the corner actually has oversized
+    // boards, so an all-fit library's summary keeps its exact bytes; parse
+    // reads an absent element as zero-oversized, which is sound because a
+    // summary and the library it was built from move together.
+    .map(([k, rec]) => {
+      const t = [...JSON.parse(k), rec.count, rec.diff];
+      if (rec.over.some((x) => x > 0)) t.push(rec.over);
+      return t;
+    })
     .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)
       || (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0)
       || (a[2] < b[2] ? -1 : a[2] > b[2] ? 1 : 0)
@@ -674,9 +759,18 @@ export function parseMatchSummary(summary) {
     const diffOk = Array.isArray(diff)
       && diff.length === MATCH_DIFFICULTY_BANDS.length
       && diff.every((x) => Number.isFinite(x) && x >= 0);
+    // The OVERSIZED split (element 6) is optional the other way: absent
+    // means the corner has no oversized boards, which is exactly true of
+    // every summary written before the marathon lane, so null and
+    // all-zeros mean the same thing to every consumer.
+    const over = c[6];
+    const overOk = Array.isArray(over)
+      && over.length === MATCH_DIFFICULTY_BANDS.length
+      && over.every((x) => Number.isFinite(x) && x >= 0);
     corners.push({
       shape, mods: mods ? mods.split('+') : [], time, density, count,
       diff: diffOk ? diff.slice() : null,
+      over: overOk ? over.slice() : null,
     });
   }
   return corners;
@@ -697,13 +791,22 @@ export function countEligibleCorners(corners, rules) {
   const wantDiff = rules.difficulty && rules.difficulty !== 'any'
     ? MATCH_DIFFICULTY_BANDS.findIndex((b) => b.key === rules.difficulty)
     : -1;
+  // Without the scroll opt-in, a corner's oversized boards do not count;
+  // the per-band `over` split keeps the subtraction exact under a
+  // difficulty chip too. A pre-split summary has over: null, which reads
+  // as zero-oversized, exact for the library that summary described.
+  const scrollOn = rules.scroll === true;
   let n = 0;
   for (const c of corners || []) {
     if (!shapes.has(c.shape)) continue;
     if (c.mods.some((m) => !allowed.has(m))) continue;
     if (rules.time !== 'any' && c.time !== rules.time) continue;
     if (rules.density !== 'any' && c.density !== rules.density) continue;
-    n += wantDiff >= 0 && c.diff ? c.diff[wantDiff] : c.count;
+    if (wantDiff >= 0 && c.diff) {
+      n += c.diff[wantDiff] - (!scrollOn && c.over ? c.over[wantDiff] : 0);
+    } else {
+      n += c.count - (!scrollOn && c.over ? c.over.reduce((a, x) => a + x, 0) : 0);
+    }
   }
   return n;
 }
@@ -720,6 +823,13 @@ export function boardMatchesRules(row, rules) {
   // means 'any', the way an unknown state reads as pending elsewhere.
   if (rules.difficulty && rules.difficulty !== 'any'
     && difficultyBandOf(row.par, row.cells) !== rules.difficulty) return false;
+  // An OVERSIZED board (the marathon lane) deals only under an explicit
+  // scroll opt-in. Exact `=== true` on BOTH sides on purpose: rows without
+  // the flag are the fit-legal library, rules without the child were stored
+  // before it shipped, and a guest plays host rules UNSANITIZED, so absent,
+  // false, and garbage must all read the safe way (no monster boards for
+  // anyone who did not ask).
+  if (row.oversized === true && rules.scroll !== true) return false;
   return true;
 }
 
