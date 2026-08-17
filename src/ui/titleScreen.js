@@ -271,6 +271,14 @@ export function showTitleScreen() {
   // at every resume site), the documented lenient direction.
   clearAllPlateTimers();
 
+  // Leaving the boards also leaves the race: the presence heartbeat must
+  // not keep saying "playing right now" from the title screen, and nothing
+  // visible consumes the match subscription here. Re-entering the match
+  // (resume, review list) starts it fresh. Dynamic import so the module
+  // loads only for players who have raced at all; the heartbeat's own
+  // still-racing check is the backstop for any exit path not wired.
+  import('./matchRace.js').then((m) => m.stopMatchRace()).catch(() => {});
+
   // Leaving the board pauses the game clock, the second consequence of the
   // same #192 root, filed as issue #197: with status still 'playing', the 1s
   // tick kept counting behind the title screen, the 5s auto-persist wrote
@@ -386,8 +394,8 @@ async function refreshTitleDailyPar() {
 }
 
 // This week's par for the Weekly card corner. computeWeeklyPar solves the
-// canonical once and caches it per week, so this costs one solve per session
-// and nothing on later title-screen visits.
+// canonical once and caches it per week, so the client runs one solve per
+// session and nothing on later title-screen visits.
 //
 // The weekly deliberately does not show par at the END of a run (days 2-7 are
 // speedruns of a known board, and rating a memorised solve against a

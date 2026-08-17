@@ -270,6 +270,28 @@ export async function postMatchResult(matchId, index, result) {
   }
 }
 
+/**
+ * Re-stamp this player's presence (his heartbeat ruling, 2026-08-17): one
+ * `activeAt` server timestamp under the player's own slot, the finishMatch
+ * update idiom, while they are inside the match's boards. Quiet on failure
+ * BY DESIGN: past the seven-day gate every beat would be refused, and a
+ * diagnostics report every 45 seconds is noise about a door that is known
+ * to be closed. The caller counts consecutive failures and stops beating.
+ */
+export async function touchMatchPresence(matchId) {
+  const ready = await _readyOrNull();
+  const uid = getUid();
+  if (!ready || !uid || !matchId) return false;
+  try {
+    await db().ref(`matches/${matchId}/players/${uid}`).update({
+      activeAt: firebase.database.ServerValue.TIMESTAMP,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Mark this player's run over, after the last result has landed. */
 export async function finishMatch(matchId) {
   const ready = await _readyOrNull();

@@ -889,10 +889,27 @@ export async function handleWin() {
         nextBtn.textContent = `Next board (${state.match.current + 2} of ${n})`;
         nextBtn.classList.remove('hidden');
       }
+      // The gap lines (his rulings 2026-08-17): the standing through the
+      // boards both players have banked, and what rivals did while this
+      // board was played. Shared matches only; the module renders nothing
+      // and stays hidden for a solo run. Live while the card is open: the
+      // race subscription repaints an unhidden #gameover-race on every
+      // node update.
+      if (state.match.id && !state.isLevelPractice) {
+        import('../ui/matchRace.js')
+          .then((m) => m.renderMatchGap())
+          .catch((err) => reportCaughtError('match-race-gap', err));
+      }
     } else {
       gameoverTitle.textContent = 'Match complete!';
       _renderMatchSummary();
       _finishMatchRun();
+      // The run is over: the heartbeat stops (a finished player is not
+      // "playing right now") and the chip goes with it. The end board's
+      // standings panel keeps its own per-surface subscription.
+      import('../ui/matchRace.js')
+        .then((m) => m.stopMatchRace())
+        .catch(() => { /* never raced */ });
       const doneBtn = document.getElementById('gameover-done');
       if (doneBtn) doneBtn.classList.remove('hidden');
       const againBtn = document.getElementById('gameover-match-again');
