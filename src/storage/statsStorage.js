@@ -55,11 +55,17 @@ export function setEndlessSeen(map) {
 }
 
 // The MATCH library's seen-cycle (Challenge mode): one flat list of
-// `page:idx` keys across the whole library, his cycle rule applied per
-// eligible space by matchRules.pickMatchBoards. Keys are stable across the
-// nightly reprice (boards never move between pages); a full library rebuild
-// resets the cycle, which is self-healing and worth no bookkeeping. Same
-// practice gate as the ladder's (matchDeal checks isLevelPractice).
+// `page:idx` keys (plus the harvest's `c:<seed>` keys) across the whole
+// library, his cycle rule applied per eligible space, which since issue
+// #305 is true of the RESET too: matchRules.nextMatchSeen removes only the
+// exhausted space's keys and keeps every other board's no-repeat standing
+// (the old reset replaced this entire list with one match's keys). The
+// list itself stays global because rule spaces overlap (the modifier
+// filter is a subset test) and per-space buckets would allow cross-filter
+// repeats. Keys are stable across the nightly reprice (boards never move
+// between pages); a full library rebuild resets the cycle, which is
+// self-healing and worth no bookkeeping. Same practice gate as the
+// ladder's (matchDeal checks isLevelPractice).
 // Bumped when stored board POSITIONS change under players, which makes every
 // position-keyed seen record name a different board. Read by
 // applyChallenge250Reset, which clears the two affected cycles once.

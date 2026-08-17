@@ -45,6 +45,37 @@ export function matchBoardCountOf(node) {
   return Number.isInteger(c) && c >= MATCH_BOARD_MIN && c <= MATCH_BOARD_MAX ? c : 0;
 }
 
+/**
+ * The next match seen-list after a deal: his cycle rule applied PER ELIGIBLE
+ * SPACE over the one flat store (issue #305). The list stays global so a
+ * board seen under one rule set stays seen under every overlapping one (the
+ * modifier filter is a subset test, so rule spaces overlap and per-space
+ * BUCKETS would quietly allow cross-filter repeats). What is scoped is the
+ * RESET: when a narrow filter exhausts its own eligible boards, only THAT
+ * space's keys leave the record, and every board played under other rules
+ * keeps its no-repeat standing. The old behavior replaced the entire
+ * library-wide list with the just-dealt keys, so two Petals-only matches
+ * wiped a player's whole history.
+ * @param {string[]} seen the stored list
+ * @param {string[]} eligibleKeys keys of the eligible space this deal drew from
+ * @param {string[]} dealtKeys keys that actually produced an entry
+ * @param {boolean} cycled pickMatchBoards' own exhaustion verdict
+ * @returns {string[]}
+ */
+export function nextMatchSeen(seen, eligibleKeys, dealtKeys, cycled) {
+  const base = cycled
+    ? (() => { const el = new Set(eligibleKeys); return seen.filter((k) => !el.has(k)); })()
+    : seen;
+  const out = [];
+  const have = new Set();
+  for (const k of [...base, ...dealtKeys]) {
+    if (have.has(k)) continue;
+    have.add(k);
+    out.push(k);
+  }
+  return out;
+}
+
 export function steeredSlotCap(boardCount) {
   return Math.floor((Number(boardCount) || 0) / 5);
 }
