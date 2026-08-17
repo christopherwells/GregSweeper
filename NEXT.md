@@ -32,8 +32,8 @@ reads it.
 
 ### Merging it
 
-Squash-merge. No AI-attribution trailers to scrub (nothing in the commit or the
-PR body mentions Claude/Anthropic), and no human co-author to preserve.
+Squash-merge. No attribution trailers to scrub (the commit and PR body are
+clean), and no human co-author to preserve.
 
 After the merge, RE-DERIVE rather than trusting whatever the refit last wrote:
 

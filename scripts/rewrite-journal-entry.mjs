@@ -34,10 +34,9 @@
 //                          (default http://127.0.0.1:8085/v1/chat/completions)
 //   JOURNAL_REWRITE_MODEL  model id to request (default "journal-local")
 //   JOURNAL_REWRITE_TOKEN  bearer token, omitted when unset (the local
-//                          server wants none). e.g. Anthropic's
-//                          OpenAI-compatible endpoint
-//                          https://api.anthropic.com/v1/chat/completions
-//                          with model claude-haiku-4-5 and an API key
+//                          server wants none). e.g. any hosted
+//                          OpenAI-compatible chat-completions endpoint
+//                          with the vendor's model id and an API key
 //                          from a repo secret.
 //
 // EXIT CODES ARE A CONTRACT with the workflow's tail check:
