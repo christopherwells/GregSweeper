@@ -118,8 +118,12 @@ jobs:
 
       - name: Refit PAR_MODEL
         # brms compiles a fresh Stan model at runtime (~30-60s) on top of
-        # the sampling time; budget ~3 min for the whole run.
-        timeout-minutes: 10
+        # the sampling time. The budget grew with the model: on 2026-08-16
+        # the 700-row fit with the shape deviations active crossed ten
+        # minutes mid-secondary-fit and two healthy runs died at the axe.
+        # 25 covers the observed ~11-minute worst case at double margin;
+        # the step's own failure remains the alarm for a genuine hang.
+        timeout-minutes: 25
         run: Rscript scripts/refit-par-model.R
 
       # THE POOL IS PRICED IN PAR-SECONDS, so a refit that moves an equation
