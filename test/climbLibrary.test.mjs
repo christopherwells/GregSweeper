@@ -39,6 +39,7 @@ import {
   ENDLESS_SHAPE_FLOOR, ENDLESS_SHAPE_TARGET,
 } from '../scripts/build-climb-library.mjs';
 import { predictPar } from '../src/logic/dailyFeatures.js';
+import { rectFitsPhone } from '../src/logic/boardFit.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
 
 const files = readdirSync(OUT_DIR).filter((f) => /^level-\d+\.json$/.test(f)).sort();
@@ -55,6 +56,37 @@ test('the library is complete and non-vacuous', () => {
   assert.equal(levels.length, 225, 'one file per level, L26 through L250');
   const total = levels.reduce((a, j) => a + j.boards.length, 0);
   assert.ok(total >= 2500, `${total} boards is too few to be the real library`);
+});
+
+test('REGRESSION: every dealable rect board fits the phone (issue #350)', () => {
+  // The 2026-08-15 eviction removed the 12-13 column rects and the first
+  // nightly refit after it put them back: legalPatches()'s rect branch was
+  // never held to rectFitsPhone the way its lattice branch is held to
+  // boardFitsPhone, so the fill re-manufactured the evicted boards every
+  // night, 34 on main by 2026-08-17, dealt at L26-74 and through the
+  // harvest to Challenge. This is the assertion the match library has had
+  // since the same rule landed (test/matchLibrary.test.mjs) and the Climb
+  // library did not, which is the whole reason the regeneration went
+  // unnoticed at 1,761 green. Remedy on red: the producer is fixed in
+  // legalPatches(); run node scripts/evict-unfit-rect-boards.mjs to clear
+  // regenerated stock, then node scripts/climb-match-index.mjs.
+  const unfit = [];
+  for (const [i, j] of levels.entries()) {
+    for (const b of j.boards) {
+      if (b.spec.shape !== 'rect') continue;
+      if (!rectFitsPhone(b.spec.rows, b.spec.cols)) {
+        unfit.push(`${files[i]} ${b.spec.rows}x${b.spec.cols} (${b.seed})`);
+      }
+    }
+  }
+  for (const b of endlessBoards) {
+    if (b.spec.shape !== 'rect') continue;
+    if (!rectFitsPhone(b.spec.rows, b.spec.cols)) {
+      unfit.push(`endless ${b.spec.rows}x${b.spec.cols} (${b.seed})`);
+    }
+  }
+  assert.deepEqual(unfit.slice(0, 10), [],
+    `${unfit.length} dealable rect boards fail rectFitsPhone`);
 });
 
 test('LOCKSTEP: every file is priced under the model of the day', () => {
