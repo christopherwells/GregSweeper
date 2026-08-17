@@ -115,22 +115,38 @@ export function steeredSlotCap(boardCount) {
 export const MATCH_TIME_BANDS = [
   { key: 'quick', label: 'Quick', max: 120 },
   { key: 'short', label: 'Standard', max: 240 },
-  { key: 'long', label: 'Long', max: Infinity },
+  // MARATHON is live (his rulings 2026-08-17: "Those would be 10-30 mins",
+  // then "Maybe long boards should be priced up to 12 minutes"). So Long
+  // closes at 720s and Marathon takes the open top, fed by the oversized
+  // lane (admission to MARATHON_PAR_CEILING_SECONDS) and by the Climb
+  // harvest's own longest boards. 720 also happens to be where the ladder
+  // already caps Classic and Paving Stones, so the two ceilings agree.
+  // Duration and SIZE stay orthogonal on purpose: Marathon is a length,
+  // scroll is a legality, and a fit-legal 13-minute harvest board is
+  // Marathon without being oversized.
+  { key: 'long', label: 'Long', max: 720 },
+  { key: 'marathon', label: 'Marathon', max: Infinity },
 ];
 
 /**
- * The longest board the match library will ADMIT (his ruling: "limit to 600
- * seconds for now").
+ * The longest board the match library's FIT lane will ADMIT (his ruling:
+ * "limit to 600 seconds for now").
  *
  * An admission rule for generation, deliberately not a membership bound: the
  * endless library learned that lesson already, where a shape's ceiling is
  * honored when a board is built and a later re-price is never allowed to evict
- * over it. Non-binding today, since no stored match board reaches 600s and
- * only seven pass 480s, so this is a gate on what the top-up may keep.
- *
- * A MARATHON set above this is his idea and explicitly deferred.
+ * over it. This is a gate on what the top-up may keep, and it is also why the
+ * fit top-up can never stock a Marathon-band corner: only the oversized lane
+ * (MARATHON_PAR_CEILING_SECONDS) and the harvest reach past it.
  */
 export const MATCH_PAR_CEILING_SECONDS = 600;
+
+/**
+ * The longest board the OVERSIZED lane will admit: his Marathon range is
+ * 10-30 minutes, so 1800s caps the lane the way 600s caps the fit lane,
+ * applied at admission and never as a membership bound.
+ */
+export const MARATHON_PAR_CEILING_SECONDS = 1800;
 
 // Density in plain language (his design-sheet ruling: "the density numbers
 // don't really mean anything to the normal player"): the sheet renders each

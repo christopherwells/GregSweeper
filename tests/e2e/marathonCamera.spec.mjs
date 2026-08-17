@@ -148,21 +148,99 @@ test.describe('the camera engages behind the preference', () => {
 
       await expect(page.locator('#zoom-controls')).toBeVisible();
 
-      // The opening view has the marked opener on screen, not the top-left
-      // corner of a board whose opener sits elsewhere.
-      const onScreen = await page.evaluate(() => {
-        const el = document.querySelector('#board .cell.suggested-start');
+      // HIS RULING: the opening view is the WHOLE board ("I want people to
+      // see that the board extends somehow"), so every cell is on screen,
+      // including the marked opener, at a scale below 1.
+      const opening = await page.evaluate(() => {
         const wrap = document.getElementById('board-scroll-wrapper');
-        const r = el.getBoundingClientRect();
         const w = wrap.getBoundingClientRect();
-        return r.top >= w.top - 1 && r.bottom <= w.bottom + 1
-          && r.left >= w.left - 1 && r.right <= w.right + 1;
+        const cells = [...document.querySelectorAll('#board .cell')];
+        const inside = (el) => {
+          const r = el.getBoundingClientRect();
+          return r.top >= w.top - 2 && r.bottom <= w.bottom + 2
+            && r.left >= w.left - 2 && r.right <= w.right + 2;
+        };
+        return {
+          allVisible: cells.every(inside),
+          openerVisible: inside(document.querySelector('#board .cell.suggested-start')),
+          scale: new DOMMatrixReadOnly(getComputedStyle(document.getElementById('board')).transform).a,
+        };
       });
-      expect(onScreen, 'the marked opener must be inside the view at boot').toBe(true);
+      expect(opening.scale, 'the survey view must be zoomed out').toBeLessThan(1);
+      expect(opening.allVisible, 'every cell must be on screen at the opening survey').toBe(true);
+      expect(opening.openerVisible).toBe(true);
 
       expect(errors, `console errors: ${errors.join(' | ')}`).toHaveLength(0);
     });
   }
+
+  test('the first click dives out of the survey to the played cell size', async ({ page }) => {
+    const errors = await bootOversized(page, { width: 360, height: 630 });
+    const before = await liveView(page);
+    expect(before.scale, 'boots surveying').toBeLessThan(1);
+
+    await page.locator('#board .cell.suggested-start').first().click();
+    await page.waitForTimeout(600);
+    await settleAnimations(page);
+
+    const after = await liveView(page);
+    expect(after.scale, 'the dive lands at the played cell size').toBeCloseTo(1, 1);
+    expect(after.revealed, 'the click still revealed').toBeGreaterThan(0);
+    // And the cell they opened is on screen after the dive.
+    const openedVisible = await page.evaluate(() => {
+      const el = document.querySelector('#board .cell.revealed');
+      const wrap = document.getElementById('board-scroll-wrapper');
+      const r = el.getBoundingClientRect();
+      const w = wrap.getBoundingClientRect();
+      return r.top >= w.top - 2 && r.bottom <= w.bottom + 2;
+    });
+    expect(openedVisible).toBe(true);
+    expect(errors, `console errors: ${errors.join(' | ')}`).toHaveLength(0);
+  });
+
+  test('a first click NEAR the marked opener is the marked opener (his snap ruling)', async ({ page }) => {
+    const errors = await bootOversized(page, { width: 360, height: 630 });
+    // Aim a few pixels off the opener's center, at a neighbouring cell: at
+    // survey scale a cell is a few px across, so this lands on a DIFFERENT
+    // cell, and the snap must still open the marked one.
+    const aim = await page.evaluate(() => {
+      const start = document.querySelector('#board .cell.suggested-start');
+      const r = start.getBoundingClientRect();
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      // One full cell to the right: far enough to land on a DIFFERENT cell
+      // at whatever the survey scale turned out to be, and still inside the
+      // 44px snap radius, which is the case the ruling is about.
+      const x = cx + r.width * 1.1;
+      const y = cy;
+      const hit = document.elementFromPoint(x, y);
+      const cell = hit && hit.closest ? hit.closest('.cell') : null;
+      return {
+        x, y, offset: r.width * 1.1,
+        startRow: +start.dataset.row, startCol: +start.dataset.col,
+        aimedRow: cell ? +cell.dataset.row : null,
+        aimedCol: cell ? +cell.dataset.col : null,
+        cellW: r.width,
+      };
+    });
+    expect(aim.offset, 'the aim must stay inside the 44px snap radius to test the snap')
+      .toBeLessThanOrEqual(44);
+    expect(aim.aimedRow !== null, 'the aim must land on some cell').toBe(true);
+    const aimedElsewhere = aim.aimedRow !== aim.startRow || aim.aimedCol !== aim.startCol;
+    expect(aimedElsewhere, 'the aim must land on a DIFFERENT cell for the snap to matter').toBe(true);
+
+    await page.mouse.click(aim.x, aim.y);
+    await page.waitForTimeout(600);
+    await settleAnimations(page);
+
+    const opened = await page.evaluate(({ startRow, startCol }) => {
+      const el = [...document.querySelectorAll('#board .cell')]
+        .find((c) => +c.dataset.row === startRow && +c.dataset.col === startCol);
+      return el.classList.contains('revealed');
+    }, aim);
+    expect(opened, 'the marked opener must be what opened').toBe(true);
+    expect(errors, `console errors: ${errors.join(' | ')}`).toHaveLength(0);
+  });
 
   test('the default preference changes nothing: no overflow, no controls', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });

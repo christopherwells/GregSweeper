@@ -970,6 +970,8 @@ export function adjustCellSize() {
 
 // True while a rebuilt board has not yet had its opening view placed.
 let _cameraFresh = false;
+// True between the opening survey and the first click's dive into it.
+let _cameraSurveying = false;
 // The cell a completed glide centered on; the same-cell double-tap reads it
 // to toggle out to the survey view. Cleared by any player-driven scroll.
 let _cameraCenteredCell = null;
@@ -1024,7 +1026,7 @@ export function updateZoom() {
     boardEl.style.marginRight = wider ? '0' : '';
     if (_cameraFresh) {
       _cameraFresh = false;
-      _placeOpeningView(scale);
+      _placeOpeningView();
     }
   } else {
     zoomControls.classList.add('hidden');
@@ -1035,35 +1037,88 @@ export function updateZoom() {
     boardEl.style.marginRight = '';
     state.zoomLevel = 100;
     _cameraFresh = false;
+    _cameraSurveying = false;
     _cameraCenteredCell = null;
   }
 }
 
-// First view of an overflowing board: the marked opener ("Start here"), else
-// the board center, placed instantly (no glide; there is nothing on screen
-// yet to glide FROM).
-function _placeOpeningView(scale) {
-  let cx = null;
-  let cy = null;
+/**
+ * The cell a first click should actually land on, given where the player
+ * tapped (viewport px). His ruling 2026-08-17: "first click that is around
+ * the green square should be the green square, even if it's another square."
+ * At the opening survey a cell can be a few pixels across, so an honest aim
+ * at the marked opener can miss it; snapping inside a finger's width makes
+ * the marked start reachable without asking anyone to be precise.
+ *
+ * Deliberately narrow: only while SURVEYING (so it can never move a click
+ * during ordinary play), only when a marked opener is on the board, and only
+ * within SNAP_PX of that cell's center on screen. Returns null when nothing
+ * should move.
+ */
+const SNAP_PX = 44; // a fingertip, the platform tap-target width
+
+export function snapFirstClick(clientX, clientY) {
+  if (!_cameraSurveying) return null;
   const startEl = boardEl.querySelector('.suggested-start');
-  if (startEl) {
-    // offsetLeft/Top are padding-box relative; the scroll math runs in the
-    // board's border-box space, so the border (clientLeft/Top) joins in.
-    cx = boardEl.clientLeft + startEl.offsetLeft + startEl.offsetWidth / 2;
-    cy = boardEl.clientTop + startEl.offsetTop + startEl.offsetHeight / 2;
-  } else {
-    const { w, h } = _boardLayoutSize();
-    cx = w / 2;
-    cy = h / 2;
-  }
+  if (!startEl) return null;
+  const r = startEl.getBoundingClientRect();
+  const dx = clientX - (r.left + r.width / 2);
+  const dy = clientY - (r.top + r.height / 2);
+  if (Math.hypot(dx, dy) > SNAP_PX) return null;
+  const row = parseInt(startEl.dataset.row, 10);
+  const col = parseInt(startEl.dataset.col, 10);
+  return Number.isInteger(row) && Number.isInteger(col) ? { row, col } : null;
+}
+
+// THE OPENING VIEW IS THE WHOLE BOARD (his ruling 2026-08-17: "the view
+// should start with the whole board in view and then animate down to the
+// correct pixel width after first click... I want people to see that the
+// board extends somehow"). A board that opened at play scale looked like an
+// ordinary board that happened to be cut off; opening at survey scale shows
+// the player what they are holding, and the dive on the first click is the
+// moment that says the rest is out there. Placed instantly, because there is
+// nothing on screen yet to glide from.
+function _placeOpeningView() {
+  const { w, h } = _boardLayoutSize();
+  const viewW = boardScrollWrapper.clientWidth;
+  const viewH = boardScrollWrapper.clientHeight;
+  const fit = cameraFitScale(w, h, viewW, viewH);
+  state.zoomLevel = Math.max(1, Math.round(fit * 100));
+  const scale = state.zoomLevel / 100;
+  boardEl.style.transform = `scale(${scale})`;
   const target = clampedScroll({
-    cx, cy, scale,
-    boardW: boardEl.offsetWidth, boardH: boardEl.offsetHeight,
-    viewW: boardScrollWrapper.clientWidth, viewH: boardScrollWrapper.clientHeight,
+    cx: w / 2, cy: h / 2, scale,
+    boardW: w, boardH: h, viewW, viewH,
     originX: boardEl.offsetLeft, originY: boardEl.offsetTop,
   });
   boardScrollWrapper.scrollLeft = target.left;
   boardScrollWrapper.scrollTop = target.top;
+  _cameraSurveying = true;
+}
+
+/**
+ * The dive out of the opening survey, on the first click (gameActions calls
+ * this once a reveal lands). Glides to the player's own cell size, centered
+ * on the cell they opened, so the board they just saw whole becomes the
+ * board they play. No-op unless the camera is actually surveying, so a
+ * player who pinched out on their own is left alone.
+ */
+export function cameraDiveFromSurvey(row, col) {
+  if (!_cameraSurveying) return;
+  _cameraSurveying = false;
+  if (!needsZoom()) return;
+  const cellEl = boardEl.children[row * state.cols + col];
+  if (!cellEl || !cellEl.classList || !cellEl.classList.contains('cell')) return;
+  // cameraCenterOnCell's own plan would read this as "not centered here, so
+  // dive to at least natural size", which is exactly the move; going
+  // through it keeps one glide implementation.
+  _cameraCenteredCell = null;
+  cameraCenterOnCell(row, col);
+}
+
+/** Is the camera showing the whole board, pre-first-click? */
+export function cameraIsSurveying() {
+  return _cameraSurveying;
 }
 
 export function zoomIn() {

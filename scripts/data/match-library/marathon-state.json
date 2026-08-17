@@ -1,0 +1,74 @@
+{
+ "runs": 1,
+ "cells": {
+  "rect||sparse": {
+   "fails": 0
+  },
+  "rect||standard": {
+   "fails": 0
+  },
+  "rect||dense": {
+   "fails": 0
+  },
+  "rect|sonar|sparse": {
+   "fails": 0
+  },
+  "rect|sonar|standard": {
+   "fails": 0
+  },
+  "rect|sonar|dense": {
+   "fails": 0
+  },
+  "rect|liar|sparse": {
+   "fails": 0
+  },
+  "rect|liar|standard": {
+   "fails": 0
+  },
+  "rect|liar|dense": {
+   "fails": 0
+  },
+  "rect|walls|sparse": {
+   "fails": 0
+  },
+  "rect|walls|standard": {
+   "fails": 0
+  },
+  "rect|walls|dense": {
+   "fails": 0
+  },
+  "rect|compass|sparse": {
+   "fails": 0
+  },
+  "rect|compass|standard": {
+   "fails": 0
+  },
+  "rect|compass|dense": {
+   "fails": 0
+  },
+  "4.8.8||sparse": {
+   "fails": 0
+  },
+  "4.8.8||standard": {
+   "fails": 0
+  },
+  "4.8.8||dense": {
+   "fails": 0
+  },
+  "4.8.8|sonar|sparse": {
+   "fails": 0
+  },
+  "4.8.8|sonar|standard": {
+   "fails": 0
+  },
+  "4.8.8|sonar|dense": {
+   "fails": 0
+  },
+  "4.8.8|liar|sparse": {
+   "fails": 0
+  },
+  "4.8.8|liar|standard": {
+   "fails": 0
+  }
+ }
+}

@@ -3,6 +3,7 @@ import { $, $$, boardEl, resetBtn } from '../ui/domHelpers.js';
 import {
   renderBoard, updateCell, updateAllCells, updateCells, getThemeEmoji,
   adjustCellSize, updateZoom, renderWallOverlays, setDailySuggestedCell,
+  cameraDiveFromSurvey,
 } from '../ui/boardRenderer.js';
 import {
   updateHeader, updateCheckpointDisplay, updateProgressBar,
@@ -1514,6 +1515,13 @@ export function revealCell(row, col) {
   // Past every intercept, this click is a real reveal action. Recorded
   // BEFORE processing so a bomb hit still logs the click that caused it.
   recordPlayerAction('r', row, col);
+
+  // The marathon camera's dive (his ruling): an oversized board opens with
+  // the WHOLE board in view, and the first real click animates down to the
+  // player's own cell size, centered where they opened. A no-op on every
+  // board that fits, and on any board whose player has already taken the
+  // camera somewhere themselves.
+  cameraDiveFromSurvey(row, col);
 
   // First click, generate board (chaos only). Climb, match, daily, weekly,
   // and coastline boards are FROZEN at newGame (their branches set

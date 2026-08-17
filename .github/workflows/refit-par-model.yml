@@ -244,6 +244,26 @@ jobs:
           echo "ladder used ${USED}s of 1200s; match library gets ${LEFT} min"
           node scripts/topup-match-library.mjs --minutes "$LEFT"
 
+      # ── The MARATHON LANE (the oversized boards behind the scroll toggle) ──
+      # A SEPARATE, SMALLER, FIXED budget rather than a share of the 20
+      # minutes, for two reasons. The lane is breadth-first (a handful of
+      # boards per shape x modifier x density cell, not depth a player digs
+      # through), so it saturates and then costs almost nothing; and it must
+      # never compete with the fit lane, which serves every host while this
+      # serves only those who opted in. Its own state file carries the
+      # backoff, so a shape that resists (rhombille certified 0 of 3 at
+      # ~2.5s an attempt when the lane was probed) is tried less often
+      # rather than eating the budget every night.
+      #
+      # Runs AFTER the fit fill so the index it rebuilds is the last word on
+      # the directory, and after the re-price so tonight's lane boards are
+      # anchored under tonight's model.
+      - name: Grow the marathon lane
+        id: marathonfill
+        if: ${{ !inputs.skip_fill }}
+        continue-on-error: true
+        run: node scripts/topup-marathon-lane.mjs --minutes 5
+
       # ── Greg's Journal, the nightly rewrite (his ask, 2026-08-11) ──
       # composeEntry's pooled beats are honest but read stitched; once a
       # night the active study's entry is rewritten into ONE coherent
