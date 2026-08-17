@@ -150,8 +150,9 @@ export function writeMatchIndexFiles(pages, fp, { dry = false } = {}) {
     // evicted; the file would otherwise outlive the corner and keep serving
     // rows for boards no page holds. Found by the library test after the
     // unfit-rect eviction: 917 shard files against 853 occupied corners.
+    // Both file classes: base (mx-) and oversized (mxo-, the marathon lane).
     for (const f of readdirSync(OUT_DIR)) {
-      if (/^mx-.+\.json$/.test(f) && !byShard.has(f)) rmSync(new URL(f, OUT_DIR));
+      if (/^mxo?-.+\.json$/.test(f) && !byShard.has(f)) rmSync(new URL(f, OUT_DIR));
     }
   }
   return {

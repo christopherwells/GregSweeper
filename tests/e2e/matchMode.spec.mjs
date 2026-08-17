@@ -83,7 +83,26 @@ test('the Challenge card opens the setup sheet, and its supply line is real', as
   const supply = page.locator('#match-supply');
   await expect(supply).toHaveText(/\d+ boards fit these rules/, { timeout: 30_000 });
   const all = Number((await supply.textContent()).match(/(\d+)/)[1]);
-  expect(all).toBe(summary.boards + climbSummary.boards);
+  // Every chip on, but the scroll toggle OFF (its default), so the count is
+  // every stored board MINUS the marathon lane. Read from the summary's own
+  // per-corner `over` splits rather than hardcoded, so this equality keeps
+  // its meaning as the lane grows nightly.
+  const laneBoards = summary.corners.reduce(
+    (n, c) => n + (Array.isArray(c[6]) ? c[6].reduce((a, x) => a + x, 0) : 0), 0);
+  expect(laneBoards, 'the lane must hold something for this to test anything').toBeGreaterThan(0);
+  expect(all).toBe(summary.boards - laneBoards + climbSummary.boards);
+
+  // And with the opt-in ON, the sheet reaches EVERY stored board on both
+  // shelves: the equality the all-chips case used to carry, now split in two
+  // so the lane is pinned from both sides.
+  const scrollChipsAll = page.locator('#match-scroll .match-chip');
+  await scrollChipsAll.filter({ hasText: 'Allow' }).click();
+  await expect(supply).toHaveText(/\d+ boards fit these rules/);
+  const withLane = Number((await supply.textContent()).match(/(\d+)/)[1]);
+  expect(withLane).toBe(summary.boards + climbSummary.boards);
+  // Back to the default for the rest of the journey.
+  await scrollChipsAll.filter({ hasText: 'Off' }).click();
+  await expect(supply).toHaveText(/\d+ boards fit these rules/);
 
   // Narrowing to one shape must narrow the count: this is the assertion that
   // the chips are wired to the rules the deal will use, not to decoration.

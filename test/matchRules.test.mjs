@@ -13,7 +13,7 @@ import {
   densityPhrase, matchUnlocks, matchUnlockLevel,
   defaultMatchRules, sanitizeMatchRules,
   matchIndexRow, matchIndexFeatureKeys, parseMatchIndex, boardMatchesRules, eligibleRows,
-  MATCH_PAR_CEILING_SECONDS,
+  MATCH_PAR_CEILING_SECONDS, MARATHON_PAR_CEILING_SECONDS,
   pickMatchBoards, matchAdvance, matchTotals, resolveMatchPicks,
   matchRulesForLaunch, unmetMatchRules,
 } from '../src/logic/matchRules.js';
@@ -75,22 +75,27 @@ test('a crowned player has all seven shapes and all nine daily-safe modifiers', 
 
 // ── Bands ───────────────────────────────────────────────────────────────
 
-test('time bands split at two and four minutes, with an open top', () => {
+test('time bands split at two, four and twelve minutes, with an open top', () => {
   // His cutoffs, 2026-08-15, replacing 60/150: Quick under two minutes,
   // Standard two to four, Long past four. The old split sold a two-and-a-half
   // minute board as "Standard", which he called wrong the moment the
-  // distribution was in front of him.
-  assert.equal(MATCH_TIME_BANDS.length, 3);
+  // distribution was in front of him. MARATHON joined 2026-08-17 ("Those
+  // would be 10-30 mins", then "Maybe long boards should be priced up to 12
+  // minutes"), so Long closes at 720s and Marathon takes the open top.
+  assert.equal(MATCH_TIME_BANDS.length, 4);
   assert.equal(timeBandOf(119.9), 'quick');
   assert.equal(timeBandOf(120), 'short');
   assert.equal(timeBandOf(239.9), 'short');
   assert.equal(timeBandOf(240), 'long');
-  assert.equal(timeBandOf(9999), 'long');
-  // The top stays OPEN while the ceiling is an admission rule: a board past it
-  // must never be un-bandable, or a re-price that nudged one over would leave
-  // it in no corner at all.
-  assert.equal(timeBandOf(MATCH_PAR_CEILING_SECONDS + 1), 'long');
-  assert.equal(MATCH_PAR_CEILING_SECONDS, 600, 'his ceiling: ten minutes, for now');
+  assert.equal(timeBandOf(719.9), 'long');
+  assert.equal(timeBandOf(720), 'marathon', 'twelve minutes is where Marathon starts');
+  assert.equal(timeBandOf(9999), 'marathon');
+  // The top stays OPEN while the ceilings are admission rules: a board past
+  // one must never be un-bandable, or a re-price that nudged one over would
+  // leave it in no corner at all.
+  assert.equal(timeBandOf(MARATHON_PAR_CEILING_SECONDS + 1), 'marathon');
+  assert.equal(MATCH_PAR_CEILING_SECONDS, 600, 'the FIT lane ceiling: ten minutes');
+  assert.equal(MARATHON_PAR_CEILING_SECONDS, 1800, 'his Marathon range tops out at 30 minutes');
 });
 
 test('density bands split at 0.16 and 0.26', () => {
