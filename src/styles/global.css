@@ -710,7 +710,14 @@ body::before {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Zoom controls ride the bottom nav (Expert/Extreme Quick Play only).
+/* The camera glide drives #board's transform frame by frame (rAF); the base
+   rule's springy 0.5s transform transition would lag and overshoot every
+   frame of it, so the glide suppresses it for its own duration. */
+#board.camera-glide {
+  transition: none;
+}
+
+/* Zoom controls ride the bottom nav (any camera-engaged board).
    display:contents makes the two buttons direct flex items of the nav;
    the wrapper exists so updateZoom can show/hide the pair at once
    (the global .hidden !important wins over display:contents). The
