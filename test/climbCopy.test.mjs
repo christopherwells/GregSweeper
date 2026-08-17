@@ -73,6 +73,11 @@ const SANCTIONED_PHRASES = [
   // The head-to-head record's empty state (2026-08-13). It names the mode you
   // play against a friend, which is the only mode that HAS a head-to-head.
   'Play a Challenge against a friend',
+  // PR 6 (history browsing, 2026-08-17): the leaderboard Friends row's
+  // button and the solo run report's invite button. Both start a head-to-head
+  // against a person, which no ladder sentence could.
+  'Challenge this friend',
+  'Challenge a friend</button>',
 ];
 
 // ── index.html: visible text and the attributes a human reads ──────────────

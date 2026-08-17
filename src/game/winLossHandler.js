@@ -514,6 +514,15 @@ function _finishMatchRun() {
   m.filed = true;
   if (state.isLevelPractice) return;
 
+  // A SOLO run's record (his ask 2026-08-17: solo runs belong in the history
+  // list too). Shared runs already have their node; a solo run has none, so
+  // this device keeps a compact local row instead, the Quick Play precedent.
+  if (!m.id) {
+    import('../storage/matchHistoryStorage.js')
+      .then((mod) => mod.recordSoloRun(m))
+      .catch((err) => reportCaughtError('match-solo-record', err));
+  }
+
   const uid = getUid();
   const name = (getPlayerName() || '').slice(0, 20).trim();
   const { rows, tooFast } = matchFitRows(m.entries, m.results);

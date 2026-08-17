@@ -6640,6 +6640,51 @@ button.weekly-archive-row:focus-visible {
   gap: 6px;
   flex-shrink: 0;
 }
+/* A finished run's whole row opens its report, so the row reads as a tap
+   target rather than only its button. */
+.match-review-run {
+  cursor: pointer;
+}
+.match-review-month {
+  margin: 10px 0 2px;
+  font-family: var(--font-family);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+.match-review-older {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+}
+.match-report-sub {
+  margin: 0 0 10px;
+}
+.match-report-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+/* The friends list's Challenge button sits between the name and the remove
+   cross; it must not stretch the row on a narrow phone. */
+.friends-row .friends-challenge {
+  flex-shrink: 0;
+  margin-left: auto;
+  margin-right: 8px;
+}
+/* With a button beside the name, a long name must give way, not wrap the
+   leaderboard row. Scoped to the leaderboard's list so the invite modal's
+   own rows keep their layout. */
+#friends-list .friends-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ── Skill Trainer ─────────────────────────────────── */
 

@@ -1196,6 +1196,18 @@
     </div>
   </div>
 
+  <!-- Challenge: the run report, one home for how any past run went (solo or
+       shared). The clean-compare grid paints inside its body. -->
+  <div id="match-report-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content match-setup-content">
+      <div class="modal-header">
+        <h2>Run report</h2>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
+      </div>
+      <div class="modal-body" id="match-report-body"></div>
+    </div>
+  </div>
+
   <!-- Challenge: a friend's invite, offered live or on the next open. Sits
        outside #app so it can show over the title screen, which is a sibling. -->
   <div id="match-invite-toast" class="match-invite-toast hidden" role="status">

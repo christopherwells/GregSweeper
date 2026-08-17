@@ -353,8 +353,14 @@ function wire() {
   }
 }
 
-/** Open the sheet from the title screen's Challenge card. */
-export function openMatchSetup() {
+/**
+ * Open the sheet from the title screen's Challenge card, or from a
+ * leaderboard Challenge button, which passes the friend to invite once a
+ * match is created plus the tab to land on. The friend is re-set or cleared
+ * on EVERY open, so a sheet visit that never creates a match cannot leave a
+ * name behind for an unrelated later one.
+ */
+export function openMatchSetup({ challengeFriend = null, tab = null } = {}) {
   wire();
   const unlocks = currentUnlocks();
   // Re-sanitized against the CURRENT unlocks every open, so a saved rule
@@ -367,7 +373,11 @@ export function openMatchSetup() {
   // Invites and matches you are already in, fetched after the sheet paints so
   // a slow network never delays the controls. Stays hidden when empty.
   import('./matchLobby.js')
-    .then((m) => m.renderMatchReview())
+    .then((m) => {
+      m.setChallengeFriend(challengeFriend);
+      if (tab) m.showMatchTab(tab);
+      m.renderMatchReview();
+    })
     .catch((err) => reportCaughtError('match-review-open', err));
   // The summary arrives after the sheet paints; the supply line says so
   // while it is in flight and never shows a zero it has not measured.
