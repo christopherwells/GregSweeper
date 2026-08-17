@@ -94,7 +94,7 @@ export const state = {
   showParticles: false,
   theme: 'classic',
   hitMine: null,  // {row, col} of the mine that killed you
-  zoomLevel: 100,  // percentage (50-200)
+  zoomLevel: 100,  // camera scale, percent; ceiling 200, floor cameraMinZoom() (50, or the board's own fit scale below it)
   checkpoint: 1,   // last checkpoint level (every 5 levels)
   flagMode: false, // flag-mode toggle for mobile
   dirtyCells: new Set(), // track changed cells for targeted updates

@@ -1,5 +1,5 @@
 {
-  "//": "Type-checking config for the dev/CI typecheck gate (tsc --checkJs, no emit). Scoped to a CURATED set of pure decision/util modules — the Layer-1 helpers + small pure utils, the de-wiring-prone, most-edited surface — where checkJs is green and catches field-name/typo drift (the class the runtime tests miss, e.g. the past bomb-info-value break). NOT the whole src/logic tree yet: the heavy solver modules (boardSolver/boardGenerator/cruxExtract/lexicon/select*RngSeed) use valid JS patterns TS flags (props stamped on board arrays, conditionally-added return fields, optional trailing args) and need a dedicated JSDoc pass before they can join — tracked as future widening. tsc follows imports, so a curated file must not transitively import a heavy/storage/firebase module. NOT strict on purpose. Affects NOTHING at runtime — the shipped app has no build step.",
+  "//": "Type-checking config for the dev/CI typecheck gate (tsc --checkJs, no emit). Scoped to a CURATED set of pure decision/util modules (the Layer-1 helpers + small pure utils, the de-wiring-prone, most-edited surface) where checkJs is green and catches field-name/typo drift (the class the runtime tests miss, e.g. the past bomb-info-value break). NOT the whole src/logic tree yet: the heavy solver modules (boardSolver/boardGenerator/cruxExtract/lexicon/select*RngSeed) use valid JS patterns TS flags (props stamped on board arrays, conditionally-added return fields, optional trailing args) and need a dedicated JSDoc pass before they can join; tracked as future widening. tsc follows imports, so a curated file must not transitively import a heavy/storage/firebase module. NOT strict on purpose. Affects NOTHING at runtime: the shipped app has no build step.",
   "compilerOptions": {
     "checkJs": true,
     "allowJs": true,
@@ -16,6 +16,7 @@
   "include": [
     "types/globals.d.ts",
     "src/logic/adjacency.js",
+    "src/logic/boardCamera.js",
     "src/logic/archiveEligibility.js",
     "src/logic/scoreRowMatch.js",
     "src/logic/resumeEligibility.js",

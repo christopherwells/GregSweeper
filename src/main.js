@@ -8,7 +8,9 @@
 import { state, clearCoastlinePractice } from './state/gameState.js';
 import { PROD_SITE_BASE } from './config.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
-import { resizeCells, updateAllCells, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, renderWallOverlays, showGimmickRegion, clearGimmickRegion } from './ui/boardRenderer.js';
+import { resizeCells, updateAllCells, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, renderWallOverlays, showGimmickRegion, clearGimmickRegion, cameraCenterOnCell, cameraMinZoom } from './ui/boardRenderer.js';
+import { chordHasWork } from './logic/boardSolver.js';
+import { CELL_SIZE_PREFS, prefMinPx } from './logic/boardCamera.js';
 import { renderWormOverlays } from './ui/wormRenderer.js';
 import { preloadSprites, medalImgForEmoji, gimmickSpriteImgHTML, achievementSpriteImgHTML, uiSpriteImgHTML } from './ui/spriteLoader.js';
 import { startGregMascot } from './ui/gregMascot.js';
@@ -386,6 +388,49 @@ if (window.matchMedia && window.matchMedia('(hover: hover)').matches) {
   });
 }
 
+// ── Marathon-camera navigation gesture ──────────────
+// Two quick taps (or clicks) on the SAME cell, where BOTH taps found the cell
+// navigable, center the camera there (cameraCenterOnCell; the same-cell
+// repeat toggles out to the survey view). His ruling (2026-08-17): the
+// gesture lives ONLY on unchordable cells, "already chorded or not yet
+// chordable", so a cell where the chord has work keeps chord semantics
+// untouched and the double-tap never costs an action. Navigability is judged
+// BEFORE the tap's own dispatch runs, and both taps must pass: a tap that
+// revealed a hidden cell or fired a chord was an ACTION, and no pair
+// containing an action is a navigation gesture. chordHasWork (boardSolver)
+// is the one judge of "has work".
+const NAV_TAP_WINDOW_MS = 350;
+let _navTapAt = 0;
+let _navTapRow = null;
+let _navTapCol = null;
+let _navTapOk = false;
+
+function _cellIsNavigable(row, col) {
+  const cell = state.board?.[row]?.[col];
+  if (!cell || !cell.isRevealed) return false;
+  if (state.status !== 'playing' && state.status !== 'idle') return false;
+  return !chordHasWork(state.board, row, col);
+}
+
+function _navTap(row, col, navigable) {
+  if (!needsZoom()) { _navTapAt = 0; _navTapOk = false; return; }
+  const now = Date.now();
+  const isDouble = navigable && _navTapOk && row === _navTapRow && col === _navTapCol
+    && (now - _navTapAt) <= NAV_TAP_WINDOW_MS;
+  if (isDouble) {
+    _navTapAt = 0;
+    _navTapRow = null;
+    _navTapCol = null;
+    _navTapOk = false;
+    cameraCenterOnCell(row, col);
+  } else {
+    _navTapAt = now;
+    _navTapRow = row;
+    _navTapCol = col;
+    _navTapOk = navigable;
+  }
+}
+
 boardEl.addEventListener('mousedown', (e) => {
   if (Date.now() - lastTouchTime < 500) return;
   const cellEl = e.target.closest('.cell');
@@ -395,13 +440,12 @@ boardEl.addEventListener('mousedown', (e) => {
 
   if (e.button === 0) {
     const cell = state.board[row]?.[col];
+    const navBefore = _cellIsNavigable(row, col);
     // A sonar/compass number counts a REGION, not its neighbors, so chording it
     // is meaningless, the click toggles its region highlight instead.
     if (cell && cell.isRevealed && (cell.isSonar || cell.isCompass)) {
       _toggleRegionPin(row, col);
-      return;
-    }
-    if (cell && cell.isRevealed && cell.adjacentMines > 0) {
+    } else if (cell && cell.isRevealed && cell.adjacentMines > 0) {
       handleChordReveal(row, col);
     } else if (state.flagMode && !cell?.isRevealed) {
       // Flag-mode toggle is on (set via the header bar), left-click
@@ -412,6 +456,7 @@ boardEl.addEventListener('mousedown', (e) => {
     } else {
       revealCell(row, col);
     }
+    _navTap(row, col, navBefore);
   }
 });
 
@@ -478,17 +523,17 @@ boardEl.addEventListener('touchend', (e) => {
   touchedCellCol = null;
 
   const cell = state.board[row]?.[col];
+  const navBefore = _cellIsNavigable(row, col);
   if (cell && cell.isRevealed && (cell.isSonar || cell.isCompass)) {
     _toggleRegionPin(row, col);
-    return;
-  }
-  if (cell && cell.isRevealed && cell.adjacentMines > 0) {
+  } else if (cell && cell.isRevealed && cell.adjacentMines > 0) {
     handleChordReveal(row, col);
   } else if (state.flagMode && !cell?.isRevealed) {
     toggleFlag(row, col);
   } else {
     revealCell(row, col);
   }
+  _navTap(row, col, navBefore);
 });
 
 boardEl.addEventListener('touchmove', (e) => {
@@ -631,7 +676,9 @@ boardScrollWrapper.addEventListener('touchmove', (e) => {
     const dy = e.touches[0].clientY - e.touches[1].clientY;
     const dist = Math.hypot(dx, dy);
     const ratio = dist / pinchStartDist;
-    state.zoomLevel = Math.round(Math.min(200, Math.max(50, pinchStartZoom * ratio)));
+    // The floor is the camera's, not a constant: a marathon board too big for
+    // 50% to show whole may pinch down to its own fit scale (survey view).
+    state.zoomLevel = Math.round(Math.min(200, Math.max(cameraMinZoom(), pinchStartZoom * ratio)));
     updateZoom();
   }
 }, { passive: true });
@@ -2062,6 +2109,46 @@ if (classicObjectsToggle) {
   });
 }
 
+// Cell-size preference (the marathon camera's entry point): a minimum cell
+// size in px, written as the --cell-pref-min-size token both fit paths read
+// (a floor UNDER the fit result, never a cap). When the floor wins, the board
+// overflows the scroll wrapper and the camera engages: scrolling, pinch and
+// the +/- buttons, and the double-tap-to-center gesture. Options and their px
+// live in logic/boardCamera.js (CELL_SIZE_PREFS); the stored key is the
+// preset's own key string, absent reads as 'fit' (today's behavior).
+const cellSizeSelect = $('#cell-size-select');
+const CELL_SIZE_PREF_KEY = 'minesweeper_cell_size_pref';
+function applyCellSizePref(key) {
+  const px = prefMinPx(key);
+  if (px > 0) {
+    document.documentElement.style.setProperty('--cell-pref-min-size', px + 'px');
+  } else {
+    document.documentElement.style.removeProperty('--cell-pref-min-size');
+  }
+  safeSet(CELL_SIZE_PREF_KEY, px > 0 ? key : 'fit');
+  // Re-fit a live board immediately: the same sequence the resize handler
+  // runs, because a preference change is a geometry change.
+  if (state.board && state.cols) {
+    resizeCells();
+    if (!state.board._cellPos) {
+      boardEl.style.gridTemplateColumns = `repeat(${state.cols}, var(--cell-size))`;
+      boardEl.style.gridTemplateRows = `repeat(${state.rows}, var(--cell-size))`;
+    }
+    renderWallOverlays();
+    renderWormOverlays();
+    updateZoom();
+  }
+}
+if (cellSizeSelect) {
+  cellSizeSelect.innerHTML = CELL_SIZE_PREFS
+    .map((p) => `<option value="${p.key}">${p.label}</option>`).join('');
+  const savedPref = safeGet(CELL_SIZE_PREF_KEY);
+  const prefKey = CELL_SIZE_PREFS.some((p) => p.key === savedPref) ? savedPref : 'fit';
+  cellSizeSelect.value = prefKey;
+  applyCellSizePref(prefKey);
+  cellSizeSelect.addEventListener('change', () => applyCellSizePref(cellSizeSelect.value));
+}
+
 // ── Init ───────────────────────────────────────────────
 
 // Background-resume the mode slot's save behind the TITLE SCREEN, landing it
@@ -2680,6 +2767,9 @@ window.addEventListener('resize', () => {
   // their edges on any viewport resize / phone rotation until 2026-07-17)
   renderWallOverlays();
   renderWormOverlays();
+  // A resize (rotation, split screen) can move a board across the fits /
+  // overflows line in either direction; the camera must follow it.
+  updateZoom();
 });
 
 // Safety net: if init throws anywhere, drop the boot overlay so the

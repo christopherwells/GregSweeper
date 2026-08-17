@@ -530,8 +530,10 @@
       <!-- Zoom rides the nav row instead of owning one under the board.
            display:contents makes the pair direct flex items; the
            wrapper only exists so updateZoom can show/hide both at once
-           (visible only on oversized Challenge boards). The %
-           readout is gone — the board itself shows the zoom level. -->
+           (visible whenever the camera is engaged: any board bigger
+           than the scroll wrapper, plus the legacy oversized-Challenge
+           gate). The % readout is gone — the board itself shows the
+           zoom level. -->
       <span id="zoom-controls" class="hidden">
         <button id="zoom-out" class="nav-btn zoom-btn" title="Zoom Out">−</button>
         <button id="zoom-in" class="nav-btn zoom-btn" title="Zoom In">+</button>
@@ -1285,6 +1287,11 @@
             Classic mines &amp; flags
           </label>
           <p class="reset-hint">Use the original bomb and flag on every theme. Numbers, backgrounds, and Greg stay themed.</p>
+          <div class="setting-subrow">
+            <label for="cell-size-select">Cell size</label>
+            <select id="cell-size-select" class="reminder-hour-select"></select>
+          </div>
+          <p class="reset-hint">Comfortable and Large can put a board past the screen edge; scroll it, pinch, or use the zoom buttons. Double-tap a number you are finished with to center the view there, and double-tap it again to see the whole board.</p>
         </div>
         <div class="setting-group">
           <h3>Tutorial</h3>

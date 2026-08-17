@@ -1310,6 +1310,37 @@ export function countAdjacentFlags(board, row, col, preNeighborCache) {
   return count;
 }
 
+// Would chording this cell reveal anything? The read-only twin of chordReveal
+// below, and the marathon camera's navigability judge: his ruling (2026-08-17)
+// puts the double-tap-to-center gesture ONLY on unchordable cells ("already
+// chorded or not yet chordable"), i.e. exactly the cells where this returns
+// false, so a cell where the chord has work keeps chord semantics untouched
+// and the navigation gesture never costs an action. Mirrors chordReveal's
+// decision structure line for line (eligibility, the gimmick exclusions, the
+// strike-counts-as-flag rule, wall-aware neighbors, the locked-cell skip);
+// test/chordHasWork.test.mjs pins the two together differentially so they
+// cannot drift.
+export function chordHasWork(board, row, col, preNeighborCache) {
+  const cell = board[row]?.[col];
+  if (!cell || !cell.isRevealed) return false;
+  const effectiveCount = cell.displayedMines != null ? cell.displayedMines : cell.adjacentMines;
+  if (effectiveCount === 0) return false;
+  if (cell.isLiar || cell.isMystery || cell.isSonar || cell.isCompass || cell.isWormhole || cell.mirrorPair) return false;
+
+  const rows = board.length;
+  const cols = board[0].length;
+  const neighborCache = preNeighborCache || buildNeighborCache(board, rows, cols);
+  const nbrs = neighborCache[row * cols + col];
+  let flagCount = 0;
+  let revealable = 0;
+  for (const ni of nbrs) {
+    const n = board[(ni / cols) | 0][ni % cols];
+    if (n.isFlagged || n.isStrike) flagCount++;
+    else if (!n.isRevealed && !n.isLocked) revealable++;
+  }
+  return flagCount === effectiveCount && revealable > 0;
+}
+
 export function chordReveal(board, row, col) {
   const cell = board[row][col];
   const effectiveCount = cell.displayedMines != null ? cell.displayedMines : cell.adjacentMines;

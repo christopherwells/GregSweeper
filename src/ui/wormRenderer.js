@@ -1,10 +1,13 @@
 // ── Worm Tiles overlay renderer ─────────────────────────
-// Draws the live worms (state.worms) as a board-anchored sibling overlay,
-// the renderWallOverlays pattern: a `.worm-overlay-container` appended to
-// #board's parent, absolutely positioned from live cell rects, so it
-// survives updateCell's wholesale content rebuilds and rides board
-// scroll/zoom. z-index 4 puts segments above revealed cell faces (fx-on
-// z-2) and walls (z-3) but far below labels (z-900) and modals.
+// Draws the live worms (state.worms) as a board-anchored overlay, the
+// renderWallOverlays pattern: a `.worm-overlay-container` appended INSIDE
+// #board (a child since the marathon camera, 2026-08-17), positioned from
+// the cells' own offset geometry, so it survives updateCell's wholesale
+// content rebuilds and rides the wrapper's scroll AND the camera's
+// transform. As a sibling of #board it stayed unscaled while the cells
+// scaled under zoom, the desync the zoomed match boards shipped with.
+// z-index 4 puts segments above revealed cell faces (fx-on z-2) and walls
+// (z-3) but far below labels (z-900) and modals.
 //
 // Segment elements are REUSED across ticks (keyed by worm object identity)
 // so the CSS left/top transition tweens the crawl; a rebuild-per-tick would
@@ -61,9 +64,11 @@ function _paintWorm(els, tone, endpoints) {
 const _wormEls = new Map();
 
 export function renderWormOverlays() {
-  const board = boardEl.parentElement;
-  if (!board) return;
-  let overlay = board.querySelector('.worm-overlay-container');
+  if (!boardEl) return;
+  // The overlay's old home was #board's parent; check both so an overlay
+  // built before this render's re-parent cannot linger.
+  boardEl.parentElement?.querySelector(':scope > .worm-overlay-container')?.remove();
+  let overlay = boardEl.querySelector('.worm-overlay-container');
   const worms = state.worms || [];
 
   // Fade out elements whose worm burrowed (or was cleared). A full
@@ -85,36 +90,44 @@ export function renderWormOverlays() {
   }
 
   if (!overlay) {
-    board.style.position = 'relative';
     overlay = document.createElement('div');
     overlay.className = 'worm-overlay-container';
-    board.appendChild(overlay);
+    boardEl.appendChild(overlay);
   }
 
-  // Cell rect relative to the board parent, same math as renderWallOverlays
-  const boardRect = boardEl.getBoundingClientRect();
-  const boardX = boardEl.offsetLeft;
-  const boardY = boardEl.offsetTop;
+  // Cell geometry in #board's own layout space: offsetLeft/Top are relative
+  // to #board (the offsetParent) and untransformed, so the overlay's inset:0
+  // origin matches with no rect re-basing and no scale term.
   const cellRect = (r, c) => {
     const el = boardEl.children[r * state.cols + c];
-    if (!el) return null;
-    const rect = el.getBoundingClientRect();
+    if (!el || !el.classList || !el.classList.contains('cell')) return null;
     return {
-      left: rect.left - boardRect.left + boardX,
-      top: rect.top - boardRect.top + boardY,
-      width: rect.width,
-      height: rect.height,
+      left: el.offsetLeft,
+      top: el.offsetTop,
+      width: el.offsetWidth,
+      height: el.offsetHeight,
     };
   };
 
-  // Create missing element sets (new hatches get the egg-crack pop)
+  // Create missing element sets (new hatches get the egg-crack pop). A board
+  // rebuild (renderBoard's innerHTML wipe) now also destroys the overlay,
+  // since it lives inside #board; entries whose elements died that way are
+  // rebuilt in place, without replaying the hatch animation, or the whole
+  // brood would crack out of eggs again on every theme switch.
   for (const worm of worms) {
-    if (_wormEls.has(worm)) continue;
+    const existing = _wormEls.get(worm);
+    if (existing && existing[0] && existing[0].isConnected) continue;
+    if (existing) {
+      for (const el of existing) el.remove();
+      _wormEls.delete(worm);
+    }
+    const hatch = !existing;
     const els = worm.segments.map((seg, i) => {
       const el = document.createElement('div');
-      el.className = i === 0 ? 'worm-segment worm-head worm-hatch' : 'worm-segment worm-hatch';
+      el.className = (i === 0 ? 'worm-segment worm-head' : 'worm-segment')
+        + (hatch ? ' worm-hatch' : '');
       overlay.appendChild(el);
-      setTimeout(() => el.classList.remove('worm-hatch'), HATCH_ANIM_MS);
+      if (hatch) setTimeout(() => el.classList.remove('worm-hatch'), HATCH_ANIM_MS);
       return el;
     });
     _wormEls.set(worm, els);

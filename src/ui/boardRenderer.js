@@ -5,6 +5,7 @@ import { applyIcon, uiSpriteImgHTML } from './spriteLoader.js';
 import { applyThemeEffects } from './themeEffects.js';
 import { buildTiling, buildWireframe, cellOutline, SQ_BOX_FRAC } from '../logic/tilingGeometry.js';
 import { sonarScanCells, compassRayCells } from '../logic/adjacency.js';
+import { cameraFitScale, clampedScroll, glideFrame, cameraTapPlan } from '../logic/boardCamera.js';
 
 // ── Board Rendering ────────────────────────────────────
 
@@ -40,11 +41,25 @@ function _boardHeightBudget() {
 // (the "too zoomed in, can't see where to play" report). The height term keeps
 // the whole board on screen. `widthBudget` is already net of board border+pad.
 function _fitCellSize(widthBudget, gap, maxCap) {
-  const min = _cellBound('--cell-min-size', 18);
+  const min = Math.max(_cellBound('--cell-min-size', 18), _prefMinSize());
   const widthFit = Math.floor((widthBudget - (state.cols - 1) * gap) / state.cols);
   const heightBudget = _boardHeightBudget() - 8; // 2px border + 2px padding, top+bottom
   const heightFit = Math.floor((heightBudget - (state.rows - 1) * gap) / state.rows);
   return Math.min(maxCap, Math.max(min, Math.min(widthFit, heightFit)));
+}
+
+// The player's minimum-cell-size preference (Settings, the marathon camera's
+// entry point): a floor UNDER the fit result, written by main.js as an inline
+// --cell-pref-min-size on <html> so both fit paths read it the way they read
+// the theme tokens. Deliberately a SEPARATE token from --cell-min-size: an
+// inline write there would clobber the theme's own floor, and the effective
+// minimum is the max of the two. 0 (or absent) is "fit to screen", today's
+// behavior. When the floor wins, the board overflows the scroll wrapper and
+// the camera engages (needsZoom / updateZoom below). The chooser-side floors
+// in boardFit.js are untouched on purpose: this preference replaces the tap-
+// protection job of the 28/24px floors only, never their supply-legality job.
+function _prefMinSize() {
+  return _cellBound('--cell-pref-min-size', 0);
 }
 
 // A board declares a non-rectangular topology by carrying per-cell GEOMETRY
@@ -60,7 +75,7 @@ function _isTiling() {
 // flat width IS the pitch, so pitch plays the role of --cell-size for font
 // scaling and the legibility clamp. Same [min, maxCap] band as a square cell.
 function _fitTilingPitch(widthBudget, heightBudget, maxCap) {
-  const min = _cellBound('--cell-min-size', 18);
+  const min = Math.max(_cellBound('--cell-min-size', 18), _prefMinSize());
   const { wUnits, hUnits } = _tilingExtent();
   const pw = Math.floor(widthBudget / wUnits);
   const ph = Math.floor(heightBudget / hUnits);
@@ -114,6 +129,14 @@ export function resizeCells() {
 
 export function renderBoard() {
   boardEl.innerHTML = '';
+  // A rebuilt board is a fresh camera subject: the next updateZoom() places
+  // the view on the marked opener at play scale, instead of wherever (and
+  // however zoomed) the last board left it. Before this reset, updateZoom
+  // kept the previous board's zoomLevel on every new oversized board.
+  _cameraFresh = true;
+  _cameraCenteredCell = null;
+  state.zoomLevel = 100;
+  cancelCameraGlide();
   resizeCells();
 
   if (_isTiling()) {
@@ -408,47 +431,45 @@ function _renderTilingSeams() {
 // so walls visually connect across grid gaps.
 
 export function renderWallOverlays() {
-  // Remove old wall overlay container
-  const board = boardEl.parentElement;
-  if (!board) return;
-  const oldOverlay = board.querySelector('.wall-overlay-container');
-  if (oldOverlay) oldOverlay.remove();
+  if (!boardEl) return;
+  // Remove old wall overlay container. It lived on #board's PARENT until the
+  // marathon camera (2026-08-17); both homes are checked so a mid-update
+  // stale node cannot linger.
+  boardEl.querySelector('.wall-overlay-container')?.remove();
+  boardEl.parentElement?.querySelector('.wall-overlay-container')?.remove();
 
   // Tiling boards sever graph edges (board._tilingWalls, flat index pairs)
   // instead of the rectangular "r,c-r,c" edge set, draw a bar across the shared
   // boundary of each severed pair rather than a horizontal/vertical grid line.
   if (state.board?._tilingWalls && state.board._tilingWalls.length > 0) {
-    _renderTilingWalls(board);
+    _renderTilingWalls();
     return;
   }
 
   const wallEdges = state.board?._wallEdges;
   if (!wallEdges || wallEdges.size === 0) return;
 
-  // Make board container position:relative for absolute overlay positioning
-  board.style.position = 'relative';
-
+  // The overlay is a CHILD of #board (position:absolute, inset:0 over the
+  // padding box), so it rides the wrapper's scroll AND the camera's transform
+  // for free. As a sibling of #board it stayed unscaled while the cells
+  // scaled, which is exactly the desync the zoomed match boards shipped
+  // with. Coordinates are the cells' own offset geometry: offsetLeft/Top are
+  // relative to #board's padding box (its offsetParent), untransformed, so
+  // the math is scale-immune and needs no rect re-basing.
   const overlay = document.createElement('div');
   overlay.className = 'wall-overlay-container';
 
-  // Use actual cell positions from the DOM for pixel-perfect wall placement
   const cols = state.cols;
-  const boardRect = boardEl.getBoundingClientRect();
-  const boardX = boardEl.offsetLeft;
-  const boardY = boardEl.offsetTop;
-
-  // Cache cell rects (relative to board parent)
   function getCellPos(r, c) {
     const el = boardEl.children[r * cols + c];
     if (!el) return null;
-    const rect = el.getBoundingClientRect();
     return {
-      left: rect.left - boardRect.left + boardX,
-      top: rect.top - boardRect.top + boardY,
-      right: rect.right - boardRect.left + boardX,
-      bottom: rect.bottom - boardRect.top + boardY,
-      width: rect.width,
-      height: rect.height,
+      left: el.offsetLeft,
+      top: el.offsetTop,
+      right: el.offsetLeft + el.offsetWidth,
+      bottom: el.offsetTop + el.offsetHeight,
+      width: el.offsetWidth,
+      height: el.offsetHeight,
     };
   }
 
@@ -489,7 +510,7 @@ export function renderWallOverlays() {
     overlay.appendChild(line);
   }
 
-  board.appendChild(overlay);
+  boardEl.appendChild(overlay);
 }
 
 // Draw a wall bar on the TRUE shared edge of each severed pair. Each wall carries
@@ -509,20 +530,19 @@ export function renderWallOverlays() {
 // center IS its cellPos only
 // while the cell is centrally symmetric, which the Laves kite and pentagons are
 // not. Reading the origin instead removes both rather than patching them.
-function _renderTilingWalls(boardParent) {
+//
+// The overlay is a CHILD of #board since the marathon camera (2026-08-17), so
+// it rides scroll and the camera transform with the cells. Tiling mode zeroes
+// #board's padding, so the overlay's inset:0 origin IS the content-box origin
+// the cells are laid from, and unit coords multiply straight through.
+function _renderTilingWalls() {
   const walls = state.board._tilingWalls;
-  boardParent.style.position = 'relative';
   const overlay = document.createElement('div');
   overlay.className = 'wall-overlay-container';
 
   if (walls.length) {
-    // #board keeps its border in tiling mode (only the padding is zeroed), so
-    // the content-box origin the cells are laid out from sits one border width
-    // inside the board's own offset position.
     const P = _pitch();
-    const ox = boardEl.offsetLeft + boardEl.clientLeft;
-    const oy = boardEl.offsetTop + boardEl.clientTop;
-    const toPx = (x, y) => ({ x: ox + x * P, y: oy + y * P });
+    const toPx = (x, y) => ({ x: x * P, y: y * P });
 
     const THICK = 4;
     for (const wl of walls) {
@@ -539,7 +559,7 @@ function _renderTilingWalls(boardParent) {
       overlay.appendChild(line);
     }
   }
-  boardParent.appendChild(overlay);
+  boardEl.appendChild(overlay);
 }
 
 export function getThemeEmoji(type) {
@@ -778,16 +798,17 @@ function _placeLabel(cellEl, id, text, className, position = "above") {
   // gone: #board itself is position:relative, and the label is absolute
   // within it (absolutely-positioned grid children take no grid slot, so
   // boardEl.children cell indexing is unaffected, labels append last).
-  const cellRect = cellEl.getBoundingClientRect();
-  const boardRect = boardEl.getBoundingClientRect();
-  const cx = cellRect.left - boardRect.left + cellRect.width / 2;
-  const cellTop = cellRect.top - boardRect.top;
+  // LAYOUT (offset) geometry, not getBoundingClientRect: the label is a child
+  // of #board, so the camera's transform scales it with the cells, and rect
+  // coords (already transformed) would be scaled twice.
+  const cx = cellEl.offsetLeft + cellEl.offsetWidth / 2;
+  const cellTop = cellEl.offsetTop;
   label.style.left = cx + "px";
   // #board is overflow:hidden, so an "above" label on a top-row cell
   // would be clipped, center those on the cell instead.
   const fitsAbove = cellTop >= 20;
   if (position === "on" || !fitsAbove) {
-    label.style.top = (cellTop + cellRect.height / 2) + "px";
+    label.style.top = (cellTop + cellEl.offsetHeight / 2) + "px";
     label.classList.add("label-on-cell");
   } else {
     label.style.top = (cellTop - 6) + "px";
@@ -796,7 +817,7 @@ function _placeLabel(cellEl, id, text, className, position = "above") {
   // Clamp horizontally: an edge-column label wider than its cell would
   // overhang the board and be clipped by the same overflow:hidden.
   const half = label.offsetWidth / 2;
-  const clamped = Math.min(Math.max(cx, half + 2), boardRect.width - half - 2);
+  const clamped = Math.min(Math.max(cx, half + 2), boardEl.clientWidth - half - 2);
   if (clamped !== cx) label.style.left = clamped + "px";
 }
 
@@ -938,10 +959,51 @@ export function adjustCellSize() {
   document.documentElement.style.setProperty('--cell-size', cellSize + 'px');
 }
 
-// ── Zoom (for Timed mode large boards) ────────────────
+// ── The camera (zoom + scroll over boards bigger than the view) ──
+// Grown out of the match-only zoom (2026-08-17, the marathon arc): the board
+// scales with a top-left-origin transform on #board, the wrapper scrolls, and
+// the pure math lives in logic/boardCamera.js. The camera engages whenever
+// the board's LAYOUT extent overflows the wrapper, whatever the mode, which
+// the minimum-cell-size preference can now cause anywhere; the old match
+// rows>13 gate is kept alongside so squeezed-but-fitting Challenge boards
+// keep their zoom buttons exactly as before.
+
+// True while a rebuilt board has not yet had its opening view placed.
+let _cameraFresh = false;
+// The cell a completed glide centered on; the same-cell double-tap reads it
+// to toggle out to the survey view. Cleared by any player-driven scroll.
+let _cameraCenteredCell = null;
+let _glideRaf = 0;
+// Scroll events dispatch asynchronously, so the glide's own final scroll
+// event arrives AFTER the glide has ended; player scrolls are told apart by
+// time, not by a flag. Any scroll event later than this stamp is the player.
+let _glideSettleUntil = 0;
+
+// Layout (untransformed) extent of #board, border box, in px.
+function _boardLayoutSize() {
+  return { w: boardEl.offsetWidth, h: boardEl.offsetHeight };
+}
+
+function _boardOverflowsWrapper() {
+  if (!boardEl || !boardScrollWrapper || !boardEl.children.length) return false;
+  const { w, h } = _boardLayoutSize();
+  // +1 forgives subpixel rounding; a board one fractional px over is not a
+  // marathon board, it is a rounding artifact.
+  return w > boardScrollWrapper.clientWidth + 1 || h > boardScrollWrapper.clientHeight + 1;
+}
 
 export function needsZoom() {
-  return state.gameMode === 'match' && (state.cols > 13 || state.rows > 13);
+  return _boardOverflowsWrapper()
+    || (state.gameMode === 'match' && (state.cols > 13 || state.rows > 13));
+}
+
+// The zoom floor: normally 50%, but a board so large that even 50% cannot
+// show it whole may go down to its own fit scale, so the survey view (and the
+// minus button) can always reach the whole board.
+export function cameraMinZoom() {
+  const { w, h } = _boardLayoutSize();
+  const fit = cameraFitScale(w, h, boardScrollWrapper.clientWidth, boardScrollWrapper.clientHeight);
+  return Math.min(50, Math.max(1, Math.round(fit * 100)));
 }
 
 export function updateZoom() {
@@ -951,23 +1013,172 @@ export function updateZoom() {
     const scale = state.zoomLevel / 100;
     boardEl.style.transform = `scale(${scale})`;
     boardEl.style.transformOrigin = 'top left';
+    // A centered overflowing block resolves `margin: 0 auto` to a NEGATIVE
+    // margin, and the left overhang sits at scroll positions below 0, which
+    // no scroll container can reach. Auto margins resolve on LAYOUT width
+    // (transforms play no part), so the test is layout vs wrapper: pin the
+    // board to the left edge while its layout is wider; a board overflowing
+    // only vertically keeps its horizontal centering.
+    const wider = boardEl.offsetWidth > boardScrollWrapper.clientWidth + 1;
+    boardEl.style.marginLeft = wider ? '0' : '';
+    boardEl.style.marginRight = wider ? '0' : '';
+    if (_cameraFresh) {
+      _cameraFresh = false;
+      _placeOpeningView(scale);
+    }
   } else {
     zoomControls.classList.add('hidden');
     boardScrollWrapper.classList.remove('zoomed');
     boardEl.style.transform = '';
     boardEl.style.transformOrigin = '';
+    boardEl.style.marginLeft = '';
+    boardEl.style.marginRight = '';
     state.zoomLevel = 100;
+    _cameraFresh = false;
+    _cameraCenteredCell = null;
   }
+}
+
+// First view of an overflowing board: the marked opener ("Start here"), else
+// the board center, placed instantly (no glide; there is nothing on screen
+// yet to glide FROM).
+function _placeOpeningView(scale) {
+  let cx = null;
+  let cy = null;
+  const startEl = boardEl.querySelector('.suggested-start');
+  if (startEl) {
+    // offsetLeft/Top are padding-box relative; the scroll math runs in the
+    // board's border-box space, so the border (clientLeft/Top) joins in.
+    cx = boardEl.clientLeft + startEl.offsetLeft + startEl.offsetWidth / 2;
+    cy = boardEl.clientTop + startEl.offsetTop + startEl.offsetHeight / 2;
+  } else {
+    const { w, h } = _boardLayoutSize();
+    cx = w / 2;
+    cy = h / 2;
+  }
+  const target = clampedScroll({
+    cx, cy, scale,
+    boardW: boardEl.offsetWidth, boardH: boardEl.offsetHeight,
+    viewW: boardScrollWrapper.clientWidth, viewH: boardScrollWrapper.clientHeight,
+    originX: boardEl.offsetLeft, originY: boardEl.offsetTop,
+  });
+  boardScrollWrapper.scrollLeft = target.left;
+  boardScrollWrapper.scrollTop = target.top;
 }
 
 export function zoomIn() {
   state.zoomLevel = Math.min(200, state.zoomLevel + 25);
+  cancelCameraGlide();
   updateZoom();
 }
 
 export function zoomOut() {
-  state.zoomLevel = Math.max(50, state.zoomLevel - 25);
+  state.zoomLevel = Math.max(cameraMinZoom(), state.zoomLevel - 25);
+  cancelCameraGlide();
   updateZoom();
+}
+
+export function cancelCameraGlide() {
+  if (_glideRaf) cancelAnimationFrame(_glideRaf);
+  _glideRaf = 0;
+  boardEl?.classList?.remove('camera-glide');
+}
+
+// The double-tap navigation gesture (main.js calls this once its detector has
+// seen two quick taps on the SAME navigable cell). Decides between diving in
+// on the cell and toggling out to the survey view (cameraTapPlan), then
+// glides there: view center interpolated in board-layout space, scale eased
+// alongside, scroll clamped every frame so the screen stays full of cells the
+// whole way. Reduced motion jumps straight to the target.
+export function cameraCenterOnCell(row, col) {
+  if (!needsZoom()) return;
+  const cellEl = boardEl.children[row * state.cols + col];
+  if (!cellEl || !cellEl.classList || !cellEl.classList.contains('cell')) return;
+
+  const wasCentered = !!(_cameraCenteredCell
+    && _cameraCenteredCell.row === row && _cameraCenteredCell.col === col);
+  const fromScale = state.zoomLevel / 100;
+  const { w: boardW, h: boardH } = _boardLayoutSize();
+  const viewW = boardScrollWrapper.clientWidth;
+  const viewH = boardScrollWrapper.clientHeight;
+  const fit = cameraFitScale(boardW, boardH, viewW, viewH);
+  const plan = cameraTapPlan({ sameCell: wasCentered, scale: fromScale, fitScale: fit });
+
+  // Where the view is looking now, in board layout coordinates.
+  const originX = boardEl.offsetLeft;
+  const originY = boardEl.offsetTop;
+  const from = {
+    cx: (boardScrollWrapper.scrollLeft + viewW / 2 - originX) / fromScale,
+    cy: (boardScrollWrapper.scrollTop + viewH / 2 - originY) / fromScale,
+    scale: fromScale,
+  };
+  const to = plan.survey
+    ? { cx: boardW / 2, cy: boardH / 2, scale: plan.scale }
+    : {
+      // Border-box space, like `from`: offsetLeft/Top are padding-box
+      // relative, so the border (clientLeft/Top) joins in.
+      cx: boardEl.clientLeft + cellEl.offsetLeft + cellEl.offsetWidth / 2,
+      cy: boardEl.clientTop + cellEl.offsetTop + cellEl.offsetHeight / 2,
+      scale: plan.scale,
+    };
+
+  cancelCameraGlide();
+  _cameraCenteredCell = plan.survey ? null : { row, col };
+
+  const applyFrame = (f) => {
+    state.zoomLevel = Math.round(f.scale * 100);
+    boardEl.style.transform = `scale(${f.scale})`;
+    const t = clampedScroll({
+      cx: f.cx, cy: f.cy, scale: f.scale,
+      boardW, boardH, viewW, viewH, originX, originY,
+    });
+    // The scroll events these writes fire arrive asynchronously, after the
+    // glide ends; the stamp keeps them from reading as player scrolling.
+    _glideSettleUntil = performance.now() + 200;
+    boardScrollWrapper.scrollLeft = t.left;
+    boardScrollWrapper.scrollTop = t.top;
+  };
+
+  const reduced = window.matchMedia
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced) {
+    applyFrame(to);
+    updateZoom();
+    return;
+  }
+
+  const GLIDE_MS = 380;
+  const start = performance.now();
+  boardEl.classList.add('camera-glide'); // suppresses #board's springy transform transition
+  const step = (now) => {
+    const t = Math.min(1, (now - start) / GLIDE_MS);
+    applyFrame(glideFrame(from, to, t));
+    if (t < 1) {
+      _glideRaf = requestAnimationFrame(step);
+    } else {
+      cancelCameraGlide();
+      updateZoom(); // settle margins / controls at the final zoom level
+    }
+  };
+  _glideRaf = requestAnimationFrame(step);
+}
+
+// Player-driven scrolling clears the centered-cell latch (they navigated
+// away, so the next double-tap should center, not toggle out); glide-driven
+// scroll events are inside the settle window and pass through. A wheel turn
+// is unambiguous player intent: it cancels a running glide AND clears the
+// latch itself. A fresh touch only cancels the glide, because the touch may
+// be the second tap of the same-cell toggle, whose whole point is reading
+// the latch.
+if (boardScrollWrapper) {
+  boardScrollWrapper.addEventListener('scroll', () => {
+    if (performance.now() > _glideSettleUntil) _cameraCenteredCell = null;
+  }, { passive: true });
+  boardScrollWrapper.addEventListener('wheel', () => {
+    cancelCameraGlide();
+    _cameraCenteredCell = null;
+  }, { passive: true });
+  boardScrollWrapper.addEventListener('touchstart', () => cancelCameraGlide(), { passive: true });
 }
 
 // ── Keyboard Navigation ──────────────────────────────
