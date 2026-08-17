@@ -492,7 +492,7 @@
             ".write": "auth != null && (auth.uid === $uid || auth.uid === $friendUid)",
             ".validate": "$friendUid !== $uid && newData.hasChildren(['name', 'addedAt'])",
             "name": {
-              ".validate": "newData.isString() && newData.val().length <= 20"
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20 && newData.val().matches(/^[^<>&\"'`@]+$/)"
             },
             "addedAt": {
               ".validate": "newData.val() === now"

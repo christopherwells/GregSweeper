@@ -54,6 +54,27 @@ test('match player names are swept even though the derivation exempts them', () 
     'scrub must sweep matches/ — its player names are shown to other players');
 });
 
+test('friend-list names are swept, and the rules hold them to the shared character class (#330)', () => {
+  // users/{uid}/friends is owner-read, so the derivation skips it the way it
+  // skips matches, and the same reasoning applies: the read posture says
+  // nothing about whether the names inside are shown to people. A friend
+  // row's name renders on the victim's own friends panel, and the friends
+  // grant deliberately lets a stranger write the entry keyed by their own
+  // uid into anyone's node (the one-redemption-serves-both-sides design).
+  // Issue #330: this was the ONE name-bearing field with neither a
+  // character class nor a sweep, so a stranger could plant a permanent
+  // name only the victim can see.
+  const friendName = rules.users?.$uid?.friends?.$friendUid?.name?.['.validate'] || '';
+  assert.ok(friendName.includes('matches('),
+    'friends/{friendUid}/name must carry the shared character class every other name field has');
+  assert.ok(friendName.includes('length >= 1'),
+    'and the same non-empty floor');
+  assert.ok(scrubSrc.includes("ref('users')"),
+    'scrub must sweep users/{uid}/friends names — they are shown on the friends panel');
+  assert.ok(scrubSrc.includes('sweepFriendNames'),
+    'the friend-name sweep must stay wired into the run');
+});
+
 test('expired match codes are swept, not just friend codes', () => {
   // A match code lives seven days rather than fifteen minutes, so without a
   // sweep the node accumulates a week of dead codes at a time.

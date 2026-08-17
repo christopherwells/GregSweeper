@@ -205,6 +205,37 @@ async function sweepMatchNames() {
   return hits;
 }
 
+// Friend-list names. users/{uid}/friends/{friendUid} is owner-READ, which is
+// exactly why the rules-derived coverage set skips it, and the matches sweep
+// already wrote down why that exemption does not settle the question: a read
+// posture says nothing about whether the names inside are shown to people.
+// A friend row's name IS shown, on the victim's own friends panel, and the
+// friends grant deliberately lets a stranger write the entry keyed by their
+// own uid into anyone's node (the one-redemption-serves-both-sides design,
+// never to be "fixed"). So this is the one path where a stranger chooses a
+// victim and plants a permanent name only the victim can see: issue #330.
+// The rules now hold the field to the shared character class; this sweep is
+// the backstop for what predates them and for anything the class lets by.
+async function sweepFriendNames() {
+  const snap = await db.ref('users').once('value');
+  const root = snap.val() || {};
+  const updates = {};
+  let hits = 0;
+  for (const uid of Object.keys(root)) {
+    const friends = (root[uid] && root[uid].friends) || {};
+    for (const friendUid of Object.keys(friends)) {
+      const name = friends[friendUid] && friends[friendUid].name;
+      if (isHateSpeech(name)) {
+        console.log(`  users/${uid}/friends/${friendUid}: "${name}" → ${SCRUBBED}`);
+        updates[`users/${uid}/friends/${friendUid}/name`] = SCRUBBED;
+        hits++;
+      }
+    }
+  }
+  if (!dryRun && hits > 0) await db.ref().update(updates);
+  return hits;
+}
+
 // Expired match codes. Unlike friend codes this is not only tidiness: a match
 // lives seven days, so without a sweep the node accumulates a week of dead
 // codes at a time and never releases them back to the alphabet. Deleting the
@@ -259,9 +290,10 @@ async function sweepExpiredFriendCodes() {
   const a = await sweepDailyArchive();
   const p = await sweepPlayerNames();
   const m = await sweepMatchNames();
+  const f = await sweepFriendNames();
   const c = await sweepExpiredFriendCodes();
   const mc = await sweepExpiredMatchCodes();
-  console.log(`Done. daily hits: ${d}, weekly hits: ${w}, timed hits: ${t}, archive hits: ${a}, playerNames hits: ${p}, match hits: ${m}, expired friend codes: ${c}, expired match codes: ${mc}${dryRun ? ' (dry run — nothing written)' : ''}.`);
+  console.log(`Done. daily hits: ${d}, weekly hits: ${w}, timed hits: ${t}, archive hits: ${a}, playerNames hits: ${p}, match hits: ${m}, friend-name hits: ${f}, expired friend codes: ${c}, expired match codes: ${mc}${dryRun ? ' (dry run — nothing written)' : ''}.`);
   process.exit(0);
 })().catch(err => {
   console.error('Sweep FAILED:', err);
