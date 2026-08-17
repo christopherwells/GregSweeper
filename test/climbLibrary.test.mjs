@@ -40,6 +40,7 @@ import {
 } from '../scripts/build-climb-library.mjs';
 import { predictPar } from '../src/logic/dailyFeatures.js';
 import { rectFitsPhone } from '../src/logic/boardFit.js';
+import { ENDLESS_MIN_HARD, endlessHardOf } from '../src/logic/challengeRules.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
 
 const files = readdirSync(OUT_DIR).filter((f) => /^level-\d+\.json$/.test(f)).sort();
@@ -151,8 +152,9 @@ test('reserve boards genuinely fit nowhere', () => {
       `reserve ${b.seed} (par ${Math.round(par)}s) fits L${home?.level}; the re-binner should have placed it`);
     // The endless bins are the catch-all above their floor, so a reserve
     // board at or over 400s means the re-binner's endless intake refused it
-    // for a reason the face cap must explain.
-    if (par >= ENDLESS_PAR_FLOOR) {
+    // for a reason the face cap or the strict work floor must explain (the
+    // 2026-08-17 bar: a long-but-shallow board is honestly reserved).
+    if (par >= ENDLESS_PAR_FLOOR && endlessHardOf(b.features) >= ENDLESS_MIN_HARD) {
       const sameFace = endlessBoards.filter((x) => x.face === b.face).length;
       assert.ok(sameFace >= ENDLESS_FACE_CAP,
         `reserve ${b.seed} (par ${Math.round(par)}s) belongs in the endless bins`);
@@ -190,6 +192,22 @@ test('LOCKSTEP: the endless bins are priced under the model of the day', () => {
     + 'A refit landed without re-binning: run node scripts/reprice-climb-library.mjs');
   for (const p of endlessPages) {
     assert.equal(p.parModel, fp, `endless page ${p.page} is stale; run the reprice`);
+  }
+});
+
+test('every endless board clears the strict work floor (his 2026-08-17 ruling)', () => {
+  // "I think we should have a strict lower boundary for endless. Some
+  // shapes like honeycomb are just too easy." The 400s par floor admits
+  // boards that are LONG without being DEEP (hex cleared it at a median
+  // of 7 hard deductions against Classic's 25), so admission also asks
+  // ENDLESS_MIN_HARD of the four move classes that need real reasoning.
+  // Shape-blind and strict: no per-shape relief. The bar reads through
+  // endlessHardOf, the SAME function the builder's candidate scoring
+  // uses, so the test and the producer cannot mean different things.
+  for (const b of endlessBoards) {
+    const hard = endlessHardOf(b.features);
+    assert.ok(hard >= ENDLESS_MIN_HARD,
+      `endless ${b.seed} (${b.spec.shape}) carries ${hard} hard deductions, under the ${ENDLESS_MIN_HARD} bar`);
   }
 });
 

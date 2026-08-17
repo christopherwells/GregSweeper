@@ -38,6 +38,7 @@ import {
   CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, CLIMB_MIN_PAR_SECONDS, specFace,
   endlessParCeiling,
 } from '../src/logic/challenge250.js';
+import { ENDLESS_MIN_HARD, endlessHardOf } from '../src/logic/challengeRules.js';
 import { BOARD_WIDTH_CAP } from '../src/logic/difficulty.js';
 import {
   LIB_SHAPE_INTROS, LIB_MOD_INTROS, intakeRules, boardAllowedAtLevel,
@@ -233,8 +234,9 @@ const GIMMICK_SETS = (() => {
   return sets;
 })();
 
-const hardOf = (c) => c.canonicalSubsetMoves + c.genericSubsetMoves
-  + c.advancedLogicMoves + c.disjunctiveMoves;
+// The one hard-work definition lives in challengeRules (endlessHardOf), so
+// the strict endless bar and this file's candidate scoring cannot drift.
+const hardOf = endlessHardOf;
 
 /** Generate one candidate; null when it fails a floor. */
 function candidate(spec, seed) {
@@ -661,6 +663,9 @@ function runEndlessBuild({ dry, minutes, onlyShape, target }) {
   const accept = (shape, c) => {
     if (!c) return false;
     if (c.par < ENDLESS_PAR_FLOOR || c.par > endlessParCeiling(shape)) return false;
+    // The strict work floor (his 2026-08-17 ruling): a board that clears the
+    // par window by SIZE alone is a chore, not endless material. Shape-blind.
+    if ((c.hard ?? endlessHardOf(c.features || {})) < ENDLESS_MIN_HARD) return false;
     if ((faceCount.get(c.face) || 0) >= ENDLESS_FACE_CAP) return false;
     return true;
   };
@@ -875,6 +880,7 @@ function runEndlessEmitOnly({ dry, target }) {
         if (!kept || !key.startsWith(`${shape}|`)) continue;
         if (existingSeeds.has(kept.seed)) continue;
         if (kept.par < ENDLESS_PAR_FLOOR || kept.par > endlessParCeiling(shape)) continue;
+        if ((kept.hard ?? endlessHardOf(kept.features || {})) < ENDLESS_MIN_HARD) continue;
         if ((faceCount.get(kept.face) || 0) >= ENDLESS_FACE_CAP) continue;
         existingSeeds.add(kept.seed);
         faceCount.set(kept.face, (faceCount.get(kept.face) || 0) + 1);

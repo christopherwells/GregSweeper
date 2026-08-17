@@ -179,6 +179,35 @@ export function endlessGenBudget(shape) {
 // which boards may enter the pool it draws from.
 export const ENDLESS_PPC_FLOOR = 3.5;
 
+// THE STRICT WORK FLOOR on endless-library admission (his ruling 2026-08-17:
+// "I think we should have a strict lower boundary for endless. Some shapes
+// like honeycomb are just too easy"). The 400s par floor admits boards that
+// are LONG without being DEEP: measured that morning, hex cleared it at a
+// median of 7 hard deductions (a tenth of its stock at 3 or fewer) against
+// a median of 25 on Classic, so a 477-second hex board could be a chore of
+// pattern sweeping with three real decisions in it. The bar counts
+// the deductions that need real reasoning, the same four move classes the
+// builder's own hardOf sums, and it is SHAPE-BLIND and STRICT: no per-shape
+// relief, no relax-to-ship. A shape whose phone-legal boards cannot reach it
+// thins out of the zone and rides the measured-ceiling exception pattern
+// (test/climbLibrary.test.mjs) until a refit prices it back.
+// He chose 10 over the builder's MIN_WORK precedent of 8 because half of
+// hex's admitted stock sat at 8-9 deductions, still inside the complaint.
+export const ENDLESS_MIN_HARD = 10;
+
+/**
+ * The one definition of a board's hard-work count, usable on a generation
+ * candidate or a stored board's feature vector alike (both carry the four
+ * move-class fields under the same names). The builder's candidate hardOf
+ * and every admission site read THIS, so the bar cannot mean two things.
+ * @param {object} f - features-like object with the four move-class counts
+ * @returns {number}
+ */
+export function endlessHardOf(f) {
+  return (f.canonicalSubsetMoves || 0) + (f.genericSubsetMoves || 0)
+    + (f.advancedLogicMoves || 0) + (f.disjunctiveMoves || 0);
+}
+
 // Per-shape floor, where a lattice cannot reach the shared one on a board a
 // phone can hold. His ruling 2026-08-07: every tiling must be available in
 // the endless zone, and "without sufficient data, I think it's fine to put
