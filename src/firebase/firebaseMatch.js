@@ -477,6 +477,34 @@ export async function fetchMatchInvites() {
   }
 }
 
+/**
+ * The metadata a list row needs, WITHOUT the frozen board payloads (issue
+ * #331: a ten-board node runs 18-148 KB and the review list reads three
+ * lines of it; ten nodes in parallel cost up to ~1.5 MB before the tab
+ * painted). Four child reads in parallel, assembled node-shaped so
+ * matchStandings and the row renderers take it unchanged; the board count
+ * resolves through matchBoardCountOf's rules.count fallback, which the
+ * rules require on every node ever written. Real opens (openMatchById,
+ * joins, installs) keep fetching the whole node: they deal the boards.
+ * @returns {Promise<object|null>} {rules, players, host, createdAt} or null
+ */
+export async function fetchMatchSummary(matchId) {
+  const ready = await _readyOrNull();
+  if (!ready || !matchId) return null;
+  try {
+    const [rules, players, host, createdAt] = await Promise.all([
+      db().ref(`matches/${matchId}/rules`).once('value').then((x) => x.val()),
+      db().ref(`matches/${matchId}/players`).once('value').then((x) => x.val()),
+      db().ref(`matches/${matchId}/host`).once('value').then((x) => x.val()),
+      db().ref(`matches/${matchId}/createdAt`).once('value').then((x) => x.val()),
+    ]);
+    if (!rules && !players) return null;
+    return { rules: rules || null, players: players || null, host: host || null, createdAt: createdAt || null };
+  } catch {
+    return null;
+  }
+}
+
 // ── The matches this player is in ───────────────────────────────────────
 //
 // The match node is readable by anyone holding its id, but nothing else
@@ -517,6 +545,8 @@ export async function fetchMyMatches(limit = 10) {
   }
   // Each node is fetched separately rather than denormalized into the list,
   // so a standing row can never disagree with the match it names.
-  const nodes = await Promise.all(rows.map((r) => fetchMatch(r.matchId)));
+  // Summaries, never whole nodes: the payloads are the other 95% of the
+  // bytes and nothing on the list reads them (issue #331).
+  const nodes = await Promise.all(rows.map((r) => fetchMatchSummary(r.matchId)));
   return rows.map((r, i) => ({ ...r, node: nodes[i] })).filter((r) => r.node);
 }
