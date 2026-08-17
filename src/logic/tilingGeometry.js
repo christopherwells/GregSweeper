@@ -30,31 +30,41 @@
 // size (Christopher's call: "the octagons need to be smaller and the squares
 // bigger", and again on 2026-07-28: "make the squares and octagons more even").
 //
-// Raised 0.37 -> 0.42 on 2026-07-28. What that buys, and what it costs, both
-// measured on the shipped renderer:
+// Raised 0.37 -> 0.42 on 2026-07-28, then LOWERED 0.42 -> 0.38 on 2026-08-17.
+// The 2026-07-28 call evened the two classes out; at 0.42 the octagon's flat
+// sides had shrunk to ~7px on the reference phone (0.16 of the pitch) and he
+// reversed course: "I think we need to increase the size difference of the
+// octagons and squares. The small sides are too small", then ".38 works" from
+// the measured table. At 0.38 the flats are ~10.8px and the diamond delivers
+// 24.1px on the daily boards' 44.9px pitch, right at his 24px minority tap
+// floor (MIN_TAP_MINORITY), which is the whole spare the change spends. He
+// accepted the difficulty cost in the same breath ("this is going to hurt
+// octagons difficulty"): a bigger relative diamond means the fit rules admit
+// nothing wider, and the shape was already the endless zone's thinnest.
 //
 //   cut    diamond number circle    area ratio    flat/diagonal side
 //   0.293  41% of the octagon's     4.82x         1.00  (a regular octagon)
 //   0.37   59%                      2.65x         0.50
+//   0.38   ~61%                     2.46x         0.45   <- current
 //   0.42   67% -> 72%               1.83x         0.27
 //   0.44   79%                      1.58x         0.19
 //
-// The diamond's NUMBER also grows for free, from 74% to 84% of the octagon's
-// font, because the font is half the cell's own box and the box is 2·OCT_CUT.
-//
-// 0.42 is where the evening-out stops being free. The cut can go to 0.5, but
-// the straight sides shorten as it rises and at 0.44 they are a fifth of the
-// diagonals: the octagon has become a rounded diamond and the board reads as a
-// diamond lattice rather than a 4.8.8. At 0.5 the interstitial square collapses
-// to a point, diagonal octagons finally touch, and the tiling degenerates into a
-// rotated square grid, which is also the one value that would break the
-// corner-inclusive adjacency no-op the two Archimedean tilings rely on.
+// The cut can go to 0.5, but the straight sides shorten as it rises and at
+// 0.44 they are a fifth of the diagonals: the octagon has become a rounded
+// diamond and the board reads as a diamond lattice rather than a 4.8.8. At 0.5
+// the interstitial square collapses to a point, diagonal octagons finally
+// touch, and the tiling degenerates into a rotated square grid, which is also
+// the one value that would break the corner-inclusive adjacency no-op the two
+// Archimedean tilings rely on.
 //
 // Nothing downstream hardcodes this. Adjacency is cut-INDEPENDENT (measured: the
 // valence histogram and the zero vertex-only-pair count hold across 0.05 to
 // 0.499), so no certificate, fixture or par value moves; SQ_BOX_FRAC, the
-// clip-paths and both font sizes all derive. Tune this one number to rebalance.
-export const OCT_CUT = 0.42;
+// clip-paths and both font sizes all derive. Cell CENTERS sit on the lattice
+// points and never move with the cut, which is why stored cellPos and the
+// stored compass rays survive a retune untouched. Tune this one number to
+// rebalance.
+export const OCT_CUT = 0.38;
 
 // The interstitial square is a diamond whose four corners reach the surrounding
 // octagon vertices. Its axis-aligned bounding box is 2·OCT_CUT of the pitch, so

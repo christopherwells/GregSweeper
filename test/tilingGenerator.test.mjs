@@ -78,35 +78,43 @@ test('shape constants: square box is twice the cut, cut in the valid tiling rang
 // The 4.8.8 is the only tiling whose cells are two SIZES, so it is the only one
 // where a number can be legible in one cell and cramped in the one beside it.
 // OCT_CUT is the single knob controlling that balance, and it is tuned by eye —
-// which means the thing worth pinning is not the value but the two properties
-// the value was chosen to trade off. Both directions of drift are real: cut it
-// smaller and the diamond's number shrinks toward the 41% it had at a regular
-// octagon; cut it larger and the octagon's flat sides vanish until the board
-// reads as a lattice of diamonds rather than a 4.8.8.
-test('the 4.8.8 keeps its two cells close in size, and its octagons octagonal', () => {
+// which means the thing worth pinning is not the value but the properties
+// the value was chosen to trade off. The trade has been re-chosen ONCE: the
+// 2026-07-28 ruling evened the two classes out (0.37 -> 0.42, circle ratio
+// pinned >= 0.70), and the 2026-08-17 ruling reversed it ("I think we need to
+// increase the size difference of the octagons and squares. The small sides
+// are too small", then ".38 works"): distinctness over evenness, with the
+// diamond's legibility now guarded by the 24px minority tap floor in
+// boardFit rather than by closeness to the octagon. These bounds pin the
+// NEW balance in both directions of drift.
+test('the 4.8.8 keeps its octagons octagonal and its diamonds legible (his 2026-08-17 rebalance)', () => {
   const f = 0.5 - OCT_CUT;
   // Above the regular-octagon cut the 45-degree edges bind, not the flats.
   const octInscribed = 2 * Math.min(0.5, (0.5 + f) / Math.SQRT2);
   const sqInscribed = SQ_BOX_FRAC / Math.SQRT2;
 
-  // A number is drawn in its cell's inscribed circle, so this ratio is what
-  // "the squares and octagons read as the same size" actually means.
+  // The diamond's number circle may be smaller than the octagon's now, but
+  // not collapse toward the 41% of a regular octagon: 0.58 sits just under
+  // the shipped 0.61 and still catches a drift toward tiny diamonds.
   const circleRatio = sqInscribed / octInscribed;
-  assert.ok(circleRatio >= 0.70,
+  assert.ok(circleRatio >= 0.58,
     `the diamond's number circle is only ${(100 * circleRatio).toFixed(0)}% of the octagon's `
-    + '— raise OCT_CUT to even them out');
+    + '— the diamonds are collapsing toward the regular-octagon look; raise OCT_CUT');
 
-  // And the octagon must still be one. flat/diagonal is 1.0 at a regular
-  // octagon and falls as the cut rises; below about a fifth the flats stop
-  // reading and the tiling looks like rotated squares.
+  // THE FLATS MUST READ, and this floor is the 2026-08-17 ruling's own
+  // direction: at 0.42 the flats were 0.27 of the diagonals (~7px on the
+  // reference phone) and he called them too small, so a drift back there
+  // reddens. The shipped 0.38 gives 0.45.
   const flatShare = (1 - 2 * OCT_CUT) / (OCT_CUT * Math.SQRT2);
-  assert.ok(flatShare >= 0.22,
-    `the octagon's flat sides are ${flatShare.toFixed(2)} of its diagonals — it now reads `
-    + 'as a rounded diamond, not an octagon; lower OCT_CUT');
+  assert.ok(flatShare >= 0.40,
+    `the octagon's flat sides are ${flatShare.toFixed(2)} of its diagonals — under his `
+    + '"the small sides are too small" ruling (0.38 gives 0.45); lower OCT_CUT');
 
-  // Areas follow the same trade and are the plainest statement of it.
+  // Areas follow the same trade: more distinct than the 0.42-era 1.83x, but
+  // never toward the 4.82x of a regular octagon, whose diamonds cannot hold
+  // a number and a sprite.
   const areaRatio = (1 - 2 * OCT_CUT * OCT_CUT) / (2 * OCT_CUT * OCT_CUT);
-  assert.ok(areaRatio <= 2.0, `octagon is ${areaRatio.toFixed(2)}x the diamond's area`);
+  assert.ok(areaRatio <= 3.0, `octagon is ${areaRatio.toFixed(2)}x the diamond's area`);
 });
 
 // ── The container ──────────────────────────────────────────────────────────
