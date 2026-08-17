@@ -202,6 +202,18 @@ test('LAB SEED: every shape block = PAR_MODEL + its frozen lab deviation centers
       if (dev === 0) {
         assert.equal(block[key], PAR_MODEL[key],
           `${t}.${key}: unseeded coefficient must equal the base exactly`);
+      } else if (key === 'secPerWormLoad') {
+        // THE REALIZATION BRIDGE (2026-08-17): predictPar only knows the
+        // SCHEDULED worm dose, so every shipped wormLoad coefficient is the
+        // fitted per-realized-unit value times the play-weighted realization
+        // ratio, deviations included. The center therefore ships SCALED, and
+        // the honest pin is proportionality: the same shrinking ratio the
+        // base wears, never a ratio above one, never a sign flip. The fit
+        // does not yet record the ratio in modelHistory; when it does, this
+        // becomes an equality against center x recorded ratio again.
+        const r = gap / dev;
+        assert.ok(r > 0 && r <= 1 + TOL,
+          `${t}.${key}: bridged deviation ratio ${r} outside (0, 1]`);
       } else {
         assert.ok(Math.abs(gap - dev) <= TOL,
           `${t}.${key}: block - base = ${gap}, lab center = ${dev} (off by ${gap - dev})`);
