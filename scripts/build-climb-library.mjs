@@ -665,11 +665,25 @@ function runEndlessBuild({ dry, minutes, onlyShape, target }) {
   // outlast the LONGEST possible rest rather than to feel proportionate —
   // the first cut broke at 65 idle rounds, before a third-bail rest could
   // even expire, and read a resting shard as an exhausted one.
+  //
+  // The hard cap counts FRESH rounds only (2026-08-17): a resumed run
+  // replays its whole cached visit sequence through the same loop, and
+  // counting those rounds meant any run that had ONCE hit the cap could
+  // never do new work again — the 4.8.8 shard stopped at round 39,955 with
+  // 3/35 kept, and a relaunch would have fast-forwarded through 40k cached
+  // rounds straight into the cap. Replays are free; the cap bounds compute.
+  // The absolute bound on the loop variable stays as a runaway backstop.
   const HARD_ROUND_CAP = 40_000;
   const IDLE_HORIZON = ENDLESS_LANE_REST_ROUNDS * ENDLESS_LANE_BAILS_CAP * LANE_COUNT * 2;
   let inactiveRounds = 0;
+  let freshVisits = 0;
+  let freshRounds = 0;
   outer:
-  for (let round = 0; round < HARD_ROUND_CAP; round++) {
+  for (let round = 0; round < HARD_ROUND_CAP * 50; round++) {
+    if (freshRounds >= HARD_ROUND_CAP) {
+      console.log(`hard cap: ${HARD_ROUND_CAP} fresh rounds spent`);
+      break;
+    }
     if (keeps.length >= wanted) break;
     if (shapes.every((s) => keptByShape.get(s) >= perShapeTarget)) break;
     if (inactiveRounds > IDLE_HORIZON) {
@@ -680,6 +694,7 @@ function runEndlessBuild({ dry, minutes, onlyShape, target }) {
       const shapeLine = shapes.map((s) => `${s} ${keptByShape.get(s)}`).join('  ');
       console.log(`round ${round}: kept ${keeps.length}/${wanted}  built ${built}  ${((Date.now() - t0) / 60000).toFixed(1)}m  [${shapeLine}]`);
     }
+    const freshAtRoundStart = freshVisits;
     // One visit of one (shape, lane) stratum. Returns true when it RAN
     // (found a runnable lane), whatever the outcome.
     const runVisit = (si, shape, laneIdx) => {
@@ -738,6 +753,7 @@ function runEndlessBuild({ dry, minutes, onlyShape, target }) {
           kept = best;
         }
         progress.visits[visitKey] = kept;
+        freshVisits++;
         saveProgress(false);
       }
 
@@ -787,6 +803,7 @@ function runEndlessBuild({ dry, minutes, onlyShape, target }) {
       }
     }
     inactiveRounds = anyActive ? 0 : inactiveRounds + 1;
+    if (freshVisits > freshAtRoundStart) freshRounds++;
   }
   saveProgress(true);
 
