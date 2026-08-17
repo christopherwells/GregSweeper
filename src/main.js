@@ -1611,6 +1611,9 @@ if (matchNextBtn) {
     state.match.current++;
     hideModal('gameover-overlay');
     await newGame();
+    // Re-baseline the race: the next gap card should report what happened
+    // during THIS board, not the whole run so far.
+    import('./ui/matchRace.js').then((m) => m.matchRaceBoardStart()).catch(() => {});
   });
 }
 

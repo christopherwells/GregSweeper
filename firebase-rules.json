@@ -728,6 +728,7 @@
             },
             "joinedAt":   { ".validate": "newData.val() === now" },
             "finishedAt": { ".validate": "newData.val() === now" },
+            "activeAt":   { ".validate": "newData.val() === now" },
             "results": {
               "$idx": {
                 ".validate": "$idx.matches(/^[0-9]$/) && newData.hasChildren(['time'])",

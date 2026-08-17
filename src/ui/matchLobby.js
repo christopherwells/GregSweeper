@@ -26,6 +26,7 @@ import { getUid } from '../firebase/firebaseProgress.js';
 import { getHandicapRatioMap } from '../logic/handicaps.js';
 import { matchUnlocks, unmetMatchRules, fmtClock, needsTenths, matchBoardCountOf } from '../logic/matchRules.js';
 import { matchStandings, columnLeader } from '../logic/matchStandings.js';
+import { isPresenceFresh, fmtGap } from '../logic/matchRace.js';
 import { matchBoardBreakdown } from '../logic/matchRecord.js';
 import { normalizeCode, planMatchJoin, matchDaysRemaining, matchExpiresAt, partitionMatchReview, matchResumePoint } from '../logic/matchCodes.js';
 import { tilingLabel, CLASSIC_SHAPE_LABEL } from '../logic/coastlineLink.js';
@@ -440,11 +441,10 @@ export function stopMatchStandings() {
   _standingsSubs.clear();
 }
 
-/** A margin in speech: tenths under ten seconds, whole seconds past it. */
-function _fmtGap(gap) {
-  const g = Math.abs(gap);
-  return g < 10 ? `${g.toFixed(1)}s` : `${Math.round(g)}s`;
-}
+// A margin in speech: fmtGap (logic/matchRace.js), tenths under ten
+// seconds, whole seconds past it. One definition, shared with the gap
+// lines on the board-complete card.
+const _fmtGap = fmtGap;
 
 /** The handicap the chip convention speaks: positive = faster than Greg. */
 function _hcLabel(handicaps, uid) {
@@ -507,8 +507,16 @@ function _paintStandings(el, node, names = {}) {
   }
 
   // ── The per-board grid ──
+  // The presence dot (his heartbeat ruling, 2026-08-17): a fresh activeAt
+  // marks a player as inside the match right now. Never on the viewer's own
+  // column; they know where they are.
+  const _now = Date.now();
+  const players = (node && node.players) || {};
+  const presenceDot = (c) => (!c.isMe
+    && isPresenceFresh(players[c.uid] && players[c.uid].activeAt, _now)
+    ? '<span class="match-race-dot" title="Playing right now"></span>' : '');
   const headerCells = cols.map((c) =>
-    `<th class="match-grid-p${c.isMe ? ' match-grid-me' : ''}">${escapeHtml(nameOf(c))}</th>`).join('');
+    `<th class="match-grid-p${c.isMe ? ' match-grid-me' : ''}">${presenceDot(c)}${escapeHtml(nameOf(c))}</th>`).join('');
   const bodyRows = breakdown.map((r) => {
     const label = `${r.index + 1} · ${escapeHtml(_shapeLabel(r.spec))}`;
     const best = r.fastestAdjusted;
@@ -860,13 +868,25 @@ function _myMatchRowHTML(row) {
   const me = rows.find((r) => r.isMe);
   const of = matchBoardCountOf(node);
   const done = me ? me.done : 0;
+  const myUid = getUid();
   const others = Math.max(0, Object.keys(players).length - 1);
   const progress = done >= of && of > 0
     ? 'Finished'
     : `Board ${Math.min(done + 1, of)} of ${of}`;
-  const company = others === 0
-    ? 'Nobody else yet'
-    : `${others} other${others === 1 ? '' : 's'} playing`;
+  // Presence beats the count: "Kate is playing right now" is the line that
+  // pulls a rival back onto the boards (his heartbeat ruling, 2026-08-17).
+  // Without a fresh activeAt the copy claims membership, never live play;
+  // the old "2 others playing" said more than the node knew.
+  const _now = Date.now();
+  const playing = Object.entries(players)
+    .filter(([uid, p]) => uid !== myUid && isPresenceFresh(p && p.activeAt, _now))
+    .map(([uid, p]) => _reviewNamesCache[uid]
+      || ((p && typeof p.name === 'string' && p.name && p.name !== 'Player') ? p.name : 'A friend'));
+  const company = playing.length > 0
+    ? `${playing[0]}${playing.length > 1 ? ` and ${playing.length - 1} more` : ''} playing right now`
+    : others === 0
+      ? 'Nobody else yet'
+      : `${others} other${others === 1 ? '' : 's'} in this run`;
   return `<div class="match-review-row" data-match="${escapeHtml(row.matchId)}" data-code="${escapeHtml(row.code || '')}">
       <span class="match-review-name">${escapeHtml(_matchSummaryLine(node))}
         <span class="match-review-note">${progress} · ${company}</span></span>

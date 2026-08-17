@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.11.5';
+const CACHE_NAME = 'gregsweeper-v1.11.6';
 const ASSETS = [
   './',
   './index.html',
@@ -119,6 +119,7 @@ const ASSETS = [
   './src/logic/matchRecord.js',
   './src/logic/matchCodes.js',
   './src/logic/matchStandings.js',
+  './src/logic/matchRace.js',
   './src/logic/challengeRules.js',
   './src/logic/challengePool.js',
   './src/logic/challenge250Builder.js',
@@ -163,6 +164,7 @@ const ASSETS = [
   // precached so an offline resume of a shared match can still paint its
   // standings and file its rows when the connection returns.
   './src/ui/matchLobby.js',
+  './src/ui/matchRace.js',
   './src/firebase/firebaseMatch.js',
   './src/ui/statsModal.js',
   './src/ui/titleScreen.js',
