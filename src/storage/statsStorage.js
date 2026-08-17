@@ -70,6 +70,9 @@ export function setEndlessSeen(map) {
 // position-keyed seen record name a different board. Read by
 // applyChallenge250Reset, which clears the two affected cycles once.
 export const BOARD_FIT_EPOCH = 1;
+// Bumped when the strict endless work floor (ENDLESS_MIN_HARD) purges or
+// renumbers the endless pages; clears ONLY the endless seen-cycle.
+export const ENDLESS_HARD_EPOCH = 1;
 
 const MATCH_SEEN_KEY = 'minesweeper_match_seen';
 
@@ -1025,6 +1028,21 @@ export function applyChallenge250Reset() {
     setMatchSeen([]);
     setEndlessSeen({});
     stats.boardFitEpoch = BOARD_FIT_EPOCH;
+    setJSON(STATS_KEY, stats);
+    _statsCache = stats;
+    changed = true;
+  }
+
+  // THE STRICT ENDLESS WORK FLOOR's own marker (2026-08-17, his ruling:
+  // "some shapes like honeycomb are just too easy"). The purge moved 88
+  // under-bar boards out of the endless pages, so every surviving board's
+  // page position shifted and the page-keyed endless cycle is WRONG, the
+  // boardFitEpoch class exactly. A separate marker because the match
+  // library did not move: folding this into boardFitEpoch would clear
+  // match seen-cycles that are still telling the truth.
+  if (stats.endlessHardEpoch !== ENDLESS_HARD_EPOCH) {
+    setEndlessSeen({});
+    stats.endlessHardEpoch = ENDLESS_HARD_EPOCH;
     setJSON(STATS_KEY, stats);
     _statsCache = stats;
     changed = true;

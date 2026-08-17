@@ -42,6 +42,7 @@ import {
   intakeRules, boardAllowedAtLevel, PAR_FLOOR_SHAPE_RELIEF, OUT_DIR,
   ENDLESS_PAR_FLOOR, ENDLESS_FACE_CAP, ENDLESS_SHAPE_FLOOR, ENDLESS_SHAPE_TARGET, ENDLESS_INDEX,
 } from './build-climb-library.mjs';
+import { ENDLESS_MIN_HARD, endlessHardOf } from '../src/logic/challengeRules.js';
 import { deserializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
 import { computeDailyFeatures, predictPar } from '../src/logic/dailyFeatures.js';
@@ -126,16 +127,23 @@ for (const L of levels) {
   homeless.push(...leave);
 }
 let endlessOut = 0;
+let endlessShallow = 0;
 for (const P of endlessPages) {
   const stay = [], leave = [];
   for (const b of P.json.boards) {
-    (b.par >= ENDLESS_PAR_FLOOR ? stay : leave).push(b);
+    // Two bounds now: the 400s par floor, and the STRICT work floor (his
+    // 2026-08-17 ruling): a board that clears the window by size alone is
+    // a chore, not endless material. Under-bar boards are MOVERS, never
+    // tossed: ladder first refusal, then reserve, the ordinary flow.
+    const deep = endlessHardOf(b.features) >= ENDLESS_MIN_HARD;
+    if (b.par >= ENDLESS_PAR_FLOOR && deep) stay.push(b);
+    else { leave.push(b); if (b.par >= ENDLESS_PAR_FLOOR) endlessShallow++; }
   }
   P.json.boards = stay;
   endlessOut += leave.length;
   homeless.push(...leave);
 }
-console.log(`re-priced: ${movedOut} ladder boards left their window, ${endlessOut} endless boards fell under the ${ENDLESS_PAR_FLOOR}s floor, ${homeless.length - movedOut - endlessOut} were in reserve`);
+console.log(`re-priced: ${movedOut} ladder boards left their window, ${endlessOut - endlessShallow} endless boards fell under the ${ENDLESS_PAR_FLOOR}s floor, ${endlessShallow} under the hard bar (${ENDLESS_MIN_HARD}), ${homeless.length - movedOut - endlessOut} were in reserve`);
 
 // A SEED IS A BOARD, so the library may never hold two of one. Conservation
 // is this tool's whole discipline, which makes a duplicate easy to acquire
@@ -197,7 +205,8 @@ let reservedForEndless = 0;
 if (hasEndless) {
   for (const { shape, need } of shapesShort) {
     const givers = homeless
-      .filter((b) => b.spec.shape === shape && b.par >= ENDLESS_PAR_FLOOR)
+      .filter((b) => b.spec.shape === shape && b.par >= ENDLESS_PAR_FLOOR
+        && endlessHardOf(b.features) >= ENDLESS_MIN_HARD)
       .sort((a, b) => b.par - a.par);
     let took = 0;
     for (const b of givers) {
@@ -251,7 +260,9 @@ for (const b of homeless) {
   // the zone wants). Ladder levels get first refusal because they carry
   // minimums and windows; endless has neither. Into the smallest page, so
   // page sizes stay even for the fetch.
-  if (hasEndless && b.par >= ENDLESS_PAR_FLOOR && endlessFaceCount(b.face) < ENDLESS_FACE_CAP) {
+  if (hasEndless && b.par >= ENDLESS_PAR_FLOOR
+    && endlessHardOf(b.features) >= ENDLESS_MIN_HARD
+    && endlessFaceCount(b.face) < ENDLESS_FACE_CAP) {
     const smallest = endlessPages.reduce((m, P) => (P.json.boards.length < m.json.boards.length ? P : m));
     smallest.json.boards.push(b);
     placedEndless++;
