@@ -109,9 +109,11 @@ function _cellsOf(shape, M, N) {
 }
 
 /**
- * The most cells any fit-legal board of this shape can have: the size the
- * lane must EXCEED. Derived from the same frontier, so still boardFit's own
- * verdicts and no new pixel arithmetic.
+ * The most cells any fit-legal board of this shape can have. Two jobs, both
+ * derived from the same frontier and so still boardFit's own verdicts: it is
+ * the anchor size the out-of-support pricing extends from, and it is the
+ * line between a board the par model has SEEN sizes like and one it has not
+ * (inSupportCells below).
  */
 const _ceilingCells = new Map();
 export function fitCeilingCells(shape) {
@@ -126,10 +128,33 @@ export function fitCeilingCells(shape) {
 }
 
 /**
- * Is (M, N) a legal MARATHON size for this shape? In the doubled region of
- * some fit-legal pair (clipped to the canonical container's dimension cap),
- * NOT itself fit-legal (a board that fits the phone belongs to the base
- * lane), and storable.
+ * THE DEGENERACY LINE, measured (2026-08-17) rather than chosen. A board's
+ * short side must reach this or the game stops being two-dimensional: at one
+ * column a cell has at most 2 neighbors and the board is a path graph; at
+ * two, at most 5, and NO cell has a full neighborhood; at three, a cell in
+ * the middle column has all 8, and a 12x3 holds ten of them. The generator
+ * says the same thing independently, which is what makes this a line rather
+ * than a preference: probed plain at 18% mines, a 25x3 certified 3 draws of
+ * 3 while a 25x2 certified none.
+ */
+export const MARATHON_MIN_SHORT_SIDE = 3;
+
+/**
+ * Is (M, N) a legal size for the SCROLLING lane? Inside the doubled region
+ * of some fit-legal pair (clipped to the canonical container), NOT itself
+ * fit-legal, storable, and not degenerately thin.
+ *
+ * WHAT THE LANE IS FOR, corrected 2026-08-17 after his "I was musing about
+ * the merits of a 25x3 board myself". The toggle promises boards the SCREEN
+ * cannot hold, and that is TWO things, where the first cut of this built
+ * only one: too BIG (the marathon giants) and wrong PROPORTION at an
+ * ordinary size (a 6x20, a 25x3), which his original words asked for all
+ * along ("sparse long boards and other fills"). The old rule here demanded
+ * more cells than the shape's fit ceiling, which blocked the whole second
+ * category. Failing the fit rules IS the qualification, because that is
+ * exactly what the toggle is opting into; the short-side floor above is what
+ * keeps the honest thin boards and drops the degenerate ones.
+ *
  * @param {string} shape 'rect' or a TILING_TYPES entry
  * @param {number} M rows for rect, lattice M otherwise
  * @param {number} N cols for rect, lattice N otherwise
@@ -138,20 +163,57 @@ export function fitCeilingCells(shape) {
 export function marathonFits(shape, M, N) {
   if (!Number.isInteger(M) || !Number.isInteger(N) || M < 1 || N < 1) return false;
   if (M > CANONICAL_MAX_DIM || N > CANONICAL_MAX_DIM) return false;
+  if (Math.min(M, N) < MARATHON_MIN_SHORT_SIDE) return false;
   const covered = fitLegalFrontier(shape)
     .some(([m, n]) => M <= 2 * m && N <= 2 * n);
   if (!covered) return false;
   if (_fitsPhone(shape, M, N)) return false;
   const cells = _cellsOf(shape, M, N);
   if (cells <= 0 || !containerIsStorable(cells)) return false;
-  // MARATHON MEANS BIGGER, in the only currency a player feels: cells. The
-  // doubled-dims bound alone admits shapes that are merely TALL, because
-  // rectFitsPhone tolerates a thin board (a 17x1 passes it) and failing it
-  // by height says nothing about size. Unbounded, the menu offered a 25x1
-  // at twenty-five cells as a "marathon" board. Requiring more cells than
-  // the shape's own fit ceiling is the same doubling ruling read in the
-  // currency it was about, and it takes every small ribbon out at once.
-  return cells > fitCeilingCells(shape);
+  // THE SHAPE MUST BE THE REASON IT DOES NOT FIT: longer, wider, or bigger
+  // than any board a phone can hold. Failing the fit rules is necessary and
+  // not sufficient, because a board can fail them on a RENDERING margin
+  // alone: a 10x3 at thirty cells fails only because the renderer would give
+  // it 48px cells and overflow the visible area by about 36 pixels. Dealing
+  // that to somebody who asked for scrolling boards is an annoyance, not a
+  // feature, and at the small end of the menu those marginal boards would
+  // crowd out the corridors and wide boards the toggle is actually for.
+  const { maxM, maxN } = fitAxisMaxima(shape);
+  return M > maxM || N > maxN || cells > fitCeilingCells(shape);
+}
+
+/**
+ * Is a board of this many cells inside the par model's own support for this
+ * shape? The fit has seen boards up to the shape's fit ceiling and nothing
+ * larger, so at or below it predictPar speaks from data and the lane uses it
+ * verbatim; past it the model extrapolates, badly and in both directions
+ * (hex at 600 cells prices 17s, cairo at 325 prices 4.9 hours), and the lane
+ * prices provisionally instead. Stated per SHAPE rather than as one cell
+ * count, because each shape's data ends in a different place.
+ */
+export function inSupportCells(shape, cells) {
+  return Number.isFinite(cells) && cells > 0 && cells <= fitCeilingCells(shape);
+}
+
+/**
+ * The longest fit-legal extent on each axis for this shape. The lane's
+ * qualification reads these: a board belongs here when it is LONGER, WIDER
+ * or BIGGER than any board a phone can hold, which is a statement about its
+ * shape rather than about a rendering margin.
+ */
+const _axisMax = new Map();
+export function fitAxisMaxima(shape) {
+  const hit = _axisMax.get(shape);
+  if (hit) return hit;
+  let maxM = 0;
+  let maxN = 0;
+  for (const [M, N] of fitLegalFrontier(shape)) {
+    maxM = Math.max(maxM, M);
+    maxN = Math.max(maxN, N);
+  }
+  const out = Object.freeze({ maxM, maxN });
+  _axisMax.set(shape, out);
+  return out;
 }
 
 /**
@@ -172,23 +234,19 @@ function _aspect(shape, M, N) {
 }
 
 /**
- * The most lopsided board the lane will BUILD. A bound is not a taste:
- * marathonFits inherits rectFitsPhone's tolerance for thin boards (a 17x1
- * passes that), so corridors sit inside the region just above each shape's
- * ceiling, and the menu is where they are refused, exactly as the base
- * library refuses them in synthBigEnd rather than in rectFitsPhone. Twice as
- * long as it is wide is the limit because the camera scrolls BOTH axes: past
- * that a player is panning a corridor, and a glide from one end spends most
- * of its travel in one direction.
- */
-export const MARATHON_MAX_ASPECT = 2;
-
-/**
- * Every marathon size the lane will BUILD for a shape, one entry per
- * DISTINCT cell count (the biggest counts first), each carrying the dims
- * that produce it. The generator's menu, the synthBigEnd analog for the
- * lane. Among dims sharing a cell count the squarer pair wins, and a count
- * whose squarest option is still a corridor is dropped entirely.
+ * Every size the lane will BUILD for a shape, one entry per DISTINCT cell
+ * count (the biggest counts first), each carrying the dims that produce it.
+ * The generator's menu, the synthBigEnd analog for the lane. Among dims
+ * sharing a cell count the squarer pair wins, so a count reachable both as a
+ * corridor and as a broad board is offered broad.
+ *
+ * THE ASPECT CAP IS GONE (2026-08-17). It was a taste, set at twice as long
+ * as wide, and it was refusing exactly the boards the toggle exists to
+ * unlock: his 25x3, a 5x25, a 6x20. What actually goes wrong on a thin board
+ * is not proportion but the loss of a second dimension, and
+ * MARATHON_MIN_SHORT_SIDE now states that in the place a bound belongs, with
+ * a measurement behind it. Squarest-per-count survives as the tie-break,
+ * which is a preference among equals rather than a refusal.
  * @param {string} shape
  * @returns {Array<{shape: string, M?: number, N?: number, rows?: number,
  *   cols?: number, cells: number}>}
@@ -203,11 +261,10 @@ export function marathonDims(shape) {
       // Same monotone break as the frontier scan, for the same reason.
       if (_cellsOf(shape, M, N) > CELL_SCAN_CAP) break;
       if (!marathonFits(shape, M, N)) continue;
-      const aspect = _aspect(shape, M, N);
-      if (!(aspect <= MARATHON_MAX_ASPECT)) continue;
+      const squareness = Math.abs(M - N);
       const cells = _cellsOf(shape, M, N);
       const prev = byCells.get(cells);
-      if (!prev || aspect < prev.aspect) byCells.set(cells, { M, N, aspect });
+      if (!prev || squareness < prev.squareness) byCells.set(cells, { M, N, squareness });
     }
   }
   const out = [...byCells.entries()]
@@ -225,6 +282,33 @@ export function marathonDims(shape) {
  * caps in the endless build, and the same caution applies here.) */
 export function marathonShapes() {
   return ['rect', ...TILING_TYPES];
+}
+
+/**
+ * `n` sizes SPREAD across a shape's menu, biggest first, rather than the n
+ * biggest.
+ *
+ * The menu is ordered by size and the generator walks it until a cell is
+ * full, so taking the head means the lane only ever builds its own giants.
+ * That was survivable while every lane board was a giant by definition; now
+ * that an ordinary-sized wide board qualifies, a generator walking from the
+ * head would never reach one, and the whole second category would exist in
+ * the rules and never on disk. Evenly spaced indices give a cell a big
+ * board, a middling one and a small one instead of three of a size.
+ *
+ * @param {string} shape
+ * @param {number} n how many sizes the caller intends to build
+ */
+export function marathonDimsSpread(shape, n) {
+  const dims = marathonDims(shape);
+  const want = Math.max(0, Math.floor(n));
+  if (want === 0 || dims.length === 0) return [];
+  if (want >= dims.length) return dims.slice();
+  const out = [];
+  for (let i = 0; i < want; i++) {
+    out.push(dims[Math.round((i * (dims.length - 1)) / (want - 1 || 1))]);
+  }
+  return out;
 }
 
 // ── Provisional pricing (his scheme, 2026-08-17) ────────────────────────

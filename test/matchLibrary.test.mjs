@@ -37,7 +37,7 @@ import {
   matchIndexRow, matchIndexFeatureKeys, timeBandOf, MATCH_TIME_BANDS,
   matchShardFileForRow, MARATHON_PAR_CEILING_SECONDS,
 } from '../src/logic/matchRules.js';
-import { marathonFits, marathonProvisionalPar } from '../src/logic/marathonFit.js';
+import { marathonFits, marathonProvisionalPar, inSupportCells } from '../src/logic/marathonFit.js';
 import { predictPar } from '../src/logic/dailyFeatures.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
 import { CLIMB_MIN_DEDUCTIONS } from '../src/logic/challenge250.js';
@@ -422,7 +422,7 @@ test('every dealable FIT rect board fits the phone the rules describe', () => {
     `${bad.length} dealable rect board(s) fail rectFitsPhone; run scripts/evict-match-surplus.mjs`);
 });
 
-test('every oversized board is inside the marathon ceiling, and priced provisionally', () => {
+test('every oversized board is inside the lane region, and priced by the right rule', () => {
   // The lane's own alarm, the counterpart to the fit rule above. His ceiling
   // is 2x the established fit-legal dims per shape (marathonFit.js), so a
   // lane board outside marathonFits is one nothing should have generated,
@@ -433,19 +433,35 @@ test('every oversized board is inside the marathon ceiling, and priced provision
     const M = b.spec.shape === 'rect' ? b.spec.rows : b.spec.M;
     const N = b.spec.shape === 'rect' ? b.spec.cols : b.spec.N;
     assert.ok(marathonFits(b.spec.shape, M, N),
-      `${b.seed}: ${b.spec.shape} ${M}x${N} is outside the marathon region`);
-    assert.equal(b.parProvisional, true, `${b.seed}: a lane par must be flagged provisional`);
-    assert.ok(Number.isFinite(b.anchorCells) && b.anchorCells > 0,
-      `${b.seed}: no anchorCells, so the nightly re-price cannot re-anchor it`);
-    assert.ok(b.anchorFeatures && typeof b.anchorFeatures === 'object',
-      `${b.seed}: no anchorFeatures`);
+      `${b.seed}: ${b.spec.shape} ${M}x${N} is outside the lane region`);
     assert.ok(b.par > 0 && b.par <= MARATHON_PAR_CEILING_SECONDS,
       `${b.seed}: par ${b.par}s is outside the lane's admission ceiling`);
-    // The stored par must be exactly what the pure rule says, so a page
-    // hand-edited or written by an older tool cannot drift from the scheme.
-    assert.equal(b.par, marathonProvisionalPar({
-      cells: b.spec.cells, anchorPar: predictPar(b.anchorFeatures), anchorCells: b.anchorCells,
-    }), `${b.seed}: stored par disagrees with marathonProvisionalPar under today's model`);
+    // WHICH PRICING RULE depends on whether the model has support at this
+    // size, not on whether the board scrolls. An in-support board (the
+    // proportion half of the lane: ordinary cell count, extraordinary shape)
+    // is priced by predictPar like anything else and must NOT be flagged
+    // provisional, or the flag would stop meaning "nobody has measured a
+    // board this size".
+    if (inSupportCells(b.spec.shape, b.spec.cells)) {
+      assert.ok(!b.parProvisional,
+        `${b.seed}: in-support board must not be flagged provisional`);
+      assert.equal(b.anchorCells, undefined, `${b.seed}: in-support board needs no anchor`);
+      const par = Math.round(predictPar(b.features) * 10) / 10;
+      assert.ok(Math.abs(par - b.par) < 0.06,
+        `${b.seed}: stored par ${b.par} vs predictPar ${par}; run scripts/reprice-match-library.mjs`);
+    } else {
+      assert.equal(b.parProvisional, true,
+        `${b.seed}: an out-of-support par must be flagged provisional`);
+      assert.ok(Number.isFinite(b.anchorCells) && b.anchorCells > 0,
+        `${b.seed}: no anchorCells, so the nightly re-price cannot re-anchor it`);
+      assert.ok(b.anchorFeatures && typeof b.anchorFeatures === 'object',
+        `${b.seed}: no anchorFeatures`);
+      // The stored par must be exactly what the pure rule says, so a page
+      // hand-edited or written by an older tool cannot drift from the scheme.
+      assert.equal(b.par, marathonProvisionalPar({
+        cells: b.spec.cells, anchorPar: predictPar(b.anchorFeatures), anchorCells: b.anchorCells,
+      }), `${b.seed}: stored par disagrees with marathonProvisionalPar under today's model`);
+    }
   }
 });
 

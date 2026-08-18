@@ -61,12 +61,15 @@ function main() {
       }
       if (b.features) {
         let par = 0;
-        // An OVERSIZED (marathon-lane) board never takes raw predictPar: the
-        // model has no support at its size (probed 2026-08-17: hex collapses,
-        // cairo explodes). His scheme re-prices the board's STORED ANCHOR
-        // (a real fit-ceiling board's features, in support) under tonight's
-        // model and extends linearly with the traversal floor, so lane pars
-        // keep moving with the refit like everything else.
+        // A lane board takes raw predictPar UNLESS it is out of the model's
+        // support, which is exactly the boards that stored an anchor. The
+        // proportion half of the lane (a 6x20, a 25x3) is an ordinary cell
+        // count in an extraordinary shape and re-prices like anything else;
+        // only past a shape's fit ceiling does the model extrapolate badly
+        // (probed 2026-08-17: hex collapses, cairo explodes), and there the
+        // stored ANCHOR (a real fit-ceiling board's features, in support) is
+        // re-priced under tonight's model and extended linearly, so lane
+        // pars keep moving with the refit like everything else.
         try {
           if (b.oversized === true && b.anchorFeatures && b.anchorCells) {
             par = marathonProvisionalPar({
