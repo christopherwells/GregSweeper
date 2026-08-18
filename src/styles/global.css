@@ -2667,10 +2667,13 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   /* Matches leaderboard-modal-content: the two modals read as one design. */
   max-width: 600px;
 }
-.stats-body {
-  max-height: min(80vh, 900px);
-  overflow-y: auto;
-}
+/* .stats-body deliberately has NO max-height/overflow of its own: the one
+   scroller in this modal is .modal-content (85vh), the same contract every
+   other modal keeps. It used to carry min(80vh, 900px) + overflow-y: auto,
+   and because that cap sits just under the modal's own, any tab taller than
+   the window scrolled BOTH containers at once: a second scrollbar inside
+   the first, eating the right padding under it (his Challenge-tab report,
+   2026-08-18). Pinned by tests/e2e/statsScroll.spec.mjs. */
 
 .stats-tabs, .help-tabs, .settings-tabs {
   display: flex;
