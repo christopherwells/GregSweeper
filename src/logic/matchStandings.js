@@ -147,6 +147,10 @@ export function matchFitRows(entries, results) {
       // most of a board's mines by stepping on them was probing it.
       totalMines: Number(entry.spec && entry.spec.mines) || Number(entry.features.totalMines) || 0,
       par: Number(res.par) || 0,
+      // Banked per board at finish (winLossHandler): a match run can mix a
+      // fit-legal board with a marathon one, so this is a property of the
+      // BOARD as played, never of the run.
+      scrolled: res.scrolled === true,
       features: entry.features,
       bombHitEvents: Array.isArray(res.bombHitEvents) ? res.bombHitEvents : [],
       wormEvents: Array.isArray(res.wormEvents) ? res.wormEvents : [],

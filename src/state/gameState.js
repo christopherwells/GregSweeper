@@ -95,6 +95,14 @@ export const state = {
   theme: 'classic',
   hitMine: null,  // {row, col} of the mine that killed you
   zoomLevel: 100,  // camera scale, percent; ceiling 200, floor cameraMinZoom() (50, or the board's own fit scale below it)
+  // Did this board ever need the camera? True the moment the board overflows
+  // the scroll wrapper, whatever the cause: marathon dims, a wide board, or
+  // an ordinary board under a player's own cell-size preference. Submitted
+  // with the score row as `scrolled`, so the fit can eventually separate the
+  // TIME SPENT TRAVELLING a board from the time spent thinking about it, the
+  // one cost no row has ever carried (his ruling 2026-08-17: record it and
+  // lean on k meanwhile).
+  boardScrolled: false,
   checkpoint: 1,   // last checkpoint level (every 5 levels)
   flagMode: false, // flag-mode toggle for mobile
   dirtyCells: new Set(), // track changed cells for targeted updates
