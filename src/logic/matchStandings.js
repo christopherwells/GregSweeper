@@ -126,12 +126,15 @@ export function columnLeader(rows, key) {
  *
  * @param {Array<object>} entries the dealt library entries, in play order
  * @param {Array<object>} results the banked per-board results, index-aligned
- * @returns {{rows: Array<object>, tooFast: number, unplayed: number}}
+ * @returns {{rows: Array<object>, tooFast: number, unplayed: number,
+ *   eventless: number}} `eventless` counts boards refused because they took
+ *   strikes whose per-hit events this device does not hold (issue #372).
  */
 export function matchFitRows(entries, results) {
   const rows = [];
   let tooFast = 0;
   let unplayed = 0;
+  let eventless = 0;
   const list = Array.isArray(entries) ? entries : [];
   for (let i = 0; i < list.length; i++) {
     const entry = list[i];
@@ -139,6 +142,20 @@ export function matchFitRows(entries, results) {
     if (!entry || !entry.seed || !entry.features || !res) { unplayed++; continue; }
     const time = Math.round((Number(res.time) || 0) * 10) / 10;
     if (!(time >= MATCH_FIT_MIN_TIME && time <= MATCH_FIT_MAX_TIME)) { tooFast++; continue; }
+    // A ROW THAT TOOK STRIKES BUT CARRIES NO EVENTS IS REFUSED, NOT FILED
+    // (issue #372). The payload writes `totalBombPenalty` only alongside
+    // events, and on the R side `bombHits > 0 && totalBombPenalty == 0` is
+    // the signature of the RETIRED +10s/re-fog cohort, so such a row is
+    // charged LEGACY_BOMB_RATE (15s a hit) against a true ramped cost of
+    // 3n + 0.75n(n-1): 45s removed from a three-strike board that cost 13.5s.
+    // The events are missing exactly when this device did not play the board
+    // (a cross-device resume rebuilt it from the node, which whitelists only
+    // time, penalty and strikes), so the honest answer is to file nothing
+    // rather than a row the fit will misread. A clean board needs no events
+    // and files normally.
+    const strikes = Number(res.strikes) || 0;
+    const events = Array.isArray(res.bombHitEvents) ? res.bombHitEvents : [];
+    if (strikes > 0 && events.length === 0) { eventless++; continue; }
     rows.push({
       key: matchRowKey(entry.seed),
       time,
@@ -152,10 +169,10 @@ export function matchFitRows(entries, results) {
       // BOARD as played, never of the run.
       scrolled: res.scrolled === true,
       features: entry.features,
-      bombHitEvents: Array.isArray(res.bombHitEvents) ? res.bombHitEvents : [],
+      bombHitEvents: events,
       wormEvents: Array.isArray(res.wormEvents) ? res.wormEvents : [],
       seed: entry.seed,
     });
   }
-  return { rows, tooFast, unplayed };
+  return { rows, tooFast, unplayed, eventless };
 }

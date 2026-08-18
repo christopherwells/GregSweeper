@@ -101,3 +101,31 @@ test('REGRESSION: every field the daily row writes is whitelisted in the rules',
     assert.ok(dailyAllowed.has(key), `the daily row writes ${key} but the rules refuse it`);
   }
 });
+
+// ── Issue #373: the flag reads the overflow, not the controls predicate ──
+//
+// `needsZoom()` answers "should the camera controls show", and it carries a
+// deliberate legacy clause on a Challenge board's STORAGE CONTAINER dims
+// (rows > 13) so squeezed-but-FITTING boards keep their buttons. Reading it
+// for `scrolled` made the field claim traversal on boards that were entirely
+// on screen: measured over the shipped library, 17% of dealable match boards,
+// and systematically by shape (4.8.8 35%, cairo 25%, rect 4%) because on a
+// lattice rows/cols are an arbitrary factorization of the cell count rather
+// than the shape a player sees. A source scan is the right layer: the defect
+// is WHICH predicate the assignment reads.
+
+test('REGRESSION #373: boardScrolled is set from the overflow, never from needsZoom()', () => {
+  const src = readFileSync(new URL('../src/ui/boardRenderer.js', import.meta.url), 'utf8');
+  const assignments = src.split('\n').filter((l) => /state\.boardScrolled\s*=/.test(l));
+  assert.ok(assignments.length >= 1, 'the flag must still be set somewhere');
+  for (const line of assignments) {
+    assert.ok(!/needsZoom\s*\(/.test(line),
+      `the flag reads needsZoom(), which fires on boards that FIT: ${line.trim()}`);
+    assert.ok(/_boardOverflowsWrapper\s*\(/.test(line),
+      `the flag must read the overflow measurement itself: ${line.trim()}`);
+  }
+  // And the legacy clause must still be doing its own job for the BUTTONS,
+  // or this test would pass by deleting the thing it is guarding against.
+  assert.ok(/state\.gameMode === 'match' && \(state\.cols > 13 \|\| state\.rows > 13\)/.test(src),
+    'the legacy rows>13 clause must survive in needsZoom for the zoom buttons');
+});
