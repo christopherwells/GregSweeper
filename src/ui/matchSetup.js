@@ -198,6 +198,57 @@ function renderCount() {
 // first visit) is its own message, never a zero.
 function renderSupply() {
   const el = $('#match-supply');
+  // ── Help Greg ──────────────────────────────────────────────────────
+  // His idea (2026-08-18): fill the sheet with what the model is short of, so
+  // a player who wants to can work the frontier. Steering already does this
+  // for at most floor(N/5) slots so a run never feels forced; this is the
+  // player ASKING for the whole run to count, which belongs in the rules.
+  //
+  // It deliberately sets SHAPES and MODIFIERS only. Setting a density band to
+  // chase the primary target would re-introduce the confound experimentDesign
+  // refuses on purpose (isObservationalTarget): the digit shares are measured
+  // on every board, and chasing one deepens the density correlation that is
+  // the reason that study is stuck.
+  const helpBtn = $('#match-help-greg');
+  if (helpBtn) {
+    helpBtn.addEventListener('click', async () => {
+      const note = $('#match-help-note');
+      helpBtn.disabled = true;
+      try {
+        const [{ loadExperimentTarget }, steering] = await Promise.all([
+          import('../logic/experimentDesign.js'),
+          import('../logic/matchSteering.js'),
+        ]);
+        // The list is empty until the night's target is fetched, and a button
+        // that silently proposed nothing would read as broken.
+        await loadExperimentTarget();
+        const plan = steering.helpGregRules(steering.currentSteerMissions(), currentUnlocks());
+        if (!plan) {
+          if (note) note.textContent = 'Greg has what he needs right now. Any run helps.';
+          return;
+        }
+        if (plan.shapes.length) _rules.shapes = plan.shapes.slice();
+        if (plan.mods.length) _rules.mods = plan.mods.slice();
+        saveRules(_rules);
+        renderAll();
+        if (note) {
+          const shapeText = plan.shapeNames.map(shapeLabelOf).join(', ');
+          const defs = getGimmickDefs();
+          const modText = plan.modNames.map((m) => (defs[m] && defs[m].name) || m).join(', ');
+          const parts = [];
+          if (shapeText) parts.push(shapeText);
+          if (modText) parts.push(modText);
+          note.textContent = `Greg has the least data on ${parts.join(' with ')}. `
+            + 'Change anything you like.';
+        }
+      } catch {
+        if (note) note.textContent = 'Could not reach the notes just now.';
+      } finally {
+        helpBtn.disabled = false;
+      }
+    });
+  }
+
   const startBtn = $('#match-start');
   if (!el) return;
   if (!_corners) {
