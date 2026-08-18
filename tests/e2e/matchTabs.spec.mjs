@@ -90,3 +90,73 @@ test('the sheet fits the reference phone with the tabs added', async ({ page }) 
   await fits('new run tab');
   await expect(page.locator('#match-start')).toBeVisible();
 });
+
+// ── Settings re-skin (2026-08-18, his "frustratingly bad and doesn't look
+// good") ─────────────────────────────────────────────────────────────────
+//
+// The modal was built from native OS widgets inside a heavily themed game.
+// The re-skin restyles the SAME elements rather than replacing them, so what
+// a test can usefully hold is that the native dropdown is gone, the chip row
+// really drives the stored preference, and the preview shows real cells.
+
+test('Settings: cell size is a chip row that drives the preference and previews itself', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+
+  await prepareInteractionSpec(page);
+  await page.goto('/?isTest=1');
+  await page.waitForSelector('#boot-overlay', { state: 'detached', timeout: 30_000 });
+  await page.locator('#title-more-btn').click();
+  await page.locator('#sheet-settings-btn').click();
+  await expect(page.locator('#settings-modal')).toBeVisible();
+
+  // The native dropdown is gone, replaced by the app's own chip vocabulary.
+  await expect(page.locator('#cell-size-select')).toHaveCount(0);
+  const chips = page.locator('#cell-size-chips .match-chip');
+  await expect(chips).toHaveCount(3);
+  await expect(chips.filter({ hasText: 'Fit to screen' })).toHaveAttribute('aria-pressed', 'true');
+
+  // The preview shows REAL cells, and follows the choice.
+  const swatch = page.locator('#cell-size-preview .cell-size-swatch').first();
+  await chips.filter({ hasText: 'Large' }).click();
+  await expect(chips.filter({ hasText: 'Large' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(swatch).toHaveCSS('width', '40px');
+  await expect(page.locator('#cell-size-preview .cell-size-caption')).toHaveText('40px');
+
+  await chips.filter({ hasText: 'Comfortable' }).click();
+  await expect(swatch).toHaveCSS('width', '32px');
+
+  // And the choice is what the board will actually be held to.
+  const stored = await page.evaluate(() => localStorage.getItem('minesweeper_cell_size_pref'));
+  expect(stored).toBe('comfortable');
+  const token = await page.evaluate(() => getComputedStyle(document.documentElement)
+    .getPropertyValue('--cell-pref-min-size').trim());
+  expect(token).toBe('32px');
+
+  // The toggles are switches now, not raw checkboxes: still inputs (so every
+  // handler and label association is untouched) but with the native
+  // appearance gone.
+  const box = page.locator('#colorblind-toggle');
+  await expect(box).toHaveCSS('appearance', 'none');
+
+  expect(errors, `console errors: ${errors.join(' | ')}`).toHaveLength(0);
+});
+
+test('What\'s New opens on the current version, with the back catalogue collapsed', async ({ page }) => {
+  await prepareInteractionSpec(page);
+  await page.goto('/?isTest=1');
+  await page.waitForSelector('#boot-overlay', { state: 'detached', timeout: 30_000 });
+  await page.locator('#title-more-btn').click();
+  await page.locator('#sheet-whatsnew-btn').click();
+  await expect(page.locator('#whatsnew-modal')).toBeVisible();
+
+  // The newest entry is open; every older one sits behind one disclosure, so
+  // the modal opens on what changed rather than on eight versions of history.
+  const older = page.locator('.whatsnew-older');
+  await expect(older).toHaveCount(1);
+  const hidden = page.locator('.whatsnew-older .whatsnew-entry').first();
+  await expect(hidden).not.toBeVisible();
+  await older.locator('summary').click();
+  await expect(hidden).toBeVisible();
+});

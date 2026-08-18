@@ -2123,16 +2123,63 @@ if (classicObjectsToggle) {
 // the +/- buttons, and the double-tap-to-center gesture. Options and their px
 // live in logic/boardCamera.js (CELL_SIZE_PREFS); the stored key is the
 // preset's own key string, absent reads as 'fit' (today's behavior).
-const cellSizeSelect = $('#cell-size-select');
+const cellSizeChips = $('#cell-size-chips');
 const CELL_SIZE_PREF_KEY = 'minesweeper_cell_size_pref';
+let _cellPref = 'fit';
+
+// The preview shows REAL cells at the size the choice delivers, rather than
+// naming it (his ask, 2026-08-18). "Fit to screen" has no fixed size, so it
+// shows what the board on screen is actually using right now, which is the
+// honest answer to "what will I get".
+function renderCellSizePreview() {
+  const el = $('#cell-size-preview');
+  if (!el) return;
+  // "Fit to screen" has no size of its own, so it can only be shown against a
+  // board that exists. With one in play the preview reads the live pitch and
+  // says so; with none, --cell-size is sitting at its floor and quoting it
+  // would promise 18px cells that no board would ever get.
+  const playing = !!(state.board && state.board.length && state.cols);
+  const live = parseFloat(getComputedStyle(document.documentElement)
+    .getPropertyValue('--cell-size')) || 30;
+  const chosen = prefMinPx(_cellPref);
+  const px = chosen || (playing ? live : 30);
+  const caption = chosen
+    ? `${Math.round(px)}px`
+    : (playing ? `${Math.round(live)}px on this board` : 'sized to each board');
+  el.innerHTML = '';
+  for (let i = 0; i < 4; i++) {
+    const c = document.createElement('div');
+    c.className = i === 1 ? 'cell-size-swatch revealed' : 'cell-size-swatch';
+    c.style.width = `${px}px`;
+    c.style.height = `${px}px`;
+    c.style.fontSize = `${Math.round(px * 0.5)}px`;
+    if (i === 1) c.textContent = '1';
+    el.appendChild(c);
+  }
+  const cap = document.createElement('span');
+  cap.className = 'cell-size-caption';
+  cap.textContent = caption;
+  el.appendChild(cap);
+}
+
+function renderCellSizeChips() {
+  if (!cellSizeChips) return;
+  cellSizeChips.innerHTML = CELL_SIZE_PREFS.map((p) => `<button type="button"`
+    + ` class="match-chip${p.key === _cellPref ? ' active' : ''}" data-key="${p.key}"`
+    + ` aria-pressed="${p.key === _cellPref ? 'true' : 'false'}" title="${p.label}">`
+    + `<span class="match-chip-label">${p.label}</span></button>`).join('');
+  renderCellSizePreview();
+}
+
 function applyCellSizePref(key) {
   const px = prefMinPx(key);
+  _cellPref = px > 0 ? key : 'fit';
   if (px > 0) {
     document.documentElement.style.setProperty('--cell-pref-min-size', px + 'px');
   } else {
     document.documentElement.style.removeProperty('--cell-pref-min-size');
   }
-  safeSet(CELL_SIZE_PREF_KEY, px > 0 ? key : 'fit');
+  safeSet(CELL_SIZE_PREF_KEY, _cellPref);
   // Re-fit a live board immediately: the same sequence the resize handler
   // runs, because a preference change is a geometry change.
   if (state.board && state.cols) {
@@ -2145,16 +2192,19 @@ function applyCellSizePref(key) {
     renderWormOverlays();
     updateZoom();
   }
+  renderCellSizeChips();
 }
-if (cellSizeSelect) {
-  cellSizeSelect.innerHTML = CELL_SIZE_PREFS
-    .map((p) => `<option value="${p.key}">${p.label}</option>`).join('');
+
+if (cellSizeChips) {
   const savedPref = safeGet(CELL_SIZE_PREF_KEY);
-  const prefKey = CELL_SIZE_PREFS.some((p) => p.key === savedPref) ? savedPref : 'fit';
-  cellSizeSelect.value = prefKey;
-  applyCellSizePref(prefKey);
-  cellSizeSelect.addEventListener('change', () => applyCellSizePref(cellSizeSelect.value));
+  _cellPref = CELL_SIZE_PREFS.some((p) => p.key === savedPref) ? savedPref : 'fit';
+  applyCellSizePref(_cellPref);
+  cellSizeChips.addEventListener('click', (e) => {
+    const btn = e.target.closest('.match-chip');
+    if (btn && btn.dataset.key) applyCellSizePref(btn.dataset.key);
+  });
 }
+
 
 // ── Init ───────────────────────────────────────────────
 

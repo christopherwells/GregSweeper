@@ -7541,19 +7541,147 @@ button.weekly-archive-row:focus-visible {
 }
 
 /* Settings toggle label */
+/* SETTINGS CONTROLS (2026-08-18 re-skin, his "frustratingly bad and doesn't
+   look good"). The modal was built from native OS widgets, five raw
+   checkboxes, two dropdowns and a slider, inside a game where every other
+   surface uses the theme-proof chip vocabulary. These rules restyle the SAME
+   elements rather than replacing them, so every existing handler, label
+   association and keyboard path keeps working.
+
+   The theme rules the app already lives by apply here too: the ON state is an
+   accent FILL on the knob and an accent BORDER on the track, never white text
+   on an accent (which measures 1.30:1 on chalkboard), and nothing uses
+   backdrop-filter. */
 .toggle-label {
   display: flex;
+  /* row-reverse, because the input comes FIRST in the DOM (the label wraps
+     it) while the reading order wants the name on the left and its state on
+     the right. Reversing here keeps the markup and the label association
+     exactly as they were. */
+  flex-direction: row-reverse;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 40px;
+  padding: 2px 0;
   font-size: 14px;
   color: var(--color-text, #eee);
   cursor: pointer;
 }
+/* The switch: a track the label pushes to the right, so a column of settings
+   reads as a column of states rather than a column of boxes. */
 .toggle-label input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  position: relative;
+  width: 46px;
+  height: 28px;
+  margin: 0;
+  border-radius: 999px;
+  border: 2px solid var(--color-border, #333);
+  background: var(--color-cell-hidden, #2a2a3e);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.toggle-label input[type="checkbox"]::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 3px;
   width: 18px;
   height: 18px;
-  accent-color: var(--color-accent, #e94560);
+  border-radius: 50%;
+  transform: translateY(-50%);
+  background: var(--color-text-secondary, #9aa);
+  transition: left 0.15s ease, background 0.15s ease;
 }
+.toggle-label input[type="checkbox"]:checked {
+  border-color: var(--color-accent, #e94560);
+  background: var(--color-cell-revealed, #1a1a2e);
+}
+.toggle-label input[type="checkbox"]:checked::after {
+  left: 21px;
+  background: var(--color-accent, #e94560);
+}
+.toggle-label input[type="checkbox"]:focus-visible {
+  outline: 3px solid var(--color-accent, #e94560);
+  outline-offset: 2px;
+}
+.toggle-label input[type="checkbox"]:disabled { opacity: 0.45; cursor: default; }
+
+/* A settings chip row: the match sheet's idiom, reused so a choice looks the
+   same wherever the game asks for one. */
+.setting-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+/* A sub-row whose control needs its own line (a chip row, a preview strip)
+   rather than sitting beside its label. */
+/* The 28px indent the inline sub-row carries exists to hang it under the
+   checkbox it qualifies. A block sub-row is a setting in its own right, so
+   it lines up with everything else in the group. */
+.setting-subrow-block { display: block; margin-left: 0; }
+.setting-subrow-block > label { display: block; margin-bottom: 6px; color: var(--color-text, #eee); }
+
+/* What's New: the current version reads on open, the back catalogue is one
+   tap away rather than eight screens of scroll. */
+.whatsnew-older { margin-top: 6px; }
+.whatsnew-older > summary {
+  cursor: pointer;
+  padding: 8px 0;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+.whatsnew-older > summary:focus-visible { outline: 3px solid var(--color-accent, #e94560); outline-offset: 2px; }
+.setting-chips .match-chip { padding: 6px 10px; min-height: 40px; border-radius: 12px; }
+
+/* The cell-size preview: real cells at the size the choice delivers, so the
+   setting shows its own answer instead of naming it (his ask). */
+.cell-size-preview {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--grid-gap, 2px);
+  margin-top: 8px;
+  min-height: 44px;
+}
+.cell-size-preview .cell-size-swatch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-cell-hidden, #2a2a3e);
+  border-radius: var(--cell-shape-radius, 4px);
+  border: 1px solid var(--color-cell-gap, transparent);
+  font-weight: 700;
+  color: var(--color-num-1, #6cf);
+}
+.cell-size-preview .cell-size-swatch.revealed {
+  background: var(--color-cell-revealed, #1a1a2e);
+}
+.cell-size-preview .cell-size-caption {
+  margin-left: 10px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  align-self: center;
+}
+
+/* The native dropdown and slider that stay native (24 hours will not fit a
+   chip row, and a volume is a continuum), themed so they stop looking like
+   somebody else's widgets. */
+.reminder-hour-select {
+  background: var(--color-cell-hidden, #2a2a3e);
+  color: var(--color-text, #eee);
+  border: 2px solid var(--color-border, #333);
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-family: var(--font-family, inherit);
+  font-size: 13px;
+  min-height: 40px;
+}
+.reminder-hour-select:focus-visible {
+  outline: 3px solid var(--color-accent, #e94560);
+  outline-offset: 2px;
+}
+.volume-label { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; font-size: 14px; }
+.volume-slider { flex: 1 1 auto; max-width: 190px; accent-color: var(--color-accent, #e94560); height: 28px; }
 
 /* Modal headers — unified */
 .modal-header h2 {
