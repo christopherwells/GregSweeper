@@ -102,6 +102,39 @@ export function fitLegalFrontier(shape) {
   return frontier;
 }
 
+/**
+ * EVERY fit-legal (M, N) for a shape, biggest first, not merely the
+ * Pareto-maximal ones.
+ *
+ * fitLegalFrontier answers "what bounds the region", which is a different
+ * question and usually has ONE answer per shape (rect's is 17x11 alone). The
+ * lane's anchor search needs the other one: a ladder of real in-support
+ * geometries to fall back down when the largest will not certify at a given
+ * density. Measured 2026-08-18, deltoidal certified 0 of 2 at its 90-cell
+ * ceiling at ~21% mines, and with only the frontier to consult there was
+ * nowhere to go, so every dense deltoidal cell stayed empty.
+ *
+ * @param {string} shape
+ * @returns {Array<{M: number, N: number, cells: number}>}
+ */
+const _legalDims = new Map();
+export function fitLegalDims(shape) {
+  const hit = _legalDims.get(shape);
+  if (hit) return hit;
+  const out = [];
+  for (let M = 1; M <= LEGAL_SCAN; M++) {
+    for (let N = 1; N <= LEGAL_SCAN; N++) {
+      if (_cellsOf(shape, M, N) > CELL_SCAN_CAP) break;
+      if (!_fitsPhone(shape, M, N)) continue;
+      const cells = _cellsOf(shape, M, N);
+      if (cells > 0) out.push({ M, N, cells });
+    }
+  }
+  out.sort((a, b) => b.cells - a.cells);
+  _legalDims.set(shape, out);
+  return out;
+}
+
 function _cellsOf(shape, M, N) {
   if (shape === 'rect') return M * N;
   const t = _tilingOf(shape, M, N);
