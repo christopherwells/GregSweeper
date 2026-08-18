@@ -114,6 +114,12 @@ export function certifyStoredBoard(pick, where) {
     check,
     features: pick.features || null,
     par: pick.par || 0,
+    // Carried, not dropped: past a shape's fit ceiling the stored par is an
+    // ANCHORED number and re-pricing it through predictPar here produces the
+    // extrapolation the lane exists to avoid (a 178-minute par on an
+    // 11-minute honeycomb board, his report 2026-08-18). The consumer needs
+    // to know which kind of price it is holding.
+    parProvisional: pick.parProvisional === true,
     seed: pick.seed,
     spec: pick.spec || null,
   };

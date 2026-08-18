@@ -7,6 +7,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { matchStandings, matchFinishedCount, matchFitRows, columnLeader, MATCH_FIT_MIN_TIME } from '../src/logic/matchStandings.js';
 import { matchRowKey } from '../src/logic/matchCodes.js';
 
@@ -290,4 +291,33 @@ test('REGRESSION #372: a board with strikes but no events files NO fit row', () 
   const kept = out.rows.find((r) => r.seed === 's-kept');
   assert.equal(kept.bombHits, 2);
   assert.equal(kept.bombHitEvents.length, 1);
+});
+
+// ── The provisional par must survive the deal (his report, 2026-08-18) ───
+//
+// He played an oversized honeycomb board and the end card showed a par of
+// 10704s, 178 minutes, against his 11. No stored board is priced anywhere
+// near that (the highest anywhere is 1789s), because the client RE-PRICED the
+// stored features through predictPar at deal time. That re-price is right for
+// a board the model has data at and exactly wrong past a shape's fit ceiling,
+// which is the whole reason the lane stores an anchored par instead. The flag
+// has to reach the consumer for the consumer to respect it.
+
+test('REGRESSION: certifyStoredBoard carries parProvisional to the deal', async () => {
+  const src = readFileSync(new URL('../src/game/climbDeal.js', import.meta.url), 'utf8');
+  assert.ok(/parProvisional:\s*pick\.parProvisional === true/.test(src),
+    'the certifier must carry the flag, or the consumer cannot tell an anchored par from a measured one');
+  // And the consumer must actually branch on it.
+  const actions = readFileSync(new URL('../src/game/gameActions.js', import.meta.url), 'utf8');
+  assert.ok(/res\.parProvisional !== true/.test(actions),
+    'the match re-price must skip a provisionally priced board');
+});
+
+test('REGRESSION: the match node whitelists parProvisional, so a guest sees the host price', () => {
+  const rules = JSON.parse(readFileSync(new URL('../firebase-rules.json', import.meta.url), 'utf8'));
+  const board = rules.rules.matches.$matchId.boards.$idx;
+  assert.equal(board.$other['.validate'], false, 'the board whitelist must stay closed');
+  const allowed = Object.keys(board).filter((k) => !k.startsWith('.') && k !== '$other');
+  assert.ok(allowed.includes('parProvisional'),
+    'the node carries parProvisional but the rules would refuse it, dropping the WHOLE match write');
 });
