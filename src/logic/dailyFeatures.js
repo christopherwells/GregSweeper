@@ -52,7 +52,7 @@ export const CLUE_SHARE_KEYS = ['clueShare2', 'clueShare3', 'clueShare4', 'clueS
 // deltoidal kite nine, so a 9 or a 10 was dropped from the numerator AND the
 // denominator and all four shares were computed over a smaller board than the
 // one that exists. Nothing would have thrown, the shares would still have summed
-// to at most ten, and the wrong number would have landed in a write-once
+// to at most ten, and we would have written the wrong number into a write-once
 // dailyMeta row (the zeroClusterCount precedent). Bucketing has no ceiling to
 // get wrong, so the next lattice cannot reintroduce one.
 export function clueShares(board, rows, cols) {
@@ -417,6 +417,16 @@ export function computeDailyFeatures(state, solverResult, opts = {}) {
 const COEF_TERMS = [
   // Size / density, the baseline block.
   { coef: 'secPerCell',        value: f => f.cellCount || 0,                                       displayGroup: 'baseline', baseline: true },
+  // The SIZE ELASTICITY (his M1 ruling, 2026-08-18): log(cells) beside the
+  // linear term. The pair jointly describes the concave size curve the data
+  // demand (gamma 0.93 [0.54, 1.33]; the replace-form alone found nothing,
+  // gamma 0.15, so BOTH terms stay; under M1 the linear coefficient is
+  // NEGATIVE, which the R side routes through the signed dev block). DERIVED
+  // at predict time from the stored cellCount, so no stored feature vector
+  // changes, no FEATURES_EPOCH move, and every historical board prices under
+  // the new form the night the refit emits the coefficient; until then the
+  // shipped 0 keeps predictPar byte-identical (the wormLoad landing pattern).
+  { coef: 'secPerLogCell',     value: f => Math.log(Math.max(1, f.cellCount || 1)),               displayGroup: 'baseline', baseline: true },
   { coef: 'secPerMineFlag',    value: f => f.totalMines || 0,                                       displayGroup: 'baseline', baseline: true },
   // Reasoning load, two earned tiers.
   { coef: 'secPerPatternMove', value: f => (f.canonicalSubsetMoves || 0) + (f.genericSubsetMoves || 0), displayGroup: 'pattern moves' },

@@ -1,0 +1,403 @@
+---
+title: "Does par need a size term? The log(cells) question"
+author: "Christopher D. Wells"
+date: last-modified
+format:
+  html:
+    toc: true
+    embed-resources: true
+execute:
+  warning: false
+  message: false
+---
+
+## The question
+
+The par model prices a 187-cell sparse plain Classic at about 80 seconds,
+which is the quick band, and a human who has played one knows that number is
+wrong. The long honeycomb from the marathon arc made the same point from the
+other side: the played time blew the model's par out of the water. The
+diagnosis has been on file for a while: board size is MEDIATED through the
+move counts (a bigger board has more pattern moves, and those carry the
+time), so the fit leaves the direct `cellCount` coefficient near zero and the model is
+blind to the one cost that scales with area rather than with decisions,
+the travel and scanning time between moves. Extrapolation past the fitted
+range is then absurd in both directions (a 600-cell hex priced 17 s, a
+325-cell cairo priced 4.9 hours), which is why the marathon lane ships
+provisional anchor-derived pars at all.
+
+The candidate fix needs no new data: add `log(cellCount)` to the log-scale
+formula, so par carries an elasticity in board size. On the log scale the
+current model is
+
+$$\log T = \alpha + \beta_c \cdot \text{cells} + \sum_j \beta_j x_j$$
+
+and the proposal is
+
+$$\log T = \alpha + \gamma \log(\text{cells}) + \beta_c \cdot \text{cells} + \sum_j \beta_j x_j$$
+
+with $\gamma$ free. $\gamma = 0$ reproduces the current form; $\gamma = 1$
+means par scales proportionally with cells at fixed per-cell difficulty. The
+decision this document feeds: whether $\gamma$ earns a place in `PAR_MODEL`,
+which re-prices every stored artifact the night it ships.
+
+```{r setup}
+# INTENT: mirror the nightly refit's frame exactly enough that a conclusion
+# here transfers to the pipeline. The filters below restate
+# scripts/refit-par-model.R's rules; the cross-checks at the end of the
+# data section are what make the mirror honest rather than hopeful.
+library(jsonlite)
+library(dplyr)
+library(purrr)
+library(tidyr)
+library(brms)
+library(loo)
+
+DB <- "https://gregsweeper-66d02-default-rtdb.firebaseio.com"
+
+# The refit's own constants (refit-par-model.R). If these drift there, this
+# document must follow.
+MIN_PLAYS_FOR_FIT_INCLUSION <- 5
+ARCHIVE_FIT_THRESHOLD <- 20
+MATCH_FIT_THRESHOLD   <- 20
+LEGACY_BOMB_RATE      <- 10
+PURE_TIME_FLOOR       <- 5
+```
+
+```{r pull}
+#| cache: true
+# ASSUMES: daily/ and dailyMeta/ are world-readable (they are, by design).
+daily_raw <- fromJSON(paste0(DB, "/daily.json"), simplifyVector = FALSE)
+meta_raw  <- fromJSON(paste0(DB, "/dailyMeta.json"), simplifyVector = FALSE)
+length(daily_raw); length(meta_raw)
+```
+
+```{r frame}
+# One row per score entry, joined to its date's stored feature vector.
+# Mirrors refit-par-model.R's frame: the bomb algebra removes ALL bomb cost
+# from the response (ramped base where events exist, the legacy rate where a
+# row predates them), probe rows drop, hint rows drop (the Lens survivor
+# filter), and weekly speedrun days never enter (only the _weekly_first key
+# family reaches daily/).
+num_or <- function(x, d = 0) if (is.null(x)) d else as.numeric(x)
+
+rows <- imap(daily_raw, function(entries, date_key) {
+  meta <- meta_raw[[date_key]]
+  if (is.null(meta) || is.null(meta$features)) return(NULL)
+  f <- meta$features
+  imap(entries, function(e, push_id) {
+    if (is.null(e$time) || is.null(e$uid)) return(NULL)
+    n_bomb <- num_or(e$bombHits)
+    penalty <- num_or(e$totalBombPenalty)
+    # The pipeline's own bomb algebra (refit-par-model.R ~1047): the base
+    # surcharge is read from the STORED per-hit events, sum(penalty -
+    # infoValue), never a closed form; a legacy row is bombHits > 0 with
+    # totalBombPenalty == 0 and takes the flat legacy rate instead.
+    ev <- e$bombHitEvents %||% list()
+    bomb_base <- if (length(ev) == 0) 0 else
+      sum(map_dbl(ev, ~ num_or(.x$penalty) - num_or(.x$infoValue)))
+    is_legacy <- n_bomb > 0 && penalty == 0
+    clean <- num_or(e$time) - if (penalty > 0) bomb_base else 0
+    pure <- max(clean - if (is_legacy) LEGACY_BOMB_RATE * n_bomb else 0,
+                PURE_TIME_FLOOR)
+    tibble(
+      date = date_key, uid = as.character(e$uid),
+      time = num_or(e$time),
+      pure_time = pure,
+      hints = length(e$hintEvents %||% list()),
+      matchRow = grepl("^match_", date_key),
+      weeklyFirst = grepl("_weekly_first$", date_key),
+      cellCount = num_or(f$cellCount, num_or(f$rows) * num_or(f$cols)),
+      totalMines = num_or(f$totalMines),
+      patternMoves = num_or(f$canonicalSubsetMoves) + num_or(f$genericSubsetMoves),
+      searchMoves = num_or(f$advancedLogicMoves),
+      wallEdgeCount = num_or(f$wallEdgeCount),
+      zeroClusterCount = num_or(f$zeroClusterCount),
+      mysteryCellCount = num_or(f$mysteryCellCount),
+      liarCellCount = num_or(f$liarCellCount),
+      lockedCellCount = num_or(f$lockedCellCount),
+      wormholePairCount = num_or(f$wormholePairCount),
+      mirrorPairCount = num_or(f$mirrorPairCount),
+      sonarCellCount = num_or(f$sonarCellCount),
+      compassCellCount = num_or(f$compassCellCount),
+      wormLoad = num_or(f$wormLoad),
+      tilingType = if (is.null(f$tilingType)) "rect" else as.character(f$tilingType)
+    )
+  }) |> compact() |> bind_rows()
+}) |> compact() |> bind_rows()
+
+df <- rows |>
+  filter(hints == 0) |>
+  # Archive rows are stored under dailyArchive/, a node this document does not
+  # pull, exactly as the pipeline holds them out below its threshold; probe
+  # rows are gated at the CLIENT and never reach daily/, so neither needs a
+  # filter here. Match rows pool only past their threshold.
+  mutate(matchPlay = as.integer(matchRow), archivePlay = 0L)
+n_match <- sum(df$matchRow)
+if (n_match < MATCH_FIT_THRESHOLD) df <- df |> filter(!matchRow)
+
+# The pipeline's pre-fit outlier screen (CSci P0 #7): reject rows with
+# time < max(5, 0.3 x predicted par) under the CURRENTLY SHIPPED model,
+# priced through the client's own predictPar via node (the ONE definition,
+# so the two languages cannot disagree about the screen).
+tmp_in <- tempfile(fileext = ".json"); tmp_out <- tempfile(fileext = ".json")
+df |> select(cellCount, totalMines, patternMoves, searchMoves, wallEdgeCount,
+             mysteryCellCount, liarCellCount, lockedCellCount,
+             wormholePairCount, mirrorPairCount, sonarCellCount,
+             compassCellCount, zeroClusterCount, wormLoad, tilingType) |>
+  toJSON(auto_unbox = TRUE) |> writeLines(tmp_in)
+system2("node", c("predict-par-bridge.mjs", tmp_in, tmp_out))
+pred <- fromJSON(tmp_out)
+stopifnot(length(pred) == nrow(df))
+pre_n <- nrow(df)
+df <- df |> mutate(predicted = pred) |> filter(time >= pmax(5, 0.3 * predicted))
+cat("outlier screen dropped", pre_n - nrow(df), "row(s)", fill = TRUE)
+
+n_scores_here <- nrow(df)
+eligible <- df |> count(uid) |> filter(n >= MIN_PLAYS_FOR_FIT_INCLUSION) |> pull(uid)
+df_fit <- df |> filter(uid %in% eligible) |>
+  mutate(logCells = log(cellCount))
+
+c(pre_eligibility = n_scores_here, fit_rows = nrow(df_fit), eligible = length(eligible))
+```
+
+```{r crosscheck}
+# CHECK: the mirror is honest. The latest modelHistory row records the fit's
+# own n; this frame must land within a handful of rows of it (same-day play
+# after the refit's pull explains a small positive gap, nothing else does).
+hist_raw <- fromJSON(
+  file.path("..", "src", "logic", "modelHistory.json"), simplifyVector = FALSE)
+latest <- hist_raw[[length(hist_raw)]]
+cat("modelHistory n_scores:", latest$n_scores, " | this frame:", n_scores_here, fill = TRUE)
+stopifnot(!is.null(latest$n_scores))
+# One-sided by construction: daily/ is append-only, so this frame may
+# EXCEED the refit frame by whatever landed since its pull (a finished
+# Challenge match posts its whole batch at once), but may never be
+# under it, which would mean a filter here diverges from the pipeline.
+gap <- n_scores_here - as.numeric(latest$n_scores)
+stopifnot(gap >= 0, gap <= 25)
+```
+
+## The two fits
+
+Both are the pipeline's own flat path: `log(pure_time)` on the base
+predictors plus the shape indicators, a `(1|uid)` random intercept, and
+weakly informative priors. The shipped fit's non-linear split and its lb = 0
+blanket exist to bound board-feature coefficients; the size question is
+isolated here on the unbounded path deliberately, because $\gamma$'s sign is
+the question and a bound would beg it. The shape indicators enter as plain
+columns so lattice cell counts cannot masquerade as a size effect: lattices
+are the small-cell-count boards, and without shape terms $\gamma$ would soak
+their intercept differences.
+
+```{r fits}
+#| cache: true
+shape_cols <- df_fit |>
+  mutate(one = 1L) |>
+  pivot_wider(names_from = tilingType, values_from = one,
+              values_fill = 0L, names_prefix = "shape_") |>
+  select(starts_with("shape_"), -any_of("shape_rect"))
+df_fit2 <- bind_cols(df_fit, shape_cols)
+
+base_terms <- c(
+  "cellCount", "totalMines", "patternMoves", "searchMoves",
+  "wallEdgeCount", "mysteryCellCount", "liarCellCount", "lockedCellCount",
+  "wormholePairCount", "mirrorPairCount", "sonarCellCount",
+  "compassCellCount", "zeroClusterCount"
+)
+if (any(df_fit2$wormLoad > 0)) base_terms <- c(base_terms, "wormLoad")
+if (length(unique(df_fit2$archivePlay)) > 1) base_terms <- c(base_terms, "archivePlay")
+if (length(unique(df_fit2$matchPlay)) > 1) base_terms <- c(base_terms, "matchPlay")
+base_terms <- c(base_terms, names(shape_cols))
+
+f0 <- as.formula(paste("log(pure_time) ~", paste(base_terms, collapse = " + "), "+ (1|uid)"))
+f1 <- update(f0, . ~ . + logCells)
+
+m0 <- brm(f0, data = df_fit2, family = gaussian(),
+          chains = 4, iter = 2000, cores = 4, seed = 20260818,
+          control = list(adapt_delta = 0.95), refresh = 0)
+m1 <- brm(f1, data = df_fit2, family = gaussian(),
+          chains = 4, iter = 2000, cores = 4, seed = 20260818,
+          control = list(adapt_delta = 0.95), refresh = 0)
+```
+
+```{r gamma}
+# The one estimate this document exists to report.
+post <- as_draws_df(m1)
+gamma <- post$b_logCells
+cat(sprintf("gamma = %.3f [%.3f, %.3f], P(gamma > 0) = %.3f\n",
+            median(gamma), quantile(gamma, .025), quantile(gamma, .975),
+            mean(gamma > 0)))
+```
+
+```{r shifts}
+# What the size term takes from the others: the mediation prediction is that
+# cellCount (already near-inert) stays near zero, the intercept drops toward
+# something interpretable, and the move-count coefficients give up the part
+# of their weight that was standing in for traversal.
+fe0 <- fixef(m0)[, "Estimate"]
+fe1 <- fixef(m1)[, "Estimate"]
+shared <- intersect(names(fe0), names(fe1))
+tibble(term = shared, m0 = fe0[shared], m1 = fe1[shared],
+       shift = fe1[shared] - fe0[shared]) |>
+  arrange(desc(abs(shift))) |> print(n = 20)
+```
+
+```{r residuals-by-size}
+# The felt defect, as a picture: current-model residuals against cell count.
+# If the model is blind to size, the residuals trend positive with cells;
+# M1 should flatten them.
+df_fit2 |>
+  mutate(r0 = residuals(m0)[, "Estimate"],
+         r1 = residuals(m1)[, "Estimate"],
+         bin = cut(cellCount, breaks = c(0, 60, 90, 120, 160, 200, Inf))) |>
+  group_by(bin) |>
+  summarize(n = n(), mean_resid_m0 = mean(r0), mean_resid_m1 = mean(r1)) |>
+  print()
+```
+
+```{r extrapolation}
+# The sanity table: what each form prices at the sizes that matter. The
+# sparse plain Classic at the fit ceiling (187 cells), at the marathon
+# envelope (660), and the two recorded absurdities. Predictions are
+# population-level (no uid), medians on the seconds scale.
+cases <- tibble(
+  label = c("17x11 sparse plain Classic (fit ceiling)",
+            "30x22 sparse plain Classic (marathon envelope)",
+            "hex ~600 cells (the 17s absurdity)",
+            "cairo ~325 cells (the 4.9h absurdity)"),
+  cellCount = c(187, 660, 600, 325),
+  totalMines = c(26, 92, 84, 45),
+  patternMoves = c(30, 105, 95, 52),  # scaled from observed per-cell rates
+  searchMoves = c(2, 7, 6, 4),
+  tiling = c("rect", "rect", "hex", "cairo")
+)
+newd <- cases |>
+  mutate(logCells = log(cellCount),
+         wallEdgeCount = 0, mysteryCellCount = 0, liarCellCount = 0,
+         lockedCellCount = 0, wormholePairCount = 0, mirrorPairCount = 0,
+         sonarCellCount = 0, compassCellCount = 0, zeroClusterCount = 3,
+         wormLoad = 0, archivePlay = 0, matchPlay = 0)
+for (sc in names(shape_cols)) newd[[sc]] <- as.integer(paste0("shape_", newd$tiling) == sc)
+p0 <- exp(fitted(m0, newdata = newd, re_formula = NA)[, "Estimate"])
+p1 <- exp(fitted(m1, newdata = newd, re_formula = NA)[, "Estimate"])
+tibble(case = cases$label, current = round(p0), with_size_term = round(p1)) |> print()
+# CHECK against reality: the marathon lane's anchor pricing puts the 660-cell
+# sparse Classic at roughly 264-283s, and his played long honeycomb ran far
+# past its par. The better form is whichever column reads nearer those facts.
+```
+
+```{r loo}
+#| cache: true
+loo0 <- loo(m0)
+loo1 <- loo(m1)
+loo_compare(loo0, loo1)
+```
+
+## The replace-form alternative (M2)
+
+M1 ADDS the log term beside the linear one; the natural objection is that
+the two are near-collinear (r = 0.95 over the fit range) and one term should
+do. M2 tests that reading by REPLACING `cellCount` with `logCells`. If the
+concavity were an artifact of the ADD-form's collinearity, M2 would find the
+same gamma with a cleaner posterior; instead it found almost nothing
+(gamma 0.15 [-0.01, 0.31]), because forced to carry the whole size axis
+alone, the log term has to compromise between the small-board curvature and
+the large-board level, and lands where it explains neither. Its
+extrapolation stays absurd (the marathon envelope prices ~4.8 days) and its
+LOO trails M1 by 8.5 (se 4.7). The pair is genuine curvature, not a
+collinearity accident, which is why BOTH terms ship.
+
+```{r m2-replace}
+#| cache: true
+f2 <- update(f0, . ~ . - cellCount + logCells)
+m2 <- brm(f2, data = df_fit2, family = gaussian(),
+          chains = 4, iter = 2000, cores = 4, seed = 20260818,
+          control = list(adapt_delta = 0.97), refresh = 0)
+post2 <- as_draws_df(m2)
+cat(sprintf("M2 (replace): gamma = %.3f [%.3f, %.3f]\n",
+            median(post2$b_logCells), quantile(post2$b_logCells, .025),
+            quantile(post2$b_logCells, .975)))
+cat("M2 intercept:", round(fixef(m2)["Intercept", "Estimate"], 3), "\n")
+p2 <- exp(fitted(m2, newdata = newd, re_formula = NA)[, "Estimate"])
+print(tibble(case = cases$label, m0 = round(p0), m1_add = round(p1),
+             m2_replace = round(p2)))
+loo2 <- loo(m2)
+print(loo_compare(loo0, loo1, loo2))
+df_fit2 |>
+  mutate(r2 = residuals(m2)[, "Estimate"],
+         bin = cut(cellCount, breaks = c(0, 60, 90, 120, 160, 200, Inf))) |>
+  group_by(bin) |> summarize(n = n(), mean_resid_m2 = mean(r2)) |> print()
+```
+
+## What M1 does to the handicaps
+
+His question after the M1 call: "How does that affect people's handicaps?"
+A handicap is the play-weighted-recentered random intercept, so the global
+intercept collapse cancels and only the RE-PARTITION across players moves k.
+Measured: the established players move within a percent (the-anemone-guy
+-0.2%, Kate -0.1%, Sebas +0.6%, MJP -1.3%); Hungry Time, whose 11 rows lean
+on mid-size boards the old form mispriced, moves +4.5% (k 1.38 to 1.44,
+rating -22.5 to -26.2). Nobody's rating changes sign or tier.
+
+```{r handicap-shift}
+#| cache: true
+names_raw <- fromJSON(paste0(DB, "/playerNames.json"), simplifyVector = FALSE)
+name_of <- function(u) {
+  n <- names_raw[[u]]$name
+  if (is.null(n)) paste0(substr(u, 1, 6), "...") else n
+}
+k_table <- function(fit, df) {
+  re <- ranef(fit)$uid[, "Estimate", "Intercept"]
+  w <- df |> count(uid) |> filter(uid %in% names(re))
+  w <- setNames(w$n, w$uid)[names(re)]
+  centered <- re - weighted.mean(re, w)
+  pmin(pmax(exp(centered), 0.1), 10)
+}
+k0 <- k_table(m0, df_fit2)
+k1 <- k_table(m1, df_fit2)
+tibble(
+  player = map_chr(names(k0), name_of),
+  rows = as.integer(table(df_fit2$uid)[names(k0)]),
+  k_current = round(k0, 3),
+  k_m1 = round(k1[names(k0)], 3),
+  k_shift_pct = round(100 * (k1[names(k0)] / k0 - 1), 1),
+  rating_current = round((1 - k0) * 60, 1),
+  rating_m1 = round((1 - k1[names(k0)]) * 60, 1)
+) |> arrange(desc(rows)) |> print()
+```
+
+```{r collinearity}
+# The mediation in one number: log(cells) against the move counts. High
+# correlation is EXPECTED (it is the diagnosis); what matters is whether the
+# posterior still separates them, which the gamma interval above answers.
+df_fit2 |>
+  summarize(cor_pattern = cor(logCells, patternMoves),
+            cor_search = cor(logCells, searchMoves),
+            cor_cells = cor(logCells, cellCount)) |> print()
+```
+
+## Decision sheet
+
+His call, 2026-08-18: "Sounds like the M1 is the way forward." What that
+decision rests on, from the runs above:
+
+- $\gamma$ = 0.93 [0.54, 1.33], separated from the move counts despite the
+  expected collinearity; the intercept dissolves (3.02 to -0.18, 20.5s to
+  0.84s), which is the mediation diagnosis confirmed.
+- The extrapolation table: M1 prices the marathon envelope at ~2 hours where
+  the current form says 5.5 days, and the residual bins flatten. M1's
+  extrapolation is still NOT licensed for pricing (the mines term alone
+  explodes at envelope scale), so the marathon lane's anchor pricing stays.
+- M2 (replace) is refuted above; the handicap re-partition is within a
+  percent for established players.
+
+What shipped (branch `cwells/par-size-term`): `secPerLogCell = "logCells"`
+in `COEF_TO_PREDICTOR`, the frame and `apply_par_model` derive `logCells`
+from the stored `cellCount` (never a stored feature, no `FEATURES_EPOCH`
+move), and BOTH size terms ride the signed dev nlpar (`SIZE_DEV_COLS`,
+prior normal(0, 1)) because M1's linear half is negative and the bounded
+base block would censor it. The JS side derives the same predictor in
+`COEF_TERMS` and ships the key at 0 in every `difficulty.js` block, so
+`predictPar` is byte-identical until the first nightly emits the fitted
+value and re-prices the libraries under the new form.

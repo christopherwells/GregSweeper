@@ -32,11 +32,24 @@ function hash(str) {
   return (h >>> 0).toString(16).padStart(8, '0');
 }
 
-/** Key-sorted so a re-emit that reorders coefficients is not a model change. */
+/**
+ * Key-sorted so a re-emit that reorders coefficients is not a model change,
+ * and ZERO-VALUED coefficients are skipped so a key's mere presence is not
+ * one either. A coefficient at exactly 0 contributes nothing to the linear
+ * predictor, and applyParModel reads a missing key as 0, so models that
+ * differ only by a zero-valued key price every board identically. This is
+ * load-bearing for how we add new coefficients (the wormLoad pattern, then
+ * secPerLogCell): the key ships at 0 in every block, predictively inert,
+ * until a refit emits its value. Without the skip, each such addition would
+ * invalidate every library stamp at the PR while changing no price, and the
+ * remedy would be a stamp-only re-price of three libraries per coefficient.
+ */
 function canonical(model) {
   if (!model || typeof model !== 'object') return String(model);
   if (Array.isArray(model)) return `[${model.map(canonical).join(',')}]`;
-  return `{${Object.keys(model).sort().map((k) => `${k}:${canonical(model[k])}`).join(',')}}`;
+  return `{${Object.keys(model).sort()
+    .filter((k) => model[k] !== 0)
+    .map((k) => `${k}:${canonical(model[k])}`).join(',')}}`;
 }
 
 /**
