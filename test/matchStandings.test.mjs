@@ -255,3 +255,39 @@ test('the review list and the invite card fetch summaries, never whole nodes (so
   assert.doesNotMatch(fb, /rows\.map\(\(r\) => fetchMatch\(/,
     'the list path must never fetch whole nodes again');
 });
+
+// ── Issue #372: a row the fit would misread is refused, not filed ───────
+//
+// The payload writes `totalBombPenalty` only alongside per-hit events, and
+// the R side reads `bombHits > 0 && totalBombPenalty == 0` as the RETIRED
+// +10s/re-fog cohort, charging LEGACY_BOMB_RATE (15s a hit) against a true
+// ramped cost of 3n + 0.75n(n-1). A cross-device resume rebuilds its earlier
+// boards from the match node, which whitelists only {time, penalty, strikes},
+// so those boards arrive with strikes and no events. Filing them poisons the
+// per-shape coefficients on exactly the library boards Challenge exists to
+// price, so they are refused instead.
+
+test('REGRESSION #372: a board with strikes but no events files NO fit row', () => {
+  const entries = [
+    { seed: 's-clean', features: { cellCount: 80 }, spec: { mines: 12 } },
+    { seed: 's-lost', features: { cellCount: 80 }, spec: { mines: 12 } },
+    { seed: 's-kept', features: { cellCount: 80 }, spec: { mines: 12 } },
+  ];
+  const results = [
+    // Clean board, no strikes: needs no events and files normally.
+    { time: 44, strikes: 0, bombHitEvents: [] },
+    // Rebuilt from the node: strikes survived, the events did not.
+    { time: 70, strikes: 3 },
+    // Played on this device: strikes AND events.
+    { time: 66, strikes: 2, bombHitEvents: [{ t: 3, row: 1, col: 1, penalty: 3 }] },
+  ];
+  const out = matchFitRows(entries, results);
+  const seeds = out.rows.map((r) => r.seed);
+  assert.deepEqual(seeds, ['s-clean', 's-kept'],
+    'the event-less strike row must be refused, the other two filed');
+  assert.equal(out.eventless, 1, 'and the refusal is COUNTED, never silent');
+  // The kept row still carries what it had.
+  const kept = out.rows.find((r) => r.seed === 's-kept');
+  assert.equal(kept.bombHits, 2);
+  assert.equal(kept.bombHitEvents.length, 1);
+});

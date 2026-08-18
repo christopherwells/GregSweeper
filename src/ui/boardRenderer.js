@@ -1009,11 +1009,19 @@ export function cameraMinZoom() {
 }
 
 export function updateZoom() {
+  // THE FLAG READS THE OVERFLOW, NEVER THE CONTROLS PREDICATE (issue #373).
+  // needsZoom() answers "should the camera controls show", and it carries a
+  // deliberate legacy clause that fires on a Challenge board's STORAGE
+  // CONTAINER dimensions (rows > 13) so squeezed-but-fitting boards keep
+  // their buttons. That clause is about boards that FIT, and on a lattice
+  // rows/cols are an arbitrary factorization of the cell count rather than
+  // the shape on screen, so reading it here made `scrolled` claim traversal
+  // on a measured 17% of dealable match boards, systematically by shape.
+  // The overflow measurement is the sentence winSubmissionPlan documents.
+  // Sticky for the board's life: a player who had to travel it once paid
+  // that cost, and newGame resets it with everything else.
+  if (_boardOverflowsWrapper()) state.boardScrolled = true;
   if (needsZoom()) {
-    // One flag, set at the one place that knows: this board is being played
-    // with the camera. Sticky for the board's life (a player who scrolls once
-    // has paid the traversal cost), reset by newGame with everything else.
-    state.boardScrolled = true;
     zoomControls.classList.remove('hidden');
     boardScrollWrapper.classList.add('zoomed');
     const scale = state.zoomLevel / 100;

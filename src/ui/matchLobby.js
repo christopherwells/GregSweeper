@@ -21,7 +21,7 @@ import { showToast } from './toastManager.js';
 import { state } from '../state/gameState.js';
 import { launchMatch } from '../game/modeManager.js';
 import { dealMatchEntries } from '../game/matchDeal.js';
-import { loadStats } from '../storage/statsStorage.js';
+import { loadStats, loadGameState } from '../storage/statsStorage.js';
 import { getUid } from '../firebase/firebaseProgress.js';
 import { getHandicapRatioMap } from '../logic/handicaps.js';
 import { matchUnlocks, unmetMatchRules, fmtClock, needsTenths, matchBoardCountOf } from '../logic/matchRules.js';
@@ -418,7 +418,22 @@ async function _acceptJoin() {
   // and overwrote the time already in the node (issue #317). The node's own
   // results are the truth here rather than the local save, because the review
   // list exists precisely to reach a match the save slot is not holding.
-  const resume = matchResumePoint(found.match, getUid());
+  // The node says WHICH boards are done; the local save, when it is holding
+  // THIS match, says what happened on them (issue #372). Handing it in keeps
+  // par, bomb events, worm events and scrolled on the pre-resume boards
+  // instead of filing them as event-less rows the refit reads as the retired
+  // +10s cohort. The id check is what stops a save for a DIFFERENT match
+  // donating its detail: the review list exists precisely because the slot
+  // often holds another run.
+  let localResults = null;
+  try {
+    const saved = loadGameState('match');
+    if (saved && saved.match && saved.match.id === found.matchId
+      && Array.isArray(saved.match.results)) {
+      localResults = saved.match.results;
+    }
+  } catch { localResults = null; }
+  const resume = matchResumePoint(found.match, getUid(), localResults);
   launchMatch(null, null, {
     id: found.matchId,
     code: found.code,

@@ -617,3 +617,60 @@ test('a fully played run reports current past the last board', () => {
     results: [{ time: 1 }, { time: 2 }, { time: 3 }] } });
   assert.equal(matchResumePoint(n, 'me').current, 3);
 });
+
+// ── Issue #372: the node knows WHICH, the save knows WHAT ───────────────
+//
+// Re-entering an unfinished shared run from Your runs rebuilds the results
+// from the match NODE, which whitelists exactly {time, penalty, strikes} and
+// closes with $other: false. Everything the par fit needs beyond that (par,
+// bombHitEvents, wormEvents, scrolled) lives only in the local result object,
+// and the rebuild used to discard it. A row then reaching the fit with
+// bombHits > 0 and no events is, on the R side, the exact signature of the
+// retired +10s/re-fog cohort, so it is charged LEGACY_BOMB_RATE (15s a hit)
+// against a true ramped cost of 3n + 0.75n(n-1).
+
+test('REGRESSION #372: a resume keeps the local detail for boards this device played', () => {
+  const node = {
+    boards: [{}, {}, {}],
+    players: {
+      u1: {
+        results: [
+          { time: 40.5, penalty: 0, strikes: 0 },
+          { time: 70.2, penalty: 6.75, strikes: 3 },
+        ],
+      },
+    },
+  };
+  const local = [
+    { time: 40.5, par: 55, bombHitEvents: [], wormEvents: [], scrolled: false, seed: 's0' },
+    { time: 70.2, par: 88, bombHitEvents: [{ t: 5, row: 1, col: 2, penalty: 3 }], wormEvents: [], scrolled: true, seed: 's1' },
+  ];
+  const { results, current } = matchResumePoint(node, 'u1', local);
+  assert.equal(current, 2, 'the node still decides where the run resumes');
+  // The node's three fields stay authoritative...
+  assert.equal(results[1].time, 70.2);
+  assert.equal(results[1].strikes, 3);
+  assert.equal(results[1].penalty, 6.75);
+  // ...and the local detail rides along, which is what stops the misfile.
+  assert.equal(results[1].par, 88);
+  assert.equal(results[1].bombHitEvents.length, 1);
+  assert.equal(results[1].scrolled, true);
+  assert.equal(results[1].seed, 's1');
+  assert.equal(results[0].scrolled, false, 'a measured false survives too');
+});
+
+test('#372: a save for a DIFFERENT run, or a disagreeing time, donates nothing', () => {
+  const node = {
+    boards: [{}, {}],
+    players: { u1: { results: [{ time: 40.5, penalty: 0, strikes: 2 }] } },
+  };
+  // Same index, different board: the time disagrees, so the detail is refused.
+  const wrongRun = [{ time: 99.9, par: 70, bombHitEvents: [{ t: 1 }] }];
+  const r = matchResumePoint(node, 'u1', wrongRun);
+  assert.equal(r.results[0].time, 40.5);
+  assert.equal(r.results[0].par, undefined, 'a mismatched time must not donate its detail');
+  assert.equal(r.results[0].bombHitEvents, undefined);
+  // And no local results at all is the cross-device case: the three fields.
+  const none = matchResumePoint(node, 'u1', null);
+  assert.deepEqual(Object.keys(none.results[0]).sort(), ['penalty', 'strikes', 'time']);
+});
