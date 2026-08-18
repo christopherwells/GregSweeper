@@ -1279,7 +1279,7 @@
           <label class="setting-label">Leaderboard Name
             <input type="text" id="player-name-input" maxlength="20" placeholder="Your name" class="player-name-input" autocomplete="off">
           </label>
-          <p class="reset-hint">Used for daily leaderboard submissions. Saves automatically.</p>
+          <p class="reset-hint">Shown on the leaderboards. Saves as you type.</p>
         </div>
         <div class="setting-group">
           <h3>Audio</h3>
@@ -1291,7 +1291,7 @@
             <input type="checkbox" id="colorblind-toggle">
             Colorblind-friendly mode
           </label>
-          <p class="reset-hint">Uses distinct colors and shape markers for numbers.</p>
+          <p class="reset-hint">Distinct colors, plus a shape marker on every number.</p>
         </div>
         <div class="setting-group">
           <h3>Appearance</h3>
@@ -1299,22 +1299,21 @@
             <input type="checkbox" id="classic-objects-toggle">
             Classic mines &amp; flags
           </label>
-          <p class="reset-hint">Use the original bomb and flag on every theme. Numbers, backgrounds, and Greg stay themed.</p>
-          <div class="setting-subrow">
-            <label for="cell-size-select">Cell size</label>
-            <select id="cell-size-select" class="reminder-hour-select"></select>
+          <p class="reset-hint">The original bomb and flag on every theme. Numbers, backgrounds and Greg stay themed.</p>
+          <div class="setting-subrow setting-subrow-block">
+            <label id="cell-size-label">Cell size</label>
+            <div id="cell-size-chips" class="setting-chips" role="group" aria-labelledby="cell-size-label"></div>
+            <div id="cell-size-preview" class="cell-size-preview" aria-hidden="true"></div>
           </div>
-          <p class="reset-hint">Comfortable and Large can put a board past the screen edge; scroll it, pinch, or use the zoom buttons. Double-tap a number you are finished with to center the view there, and double-tap it again to see the whole board.</p>
+          <p class="reset-hint">A bigger cell can put a board past the screen edge. Scroll it, or double-tap a number you have finished with to bring that part of the board to you.</p>
         </div>
         <div class="setting-group">
           <h3>Tutorial</h3>
           <button id="btn-replay-tutorial" class="clear-cache-btn"><img class="ui-icon-label" src="assets/sprites/ui-replay.svg" alt="" draggable="false" onerror="this.replaceWith('▶️')">Replay tutorial</button>
-          <p class="reset-hint">Walk through the basics again.</p>
         </div>
         <div class="setting-group">
           <h3>About</h3>
           <button id="btn-about" class="clear-cache-btn"><img class="ui-icon-label" src="assets/sprites/idle.png" alt="" draggable="false" onerror="this.replaceWith('ℹ️')">About GregSweeper</button>
-          <p class="reset-hint">Version and credits.</p>
         </div>
         </div>
         <div id="settings-panel-alerts" class="settings-panel hidden">
@@ -1447,7 +1446,9 @@
             <li><strong>Challenge a friend</strong>: Build a run of 1 to 10 boards, share a code or invite a friend directly, and race the same boards on your own clocks. Live standings, a clean end-of-run comparison, and rivalry records in Stats.</li>
           </ul>
         </div>
-        <div class="whatsnew-entry">
+        <details class="whatsnew-older">
+          <summary>Earlier versions</summary>
+<div class="whatsnew-entry">
           <h3>v1.10 &middot; August 4, 2026</h3>
           <ul>
             <li><strong>Six new shapes</strong>: About half the dailies now use one of six new shapes: Octagons, Honeycomb, Paving Stones, Petals, 3D Cubes and Kites. Still no guessing, ever. The first time you meet a shape, a card shows you what counts as a neighbor.</li>
@@ -1504,7 +1505,8 @@
             <li><strong>New modifiers</strong>: Mirror pairs swap two cells&rsquo; numbers, and redesigned pressure plates disarm when you clear their safe neighbors.</li>
           </ul>
         </div>
-      </div>
+              </details>
+</div>
     </div>
   </div>
 
