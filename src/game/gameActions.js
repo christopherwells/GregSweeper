@@ -722,7 +722,16 @@ export async function newGame() {
     // difficulty.js can be older or newer than the fetched JSON.
     state.matchFeatures = res.features;
     state.matchPar = res.par || 0;
-    if (res.features) {
+    // A PROVISIONALLY PRICED BOARD KEEPS ITS STORED PAR. The re-price exists
+    // because this client's difficulty.js can be older or newer than the
+    // fetched file, which is right for a board the model has data at. It is
+    // exactly wrong for an oversized one: past a shape's fit ceiling
+    // predictPar extrapolates, and running it here threw away the anchored
+    // number the lane computed and put a 178-MINUTE par on an 11-minute
+    // honeycomb board (his report, 2026-08-18). The stored par is already
+    // re-anchored under each night's model by the repricer, so it is the
+    // fresher number as well as the sane one.
+    if (res.features && res.parProvisional !== true) {
       try { state.matchPar = predictPar(res.features); } catch { /* stored par stands */ }
     }
 

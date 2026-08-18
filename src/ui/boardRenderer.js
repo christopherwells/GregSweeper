@@ -189,6 +189,14 @@ export function renderBoard() {
   // rather than firing forever into a detached node.
   applyThemeEffects(document.documentElement.getAttribute('data-theme') || 'classic');
 
+  // THE OPENING VIEW IS PLACED IN THIS FRAME, not in the updateZoom() that
+  // newGame runs several steps later (his report, 2026-08-18: "you start
+  // zoomed and then zoom out then zoom back in"). Everything between the two
+  // is layout and paint work, so the browser had a frame to show the board at
+  // full size before the survey scale landed. Placing it here means the first
+  // painted frame is already the right one.
+  updateZoom();
+
   // The rebuild also destroyed any live sonar/compass region highlight, which
   // must only die by clearGimmickRegion (mid-game rebuilds: resume, theme
   // switch). Re-deriving through showGimmickRegion rather than repainting the
@@ -1094,6 +1102,30 @@ function _placeOpeningView() {
   const { w, h } = _boardLayoutSize();
   const viewW = boardScrollWrapper.clientWidth;
   const viewH = boardScrollWrapper.clientHeight;
+  // A BOARD ALREADY IN PROGRESS IS RESUMED, NOT INTRODUCED. The survey is an
+  // orientation device for a board nobody has seen: it says "this is bigger
+  // than the screen" before the first click. Coming back to a half-solved
+  // board it is just a zoom the player has to undo (his report, 2026-08-18),
+  // so a resume returns at play scale over the last place they were working,
+  // which the click timeline already remembers.
+  if (state.revealedCount > 0) {
+    state.zoomLevel = 100;
+    boardEl.style.transform = 'scale(1)';
+    const last = Array.isArray(state.clickTimeline) && state.clickTimeline.length
+      ? state.clickTimeline[state.clickTimeline.length - 1] : null;
+    const cellEl = last && Number.isInteger(last.r) && Number.isInteger(last.c)
+      ? boardEl.children[last.r * state.cols + last.c] : null;
+    const cx = cellEl ? boardEl.clientLeft + cellEl.offsetLeft + cellEl.offsetWidth / 2 : w / 2;
+    const cy = cellEl ? boardEl.clientTop + cellEl.offsetTop + cellEl.offsetHeight / 2 : h / 2;
+    const back = clampedScroll({
+      cx, cy, scale: 1, boardW: w, boardH: h, viewW, viewH,
+      originX: boardEl.offsetLeft, originY: boardEl.offsetTop,
+    });
+    boardScrollWrapper.scrollLeft = back.left;
+    boardScrollWrapper.scrollTop = back.top;
+    _cameraSurveying = false;
+    return;
+  }
   const fit = cameraFitScale(w, h, viewW, viewH);
   state.zoomLevel = Math.max(1, Math.round(fit * 100));
   const scale = state.zoomLevel / 100;

@@ -720,6 +720,7 @@
             ".validate": "$idx.matches(/^[0-9]$/) && newData.hasChildren(['seed', 'payload'])",
             "seed":     { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80" },
             "par":      { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
+            "parProvisional": { ".validate": "newData.isBoolean()" },
             "features": { ".validate": "newData.hasChildren(['rows', 'cols', 'totalMines'])" },
             "spec":     { ".validate": "newData.hasChildren(['shape', 'cells', 'mines'])" },
             "payload":  { ".validate": "newData.hasChildren(['rows', 'cols', 'totalMines', 'cells'])" },

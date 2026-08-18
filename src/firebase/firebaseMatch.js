@@ -83,6 +83,10 @@ function _storableEntry(entry) {
   return {
     seed: entry.seed,
     par: entry.par || 0,
+    // Whether that par is anchored rather than measured. Without it a guest
+    // re-prices an oversized board through predictPar and sees a different,
+    // absurd number for the same board the host is playing.
+    ...(entry.parProvisional === true ? { parProvisional: true } : {}),
     features: entry.features,
     spec: entry.spec,
     payload: entry.payload,
