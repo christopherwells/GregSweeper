@@ -364,6 +364,54 @@ const endlessCacheFile = (shape) => (shape
   : ENDLESS_CACHE);
 const ENDLESS_INDEX = new URL('endless-index.json', OUT_DIR);
 const endlessPageFile = (page) => new URL(`endless-${String(page).padStart(3, '0')}.json`, OUT_DIR);
+// The SCROLLING lane's page class (his ruling 2026-08-18: "endless can have
+// scrolling boards"). Its own class because the index's `counts` array is a
+// pre-scroll client's whole reach; the lane rides `overCounts`, which such a
+// client never reads (climbLibrary.js documents the doctrine).
+const endlessOverPageFile = (page) => new URL(`endless-over-${String(page).padStart(3, '0')}.json`, OUT_DIR);
+
+function loadEndlessOverPages() {
+  const out = [];
+  for (let k = 0; ; k++) {
+    const page = loadJsonMaybe(endlessOverPageFile(k));
+    if (!page) break;
+    out.push(page);
+  }
+  return out;
+}
+
+/**
+ * The ONE endless-index writer. Both page classes are read from disk and
+ * written together, because the index used to be written inline by the fit
+ * emit and the repricer separately, and a writer that only knows one class
+ * silently drops the other's fields (the three-tables lesson from the pool
+ * repricer, met here before it could bite: the over fields would have
+ * vanished on the first nightly re-bin after the lane landed). `overPages`/
+ * `overCounts`/`overBoards` are emitted only when the lane has boards, so a
+ * lane-less library keeps its exact historical index bytes.
+ */
+function writeEndlessIndex(fp) {
+  const fit = [];
+  for (let k = 0; ; k++) {
+    const page = loadJsonMaybe(endlessPageFile(k));
+    if (!page) break;
+    fit.push(page);
+  }
+  const over = loadEndlessOverPages();
+  const counts = fit.map((p) => p.boards.length);
+  const overCounts = over.map((p) => p.boards.length);
+  const total = counts.reduce((a, b) => a + b, 0);
+  const overTotal = overCounts.reduce((a, b) => a + b, 0);
+  writeFileSync(ENDLESS_INDEX, JSON.stringify({
+    parModel: fp,
+    parFloor: ENDLESS_PAR_FLOOR,
+    boards: total,
+    pages: counts.length,
+    counts,
+    ...(overTotal > 0 ? { overPages: overCounts.length, overCounts, overBoards: overTotal } : {}),
+  }));
+  return { boards: total, overBoards: overTotal };
+}
 
 const ENDLESS_SHAPES = ['rect', ...TILING_TYPES];
 
@@ -570,13 +618,9 @@ function emitEndlessPages(existingPages, keeps, dry) {
       const k = existingPages.length + i;
       writeFileSync(endlessPageFile(k), JSON.stringify({ page: k, parModel: fp, boards }));
     });
-    writeFileSync(ENDLESS_INDEX, JSON.stringify({
-      parModel: fp,
-      parFloor: ENDLESS_PAR_FLOOR,
-      boards: total,
-      pages: counts.length,
-      counts,
-    }));
+    // The ONE index writer, so the scrolling lane's fields survive a fit
+    // append (an inline write here used to know only this page class).
+    writeEndlessIndex(fp);
   }
   return { pages: counts.length, boards: total };
 }
@@ -917,10 +961,190 @@ function runEndlessEmitOnly({ dry, target }) {
   console.log(`${dry ? '[dry-run] would write' : 'wrote'} ${out.pages} pages, ${out.boards} boards`);
 }
 
+/**
+ * THE SCROLLING LANE BUILD (his ruling 2026-08-18: "endless can have
+ * scrolling boards"). Marathon-region dims per shape, the marathon lane's
+ * own pricing discipline (in-support boards on the model verbatim, past
+ * support on a real fit-ceiling anchor with `parProvisional`), and the
+ * endless zone's own admission: the 400s floor, the strict hard bar, and
+ * the marathon admission ceiling. Emits `endless-over-NNN.json` pages,
+ * append-only, and rewrites the index through the one writer.
+ *
+ * The lane exists because M1 compressed big-board prices: rhombille's 400s+
+ * region now starts at 96+ cells, past its fit-legal sizes, so the shape
+ * floor is only reachable through boards that scroll.
+ */
+async function runScrollBuild({ dry, minutes, onlyShape, perShape }) {
+  const { marathonDims, marathonDimsSpread, marathonShapes, inSupportCells, marathonProvisionalPar } =
+    await import('../src/logic/marathonFit.js');
+  const { MARATHON_PAR_CEILING_SECONDS } = await import('../src/logic/matchRules.js');
+  const { fitCeilingSpecs } = await import('./topup-marathon-lane.mjs');
+
+  const fitPages = endlessExistingPages();
+  const overPages = loadEndlessOverPages();
+  const held = new Set([...fitPages, ...overPages].flatMap((p) => p.boards.map((b) => b.seed)));
+  const faceCount = new Map();
+  for (const p of [...fitPages, ...overPages]) {
+    for (const b of p.boards) faceCount.set(b.face, (faceCount.get(b.face) || 0) + 1);
+  }
+
+  const shapes = onlyShape ? [onlyShape] : marathonShapes();
+  // Tiling-safe singles; walls ride wallSegments and stays rect-plus-tilings
+  // the way the marathon lane ships it.
+  const MOD_SETS = [[], ['sonar'], ['mystery'], ['liar'], ['walls']];
+  // Rhombille's constructive floor is 0.23 (sparse no-guess rhombille is
+  // unfindable, 0/12 at 0.211): a 0.20 round there burns a whole visit on
+  // a density the shape cannot certify at.
+  const densitiesFor = (shape) => (shape === 'rhombille' ? [0.24, 0.26, 0.28] : [0.20, 0.24, 0.28]);
+  const deadline = Date.now() + minutes * 60 * 1000;
+  const anchorCache = new Map();
+  const anchorFor = (shape, mods, dens) => {
+    const key = `${shape}|${mods.join('+')}|${dens}`;
+    if (anchorCache.has(key)) return anchorCache.get(key);
+    let out = null;
+    for (const geom of fitCeilingSpecs(shape)) {
+      if (out) break;
+      for (let t = 0; t < 4 && !out; t++) {
+        const spec = {
+          ...geom, mines: Math.max(1, Math.round(geom.cells * dens)),
+          gimmicks: mods.slice(),
+          ...(mods.includes('walls') ? { wallSegments: 4 } : {}),
+        };
+        let r = null;
+        try { r = buildChallenge250Board(spec, `soanchor:${specFace(spec)}:${t}`, {}); } catch { r = null; }
+        if (r && r.check && r.check.solvable && r.par > 0 && r.features) {
+          out = { par: r.par, cells: geom.cells, features: r.features };
+        }
+      }
+    }
+    anchorCache.set(key, out);
+    return out;
+  };
+
+  const keeps = [];
+  const got = new Map(shapes.map((s) => [s, 0]));
+  outer:
+  for (let round = 0; round < 40; round++) {
+    let progressed = false;
+    for (const shape of shapes) {
+      if (Date.now() > deadline) break outer;
+      if ((got.get(shape) || 0) >= perShape) continue;
+      // The dear shapes work a NARROW window, smallest first (the endless
+      // build's per-shape corridor doctrine): rhombille's marathon region
+      // reaches 540 cells at minutes per attempt, while the 400s floor is
+      // already cleared from ~96 cells under M1, and the first scroll run
+      // ground its whole budget on a 168-cell rung. The window reads the
+      // full per-cell-count menu (marathonDims), not the spread sample,
+      // because the spread's ten-way thinning skipped the cheap 96-130
+      // rungs entirely. The cheap shapes may roam the sampled region.
+      const dear = shape === 'rhombille' || shape === 'deltoidal';
+      const dims = dear
+        ? marathonDims(shape).filter((x) => x.cells >= 90 && x.cells <= 150).sort((a, b) => a.cells - b.cells)
+        : marathonDimsSpread(shape, 10);
+      if (!dims.length) continue;
+      const d = dims[(round * 7 + 3) % dims.length];
+      const mods = MOD_SETS[round % MOD_SETS.length];
+      const DENSITIES = densitiesFor(shape);
+      const dens = DENSITIES[(round + shape.length) % DENSITIES.length];
+      const mines = Math.max(5, Math.round(d.cells * dens));
+      const spec = {
+        ...d, mines, gimmicks: mods.slice(),
+        ...(shape === 'rect' ? {} : { constructive: true }),
+        ...(mods.includes('walls') ? { wallSegments: 4 } : {}),
+      };
+      if ((faceCount.get(specFace(spec)) || 0) >= ENDLESS_FACE_CAP) continue;
+      const inSupport = inSupportCells(shape, d.cells);
+      const anchor = inSupport ? null : anchorFor(shape, mods, dens);
+      if (!inSupport && !anchor) continue;
+      const seedBase = `endless-scroll:${specFace(spec)}:${round}`;
+      let kept = null;
+      for (let t = 0; t < 3 && !kept; t++) {
+        let r = null;
+        try { r = buildChallenge250Board({ ...spec }, `${seedBase}:${t}`, {}); } catch { continue; }
+        if (!r || !r.check || !r.check.solvable || r.check.remainingUnknowns !== 0 || !r.features) continue;
+        const hard = hardOf(r.features);
+        if (hard < ENDLESS_MIN_HARD) continue;
+        const par = inSupport
+          ? Math.round(r.par * 10) / 10
+          : marathonProvisionalPar({ cells: d.cells, anchorPar: anchor.par, anchorCells: anchor.cells });
+        if (!(par >= ENDLESS_PAR_FLOOR) || par > MARATHON_PAR_CEILING_SECONDS) continue;
+        const seed = `${seedBase}:${t}`;
+        if (held.has(seed)) continue;
+        let payload;
+        try {
+          payload = serializeBoard({
+            board: r.board, rows: r.rows, cols: r.cols, totalMines: r.totalMines,
+            rngSeed: seed, activeGimmicks: r.activeGimmicks, firstClick: r.firstClick,
+          });
+        } catch { continue; }
+        kept = {
+          par: Math.round(par * 10) / 10,
+          work: r.check.totalClicks - 1,
+          hard,
+          seed,
+          payload,
+          face: specFace(spec),
+          spec: {
+            shape, ...(shape === 'rect' ? { rows: d.rows, cols: d.cols } : { M: d.M, N: d.N }),
+            cells: d.cells, mines, gimmicks: mods.slice(),
+            ...(mods.includes('walls') ? { wallSegments: 4 } : {}),
+          },
+          features: r.features,
+          oversized: true,
+          ...(inSupport ? {} : {
+            parProvisional: true,
+            anchorCells: anchor.cells,
+            anchorFeatures: anchor.features,
+          }),
+        };
+      }
+      if (kept) {
+        held.add(kept.seed);
+        faceCount.set(kept.face, (faceCount.get(kept.face) || 0) + 1);
+        keeps.push(kept);
+        got.set(shape, (got.get(shape) || 0) + 1);
+        progressed = true;
+        console.log(`  + ${shape} ${kept.spec.cells}c [${(kept.spec.gimmicks || []).join('+') || 'plain'}]`
+          + ` par ${kept.par}s hard ${kept.hard}${kept.parProvisional ? ' (anchor-provisional)' : ''}`);
+      }
+    }
+    if (!progressed && Date.now() > deadline) break;
+  }
+
+  if (!keeps.length) {
+    console.log('scroll lane: nothing new kept (targets met, or generation dry this run)');
+    return;
+  }
+  // Round-robin the shapes into pages, the fit emitter's own deal.
+  const byShape = new Map();
+  for (const c of keeps) {
+    if (!byShape.has(c.spec.shape)) byShape.set(c.spec.shape, []);
+    byShape.get(c.spec.shape).push(c);
+  }
+  const queues = [...byShape.values()];
+  const sequence = [];
+  while (queues.some((q) => q.length)) {
+    for (const q of queues) if (q.length) sequence.push(q.shift());
+  }
+  const fp = modelFingerprint();
+  if (!dry) {
+    for (let i = 0; i < sequence.length; i += ENDLESS_PAGE_SIZE) {
+      const k = overPages.length + Math.floor(i / ENDLESS_PAGE_SIZE);
+      writeFileSync(endlessOverPageFile(k),
+        JSON.stringify({ page: k, parModel: fp, boards: sequence.slice(i, i + ENDLESS_PAGE_SIZE) }));
+    }
+    const { overBoards } = writeEndlessIndex(fp);
+    console.log(`scroll lane: +${keeps.length} boards (${[...got].filter(([, n]) => n).map(([s, n]) => `${s} ${n}`).join('  ')}); lane now ${overBoards}`);
+  } else {
+    console.log(`[dry-run] scroll lane would add ${keeps.length}`);
+  }
+}
+
 export { parFloor, parWindowTop, hardFloor, minBoardsFor, legalPatches, GIMMICK_SETS, candidate, hardOf,
   MIN_PAR, MIN_WORK, CANDIDATES_PER_KEEP, OUT_DIR,
   LIB_SHAPE_INTROS, LIB_MOD_INTROS, intakeRules, boardAllowedAtLevel, PAR_FLOOR_SHAPE_RELIEF,
-  ENDLESS_PAGE_SIZE, ENDLESS_FACE_CAP, ENDLESS_INDEX, endlessPageFile,
+  ENDLESS_PAGE_SIZE, ENDLESS_FACE_CAP, ENDLESS_INDEX, endlessPageFile, endlessOverPageFile,
+  loadEndlessOverPages, writeEndlessIndex,
   endlessLanes, endlessDims, endlessCacheSpecs, drawEndlessSpec };
 
 // ── CLI ────────────────────────────────────────────────────────────────
@@ -938,7 +1162,14 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
   })();
 
   if (args.includes('--endless')) {
-    if (args.includes('--emit-only')) {
+    if (args.includes('--scroll')) {
+      await runScrollBuild({
+        dry,
+        minutes: Number(argOf('--minutes', 60)),
+        onlyShape: argOf('--shape'),
+        perShape: Number(argOf('--per-shape', 6)),
+      });
+    } else if (args.includes('--emit-only')) {
       runEndlessEmitOnly({ dry, target: argOf('--target') ? Number(argOf('--target')) : null });
     } else {
       runEndlessBuild({

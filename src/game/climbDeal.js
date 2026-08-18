@@ -32,7 +32,7 @@ import { isBoardSolvable } from '../logic/boardSolver.js';
 import { recalcAllAdjacency, recomputeDisplayedMines } from '../logic/gimmicks.js';
 import {
   levelHasLibrary, levelHasEndlessLibrary, levelFileUrl,
-  endlessIndexUrl, endlessPageUrl, pickFromBin, pickEndlessPage, endlessGlobalIndex,
+  endlessIndexUrl, endlessPageUrl, endlessOverPageUrl, pickFromBin, pickEndlessLane, endlessGlobalIndex,
 } from '../logic/climbLibrary.js';
 import {
   getClimbSeen, setClimbSeen, getEndlessSeen, setEndlessSeen,
@@ -173,35 +173,45 @@ export async function dealClimbBoard(level) {
 export async function dealEndlessBoard(level) {
   const index = await fetchLibraryJson(endlessIndexUrl());
   if (!index || !Array.isArray(index.counts) || index.counts.length === 0) return null;
+  // The scrolling lane (his ruling 2026-08-18): oversized boards ride their
+  // own page class named only by `overCounts`, a field a pre-scroll client
+  // never reads, so the lane is invisible to builds that predate the
+  // camera. Absent or empty, everything below is the fit-only deal, byte
+  // for byte.
+  const overCounts = Array.isArray(index.overCounts) ? index.overCounts : [];
 
   // Deterministic e2e/practice venue: ?level=251&board=I resolves a GLOBAL
-  // board index through the index's counts.
+  // board index through the index's counts, fit pages first, then the
+  // scrolling lane's (so every stored board has a stable venue address).
   const forced = state.climbBoardIndex;
   if (state.isLevelPractice && Number.isInteger(forced)) {
-    const at = endlessGlobalIndex(index.counts, forced);
+    const at = endlessGlobalIndex([...index.counts, ...overCounts], forced);
     if (!at) return null;
-    const page = await fetchLibraryJson(endlessPageUrl(at.page));
+    const over = at.page >= index.counts.length;
+    const pageNo = over ? at.page - index.counts.length : at.page;
+    const page = await fetchLibraryJson(over ? endlessOverPageUrl(pageNo) : endlessPageUrl(pageNo));
     if (!page || !Array.isArray(page.boards)) return null;
-    return certifyStoredBoard(page.boards[at.idx], `endless p${at.page}#${at.idx}`);
+    return certifyStoredBoard(page.boards[at.idx], `endless ${over ? 'o' : 'p'}${pageNo}#${at.idx}`);
   }
 
   let seenMap = getEndlessSeen();
-  const { page: pageNo, cycled } = pickEndlessPage(index.counts, seenMap, Math.random);
+  const { page: pageNo, over, cycled } = pickEndlessLane(index.counts, overCounts, seenMap, Math.random);
   if (pageNo == null) return null;
   if (cycled) seenMap = {};   // his rule: all seen, back to 1
 
-  const page = await fetchLibraryJson(endlessPageUrl(pageNo));
+  const page = await fetchLibraryJson(over ? endlessOverPageUrl(pageNo) : endlessPageUrl(pageNo));
   if (!page || page.page !== pageNo || !Array.isArray(page.boards) || page.boards.length === 0) {
     return null;
   }
 
-  const seenHere = Array.isArray(seenMap[String(pageNo)]) ? seenMap[String(pageNo)] : [];
+  const seenKey = over ? `o${pageNo}` : String(pageNo);
+  const seenHere = Array.isArray(seenMap[seenKey]) ? seenMap[seenKey] : [];
   const { pick, cycled: pageCycled } = pickFromBin(page.boards, seenHere, Math.random);
-  const res = certifyStoredBoard(pick, `endless L${level} p${pageNo}`);
+  const res = certifyStoredBoard(pick, `endless L${level} ${seenKey}`);
   if (!res) return null;
 
   if (!state.isLevelPractice) {
-    seenMap[String(pageNo)] = pageCycled ? [res.seed] : [...seenHere, res.seed];
+    seenMap[seenKey] = pageCycled ? [res.seed] : [...seenHere, res.seed];
     setEndlessSeen(seenMap);
   }
   return res;
