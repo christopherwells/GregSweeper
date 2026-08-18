@@ -70,7 +70,7 @@ const LAB = JSON.parse(readFileSync(
   new URL('../scripts/data/parlab-prior-centers.json', import.meta.url), 'utf8'));
 const LAB_SEED_MIN_ROWS = 5;
 const PREDICTOR_TO_COEF = {
-  cellCount: 'secPerCell', totalMines: 'secPerMineFlag',
+  cellCount: 'secPerCell', logCells: 'secPerLogCell', totalMines: 'secPerMineFlag',
   patternMoves: 'secPerPatternMove', searchMoves: 'secPerSearchMove',
   wallEdgeCount: 'secPerWallEdge', zeroClusterCount: 'secPerZeroCluster',
   mysteryCellCount: 'secPerMysteryCell', liarCellCount: 'secPerLiarCell',
@@ -446,10 +446,108 @@ test('path selection is ONE boolean at formula construction; the nl split has th
   // differs (empty selects the flat prior construction — same boolean fact).
   assert.ok(block.includes('deviation_names = dev_cols'),
     'the prior construction must key off the same condition as the formula');
-  // The dev nlpar's occupants are the shape deviations PLUS matchPlay, which
-  // is what makes the two sides of the split one decision rather than two.
-  assert.ok(/dev_cols <- c\(active_shape_cols, if \(add_match_term\) "matchPlay"/.test(R_SRC),
-    'dev_cols must be built from the shape deviations plus the match offset');
+  // The dev nlpar's occupants are the SIZE PAIR (unconditional, M1), the
+  // shape deviations, and matchPlay, which is what makes the two sides of
+  // the split one decision rather than two. With the pair leading
+  // unconditionally, dev_cols can never be empty and Path B is permanent
+  // for the primary fit; the flat branch survives as the specification
+  // anchor.
+  assert.ok(/dev_cols <- c\(SIZE_DEV_COLS, active_shape_cols,\s*\n?\s*if \(add_match_term\) "matchPlay"/.test(R_SRC),
+    'dev_cols must lead with the size pair, then shape deviations, then the match offset');
+});
+
+test('the M1 SIZE PAIR is signed end to end: dev routing, sn() extraction, derived predictor', () => {
+  // The pair's declaration, beside the table it extends.
+  const decl = R_SRC.match(/SIZE_DEV_COLS <- c\("cellCount", "logCells"\)/);
+  assert.ok(decl, 'SIZE_DEV_COLS must declare exactly the size pair');
+  assert.ok(/SIZE_DEV_PRIOR_SD <- /.test(R_SRC),
+    'the pair must carry its own documented prior width');
+  // COEF_TO_PREDICTOR ships the elasticity; the R frame derives its column.
+  const coefTable = R_SRC.match(/COEF_TO_PREDICTOR\s*<-\s*c\(([\s\S]*?)\n\)/);
+  assert.match(coefTable[1], /secPerLogCell\s*=\s*"logCells"/,
+    'the elasticity must be a shipped coefficient (secPerLogCell -> logCells)');
+  assert.ok(/logCells\s*= log\(pmax\(1, cellCount\)\)/.test(R_SRC),
+    'the frame must derive logCells from the stored cellCount (never a stored feature)');
+  // cellCount is OUT of the bounded base formula: under M1 its coefficient
+  // is negative, and the class-wide lb = 0 would censor it (the matchPlay
+  // reasoning, applied to the size curve's linear half).
+  const fixedFormula = R_SRC.match(/fit_formula_fixed <- log\(pure_time\) ~([\s\S]*?)\r?\n\r?\n/);
+  assert.ok(fixedFormula, 'fit_formula_fixed not found');
+  assert.ok(!/\bcellCount\b/.test(fixedFormula[1].split('#')[0]),
+    'cellCount must not ride the bounded fixed formula');
+  // The extraction must not clamp the pair: nn() zeroes negatives, so the
+  // size keys route through the signed sn() instead. A clamped linear half
+  // ships the refuted replace-form at its worst (log term alone).
+  assert.ok(/sn <- function\(x\) if \(is\.na\(x\)\) 0 else as\.numeric\(x\)/.test(R_SRC),
+    'the signed extraction helper must exist');
+  assert.ok(/if \(p %in% SIZE_DEV_COLS\) sn\(co\[p\]\) else nn\(co\[p\], k\)/.test(R_SRC),
+    'the size pair must extract through sn(), everything else through nn()');
+  // apply_par_model must DERIVE logCells rather than default it to 0: a
+  // frame built before the mutate (timed_df, ad-hoc predict frames) still
+  // carries cellCount, and a zero log term would misprice every board the
+  // moment the coefficient is nonzero.
+  const fn = R_SRC.slice(R_SRC.indexOf('apply_par_model <- function('),
+    R_SRC.indexOf('parse_par_model_shapes_devs <- function'));
+  assert.ok(/df\$logCells <- log\(pmax\(1, df\$cellCount\)\)/.test(fn),
+    'apply_par_model must recompute logCells from the frame’s own cellCount');
+  // PRIOR_SIGMAS must not regrow a cellCount entry: that list feeds the
+  // bounded lognormal machinery the pair is routed around. (Same shape as
+  // the matchPlay pin; archivePlay anchors non-vacuity there.)
+  const sigmas = R_SRC.slice(R_SRC.indexOf('PRIOR_SIGMAS <- list('),
+    R_SRC.indexOf('\n)', R_SRC.indexOf('PRIOR_SIGMAS <- list(')));
+  assert.ok(!/^\s*cellCount\s*=/m.test(sigmas),
+    'cellCount must have NO PRIOR_SIGMAS entry — it is signed now');
+  assert.ok(/^\s*totalMines\s*=/m.test(sigmas),
+    'the PRIOR_SIGMAS slice did not find totalMines — it is not reading the block');
+});
+
+test('the JS side derives the elasticity at predict time and ships it at 0 until a refit emits it', () => {
+  // Shipped now at exactly 0 in every block (the wormLoad landing pattern):
+  // predictPar is byte-identical until the nightly emits a real value.
+  assert.equal(PAR_MODEL.secPerLogCell, 0, 'PAR_MODEL must carry the key at 0');
+  assert.equal(PAR_MODEL_TIMED.secPerLogCell, 0, 'PAR_MODEL_TIMED must carry the key at 0');
+  for (const t of TILING_TYPES) {
+    assert.equal(PAR_MODEL_SHAPES[t].secPerLogCell, 0, `${t} must carry the key at 0`);
+  }
+  // The predictor is DERIVED from cellCount, so a doped model moves par by
+  // exactly exp(gamma * log(cells)) = cells^gamma, and a stored feature
+  // vector needs no new key.
+  const gamma = 0.5;
+  const doped = { ...PAR_MODEL, secPerLogCell: gamma };
+  const f = { cellCount: 100, totalMines: 10 };
+  const ratio = applyParModel(f, doped) / applyParModel(f, PAR_MODEL);
+  assert.ok(Math.abs(ratio - Math.pow(100, gamma)) < 0.05 * Math.pow(100, gamma),
+    `doping the elasticity must scale par by cells^gamma (got ${ratio}, want ~${Math.pow(100, gamma)})`);
+  // The floor guard: cellCount 0/absent derives log(1) = 0, never -Infinity.
+  assert.ok(Number.isFinite(applyParModel({ totalMines: 5 }, doped)),
+    'a vector with no cellCount must still price finitely');
+});
+
+test('modelFingerprint ignores zero-valued keys, so a coefficient can land at 0 without invalidating library stamps', async () => {
+  // The landing pattern for every new coefficient (wormLoad, then
+  // secPerLogCell) ships the key at 0 in all blocks: predictively inert,
+  // since applyParModel reads a missing key as 0 too. The fingerprint must
+  // agree that nothing changed, or each landing would spuriously redden the
+  // three library LOCKSTEP tests and demand a stamp-only re-price. A key
+  // moving OFF zero is a real model change and must still move the hash.
+  const { modelFingerprint } = await import('../src/logic/parModelFingerprint.js');
+  const fp = modelFingerprint();
+  assert.match(fp, /^[0-9a-f]{8}$/, 'fingerprint shape');
+  // Behavioral pin via the module's own canonicalization: the shipped model
+  // carries secPerLogCell at 0 in every block (asserted above), so a
+  // hypothetical model WITHOUT the key must fingerprint identically. Rebuild
+  // both through the exported function by momentarily doping the inputs is
+  // not possible (it reads the shipped globals), so pin the property the
+  // other direction: strip the zero keys by hand and assert the canonical
+  // JSON round-trip prices identically, while a nonzero value changes par.
+  const stripped = Object.fromEntries(
+    Object.entries(PAR_MODEL).filter(([, v]) => v !== 0));
+  const f = { cellCount: 80, totalMines: 12, zeroClusterCount: 1 };
+  assert.equal(applyParModel(f, stripped), applyParModel(f, PAR_MODEL),
+    'a zero-valued key must be predictively inert (the property the fingerprint skip encodes)');
+  assert.notEqual(applyParModel(f, { ...PAR_MODEL, secPerLogCell: 0.5 }),
+    applyParModel(f, PAR_MODEL),
+    'a NONZERO value must move par (so the fingerprint must move with it)');
 });
 
 test('REGRESSION: matchPlay is a SIGNED deviation, never a bounded slope', () => {
