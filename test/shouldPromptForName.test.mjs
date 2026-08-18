@@ -61,3 +61,17 @@ test('DOES prompt in the test environment — the gate must be reviewable on /te
   assert.equal(shouldPromptForName({ mode: 'daily', savedName: '' }), true);
   assert.equal(shouldPromptForName({ mode: 'weekly', savedName: '' }), true);
 });
+
+// ── The playerNames boot self-heal (the Kate gap, 2026-08-18) ────────────
+// A player named before the registry existed passes the name gate, never
+// re-opens Settings, never switches uid, so no call site publishes and the
+// canonical playerNames entry stays empty forever while every score row
+// carries the name (found live: 296 rows named "Kate", playerNames null).
+// The heal is one idempotent publish per boot after auth settles; this scan
+// keeps it wired.
+import { readFileSync as _rf } from 'node:fs';
+test('boot publishes the local name once auth settles (the registry self-heal)', () => {
+  const src = _rf(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(src, /initAnonymousAuth\(\)[\s\S]{0,700}publishPlayerName\(getPlayerName\(\)\)/,
+    'the boot auth-settle path must publish the stored name; without it a pre-registry player never gains a canonical entry');
+});

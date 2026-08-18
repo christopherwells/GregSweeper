@@ -2327,6 +2327,15 @@ async function init() {
   initAnonymousAuth().then(async () => {
     const uid = getUid();
     if (!uid) return;
+    // The playerNames boot self-heal (the Kate gap, 2026-08-18): a player
+    // named BEFORE the registry existed passes the name gate (they have a
+    // name), never re-opens Settings, never switches uid, so no other
+    // publishPlayerName call site ever fires and their canonical entry
+    // stays empty forever while every score row carries the name. One
+    // idempotent set per boot keeps the registry in lockstep with the
+    // local name; publishPlayerName itself no-ops on empty names and on
+    // test builds.
+    publishPlayerName(getPlayerName());
     const { backfillResidualsFromFirebase } = await import('./logic/handicaps.js');
     backfillResidualsFromFirebase(uid).catch(err => reportCaughtError('residuals-backfill', err));
   }).catch(err => reportCaughtError('residuals-backfill-auth', err));
