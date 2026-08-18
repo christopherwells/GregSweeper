@@ -1,5 +1,5 @@
 {
- "runs": 3,
+ "runs": 4,
  "cells": {
   "rect||sparse": {
    "fails": 0
@@ -251,49 +251,49 @@
    "fails": 0
   },
   "floret||sparse|wide": {
-   "fails": 1
+   "fails": 2
   },
   "floret||standard|wide": {
-   "fails": 1
+   "fails": 2
   },
   "floret||dense|wide": {
-   "fails": 1
+   "fails": 2
   },
   "floret|sonar|sparse|wide": {
-   "fails": 1
+   "fails": 2
   },
   "floret|sonar|standard|wide": {
-   "fails": 1
+   "fails": 2
   },
   "floret|sonar|dense|wide": {
-   "fails": 1
+   "fails": 2
   },
   "floret|liar|sparse|wide": {
-   "fails": 1
+   "fails": 2
   },
   "floret|liar|standard|wide": {
-   "fails": 1
+   "fails": 2
   },
   "floret|liar|dense|wide": {
-   "fails": 1
+   "fails": 2
   },
   "floret|walls|sparse|wide": {
-   "fails": 1
+   "fails": 2
   },
   "floret|walls|standard|wide": {
-   "fails": 1
+   "fails": 2
   },
   "floret|walls|dense|wide": {
-   "fails": 1
+   "fails": 2
   },
   "floret|compass|sparse|wide": {
-   "fails": 1
+   "fails": 2
   },
   "floret|compass|standard|wide": {
-   "fails": 1
+   "fails": 2
   },
   "floret|compass|dense|wide": {
-   "fails": 1
+   "fails": 2
   },
   "rhombille||sparse|wide": {
    "fails": 0

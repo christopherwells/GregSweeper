@@ -2,22 +2,6 @@
   "format": "journal-rewrite-v2",
   "date": "2026-08-18",
   "entries": {
-    "wormLoad": {
-      "sourceHash": 3587587251,
-      "paragraph": "Every fresh look at worm tiles gives the same reading, which my current note marks as about 3% per hundred worm moves, likely between 2% and 4%. This estimate has narrowed by 32% since July 17, and the data have settled. The underlying reason, however, remains unclear."
-    },
-    "patternMoves": {
-      "sourceHash": 1459692937,
-      "paragraph": "Back into the pattern reasoning file, I found that the parked estimate had moved: from about 11% per ten pattern deductions on Jul 13, it now reads 42%. The cost comes to about 42% per ten pattern deductions. The band runs from 34% to 51%. I wrote that a practiced read should cost seconds, not tens of seconds, and the data agree: the effect is real but small. I don’t like surprises in closed drawers."
-    },
-    "sonarCellCount": {
-      "sourceHash": 3070312453,
-      "paragraph": "I closed the sonar file, and it moved while I wasn’t looking. The model puts the estimate at about 89% per ten sonar cells, though it ranges inside 58% to 127%. The parked estimate moved significantly: it was about 37% per ten sonar cells on Jul 2, and now it reads 89%. A number that moves while nobody feeds it has my full attention."
-    },
-    "wormholePairCount": {
-      "sourceHash": 88469669,
-      "paragraph": "The wormholes band is widening when it should be narrowing, with the width up 856% in this window. I continue to collect data. Ten wormhole pairs add about 48% to your time, likely between 24% and 75%. I predicted that splitting one number across two places would slow the reading down, and it does. I haven’t retracted the hypothesis, but it’s on notice."
-    },
     "liarCellCount": {
       "sourceHash": 1682595969,
       "paragraph": "For the record, the liar cells file is settled. My note gave the data two doors: poison, or a rounding error, and it picked the second. A liar barely moves the clock. The study covered ten study days from April 22 to June 28, and the cost fell between 0% and about 3% per ten liar cells, which is thin either way. The best files are the ones I can stop writing in."
@@ -25,8 +9,32 @@
     "clueShare2": {
       "sourceHash": 3592960957,
       "paragraph": "In two study days, the answer for twos remained the same, with a range that puts it slightly above my hypothesis that a two should read almost as fast as a one. The range has narrowed by 29% since July 18. Each extra two in ten numbers adds about 5%, likely between 3% and 7%. The same answer repeated, and I am listening to the data."
+    },
+    "clueShare4": {
+      "sourceHash": 342254327,
+      "paragraph": "Every fresh look at fours gives the same reading, with the data showing that each extra four in ten numbers adds about 13% to your time, likely between 7% and 19%. This range has barely moved since Jul 18, with the number reading the same and the file staying open a while longer. My note asked how big the four costs, not whether it exists, and now the focus is on telling the fours apart from the boards around them."
+    },
+    "patternMoves": {
+      "sourceHash": 2682812686,
+      "paragraph": "Back into the pattern reasoning file, I found that the number I left there isn't the same as the one I now have. The parked estimate moved significantly: from about 11% per ten pattern deductions on Jul 13, it now reads 43%. The cost associated with these deductions comes to about 43% per ten pattern deductions. The band estimate ranges from 35% to 53%. I wrote that a practiced read should cost seconds, not tens of seconds, and the data agree: the effect is real but small. I don’t like surprises in closed drawers."
+    },
+    "sonarCellCount": {
+      "sourceHash": 2179923495,
+      "paragraph": "I closed the sonar file, and the parked estimate moved from about 37% per ten sonar cells on Jul 2 to 102% now. The model places this estimate between 68% and 142%. A number that shifts on its own has my full attention."
+    },
+    "wormholePairCount": {
+      "sourceHash": 3604277067,
+      "paragraph": "The wormholes band is widening when it should be narrowing, and this trend is stark: the width has increased by 894% in this window. Ten wormhole pairs add about 49% to your time, with a likely range between 24% and 78%. I predicted that splitting one number across two places would slow the reading down, and it does. I haven’t retracted the hypothesis, but it’s on notice. I continue to collect data."
+    },
+    "mysteryCellCount": {
+      "sourceHash": 86732822,
+      "paragraph": "I opened the mystery cells file expecting progress and found the opposite. The range has widened by 43% since Jul 2. I wrote that missing information has a price, and I measured it. The charge per ten mystery cells reads between 0% and about 4%. When the data surprise me, I take better notes."
+    },
+    "compassCellCount": {
+      "sourceHash": 4082519244,
+      "paragraph": "The compass question remains open, where I left it. My current estimate is about 65% per ten compass cells, likely ranging between 38% and 99%. The range has not moved. I wrote that I couldn’t tell whether players read the arrow fast or stopped to puzzle over it, and so far, neither can the model. The file stays open, and so does the question."
     }
   },
   "model": "qwen2.5-7b-instruct-q4km-local",
-  "generatedAt": "2026-08-18T18:54:53.001Z"
+  "generatedAt": "2026-08-18T21:47:25.004Z"
 }

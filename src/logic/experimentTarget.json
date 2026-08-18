@@ -1,54 +1,54 @@
 {
-  "updatedAt": "2026-08-18T18:49:39Z",
-  "target": "wormLoad",
-  "reason": "highest posterior CV (0.459) excluding last 3 targets",
+  "updatedAt": "2026-08-18T20:49:26Z",
+  "target": "clueShare4",
+  "reason": "highest posterior CV (0.422) excluding last 3 targets",
   "lastRevalidationDate": "2026-08-15",
   "recentTargets": [
+    "clueShare4",
     "wormLoad",
-    "clueShare2",
-    "wormholePairCount"
+    "clueShare2"
   ],
   "candidates": [
     {
       "feature": "wormLoad",
-      "mean": 0.028,
+      "mean": 0.029,
       "sd": 0.013,
-      "cv": 0.459
+      "cv": 0.454
     },
     {
       "feature": "wormholePairCount",
-      "mean": 0.039,
-      "sd": 0.017,
-      "cv": 0.442
-    },
-    {
-      "feature": "clueShare2",
-      "mean": 0.05,
-      "sd": 0.02,
-      "cv": 0.397
+      "mean": 0.04,
+      "sd": 0.018,
+      "cv": 0.45
     },
     {
       "feature": "clueShare4",
-      "mean": 0.133,
+      "mean": 0.122,
       "sd": 0.051,
-      "cv": 0.383
+      "cv": 0.422
+    },
+    {
+      "feature": "clueShare2",
+      "mean": 0.047,
+      "sd": 0.02,
+      "cv": 0.415
     },
     {
       "feature": "compassCellCount",
-      "mean": 0.048,
+      "mean": 0.05,
       "sd": 0.018,
-      "cv": 0.378
+      "cv": 0.365
     }
   ],
   "coverage_targets": [],
   "shape_coverage": [
     {
-      "shape": "deltoidal",
-      "n_boards": 18,
-      "deficit_weight": 0.0526
+      "shape": "cairo",
+      "n_boards": 20,
+      "deficit_weight": 0.0476
     },
     {
-      "shape": "cairo",
+      "shape": "deltoidal",
       "n_boards": 20,
       "deficit_weight": 0.0476
     },
