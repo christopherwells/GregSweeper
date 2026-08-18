@@ -229,3 +229,57 @@ test('a match board cannot be restarted, and offers no power-ups', async ({ page
   await expect(page.locator('#reset-btn')).toBeDisabled();
   await expect(page.locator('#powerup-bar')).toHaveClass(/hidden/);
 });
+
+test('Help Greg fills the sheet with what the fit is short of, and the run still deals', async ({ page }) => {
+  // His idea (2026-08-18): a button beside the board count that aims the WHOLE
+  // run at what the model needs, where steering claims at most floor(N/5)
+  // slots. The e2e layer is the right one for it: the pure choice is tested in
+  // matchSteering, and what can only break here is the wiring (the target
+  // fetch, the chips re-rendering, the supply line re-counting, the deal still
+  // working afterwards) — the #363 lesson exactly.
+  const errors = [];
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('pageerror', (e) => errors.push(String(e)));
+
+  await prepareInteractionSpec(page);
+  await seedCrownedPlayer(page);
+  await page.goto('/?isTest=1');
+  await page.waitForSelector('#boot-overlay', { state: 'detached', timeout: 30_000 });
+  await page.locator('.mode-card[data-mode="match"]').click();
+  await page.locator('#match-tab-new').click();
+
+  const supply = page.locator('#match-supply');
+  await expect(supply).toHaveText(/\d+ boards fit these rules/, { timeout: 30_000 });
+
+  const before = await page.locator('#match-shapes .match-chip[aria-pressed="true"]').count();
+  expect(before, 'a crowned player starts with every shape on').toBe(7);
+
+  await page.locator('#match-help-greg').click();
+
+  // It says what it did, in a sentence naming real shapes.
+  const note = page.locator('#match-help-note');
+  await expect(note).toHaveText(/Greg has the least data on .+\. Change anything you like\./,
+    { timeout: 15_000 });
+
+  // The chips actually moved, and to FEWER shapes than everything.
+  const after = await page.locator('#match-shapes .match-chip[aria-pressed="true"]').count();
+  expect(after).toBeGreaterThan(0);
+  expect(after, 'it must narrow the sheet, not leave it as it was').toBeLessThan(before);
+
+  // The bands it must NOT touch are still Any: setting a density would chase
+  // the digit-share target and re-introduce the confound experimentDesign
+  // refuses on purpose.
+  for (const id of ['#match-density', '#match-time', '#match-difficulty']) {
+    await expect(page.locator(`${id} .match-chip[aria-pressed="true"]`)).toHaveText('Any');
+  }
+
+  // And the narrowed rules still deal a real run.
+  await expect(supply).toHaveText(/\d+ boards fit these rules/);
+  const start = page.locator('#match-start');
+  await expect(start).toBeEnabled();
+  await start.click();
+  await page.waitForSelector('#board .cell', { timeout: 45_000 });
+  await expect(page.locator('#level-display')).toHaveText(/Board 1/);
+
+  expect(errors, `console errors: ${errors.join(' | ')}`).toHaveLength(0);
+});

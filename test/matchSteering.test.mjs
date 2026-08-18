@@ -15,7 +15,7 @@ import test from 'node:test';
 import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 import {
-  steerMissions, currentSteerMissions, planMatchDeal,
+  steerMissions, currentSteerMissions, planMatchDeal, helpGregRules,
 } from '../src/logic/matchSteering.js';
 import { normalizeShapeCoverage } from '../src/logic/experimentDesign.js';
 import { steeredSlotCap, eligibleRows, boardMatchesRules } from '../src/logic/matchRules.js';
@@ -592,4 +592,71 @@ test('an EMPTY coverage list sorts to nothing rather than halting the refit', ()
   // assertions are satisfied by a file that never mentions them.
   assert.ok(R_SRC.includes('coverage_targets <- coverage_targets[order('),
     'the coverage sort itself was not found; this test is pinning nothing');
+});
+
+// ── "Help Greg": the whole run aimed at what the fit is short of ────────
+//
+// His idea (2026-08-18). Steering claims at most floor(N/5) slots so a run
+// never feels forced; this is the player ASKING for the whole run to count,
+// so it belongs in the RULES rather than in the deal. It aims with the same
+// mission list the deal steers on, so the two can never disagree.
+
+const HELP_MISSIONS = () => steerMissions({
+  target: 'clueShare2',
+  coverage: [{ feature: 'sonarCellCount', deficit_weight: 0.4 }],
+  decorrelation: null,
+  shapes: [
+    { shape: 'deltoidal', deficit_weight: 0.0667 },
+    { shape: 'floret', deficit_weight: 0.0588 },
+    { shape: 'rhombille', deficit_weight: 0.0588 },
+    { shape: 'cairo', deficit_weight: 0.05 },
+    { shape: 'rect', deficit_weight: 0.0051 },
+  ],
+});
+const CROWNED = {
+  shapes: ['rect', 'hex', '4.8.8', 'cairo', 'floret', 'rhombille', 'deltoidal'],
+  mods: ['walls', 'liar', 'mystery', 'sonar', 'wormhole', 'mirror', 'locked', 'compass', 'worm'],
+};
+
+test('Help Greg proposes the starved shapes, worst deficit first', () => {
+  const plan = helpGregRules(HELP_MISSIONS(), CROWNED);
+  assert.deepEqual(plan.shapes, ['deltoidal', 'floret', 'rhombille'],
+    'the three shapes the fit has least of, in deficit order');
+  assert.ok(!plan.shapes.includes('rect'), 'the saturated shape is not proposed');
+});
+
+test('REGRESSION: Help Greg never proposes a shape or modifier the player has not met', () => {
+  // His non-negotiable for the deal, and a proposal is no different.
+  const fresh = { shapes: ['rect'], mods: [] };
+  const plan = helpGregRules(HELP_MISSIONS(), fresh);
+  assert.deepEqual(plan.shapes, ['rect'], 'only what is unlocked, however starved the rest is');
+  assert.deepEqual(plan.mods, [], 'a locked modifier is never proposed');
+});
+
+test('a coverage target that a MODIFIER carries becomes that modifier', () => {
+  const plan = helpGregRules(HELP_MISSIONS(), CROWNED);
+  assert.deepEqual(plan.mods, ['sonar'], 'sonarCellCount is carried by sonar');
+});
+
+test('REGRESSION: Help Greg never chases a digit share, and never touches density', () => {
+  // experimentDesign refuses to MAXIMIZE the digit shares on purpose
+  // (isObservationalTarget, regression-tested there): they are measured on
+  // every board, and chasing one deepens the density confound that is why
+  // the study is stuck. The button must not re-introduce it by the back
+  // door, and the only lever it would have is a density band.
+  const digitOnly = steerMissions({
+    target: 'clueShare2', coverage: [], decorrelation: null, shapes: [],
+  });
+  assert.equal(helpGregRules(digitOnly, CROWNED), null,
+    'a digit-share target alone proposes NOTHING rather than a density');
+  // And the returned shape never carries a band at all, on any input.
+  const plan = helpGregRules(HELP_MISSIONS(), CROWNED);
+  for (const key of ['density', 'time', 'difficulty', 'count', 'scroll']) {
+    assert.equal(plan[key], undefined, `the plan must not set ${key}`);
+  }
+});
+
+test('nothing short means nothing proposed (his "if no discovery can happen, that is fine")', () => {
+  assert.equal(helpGregRules([], CROWNED), null);
+  assert.equal(helpGregRules(null, CROWNED), null);
 });
