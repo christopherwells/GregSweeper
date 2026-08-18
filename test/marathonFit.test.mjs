@@ -195,3 +195,49 @@ test('a degenerate anchor falls back to the floor, never to a fabricated rate', 
   assert.equal(marathonProvisionalPar({ cells: 0, anchorPar: 100, anchorCells: 100 }), 0);
   assert.equal(marathonProvisionalPar({}), 0);
 });
+
+// ── The anchor's own geometry (2026-08-18) ──────────────────────────────
+//
+// Found while filling the lane overnight: the anchor a provisional par is
+// extrapolated from was chosen as the largest fit-legal pair by CELL COUNT
+// alone, and on floret that is 1 x 23, a single row of rosettes. It is the
+// degenerate path-graph shape this very module refuses for lane boards
+// (MARATHON_MIN_SHORT_SIDE), it certifies in milliseconds because there is
+// almost nothing to deduce, and every floret giant would have taken its
+// seconds-per-cell from it. An anchor has to be a BOARD.
+
+test('REGRESSION: no anchor geometry is a degenerate strip', async () => {
+  const { fitCeilingSpecs } = await import('../scripts/topup-marathon-lane.mjs');
+  for (const shape of marathonShapes()) {
+    const specs = fitCeilingSpecs(shape);
+    assert.ok(specs.length > 0, `${shape} must offer at least one anchor geometry`);
+    for (const s of specs) {
+      const M = shape === 'rect' ? s.rows : s.M;
+      const N = shape === 'rect' ? s.cols : s.N;
+      assert.ok(Math.min(M, N) >= MARATHON_MIN_SHORT_SIDE,
+        `${shape} offers a ${M}x${N} anchor, under the thinness floor the lane itself enforces`);
+    }
+    // Ranked biggest first: an anchor should sit as close to the
+    // extrapolation region as the model's own support allows.
+    const cells = specs.map((s) => s.cells);
+    assert.deepEqual(cells, [...cells].sort((a, b) => b - a), `${shape} anchors must be ranked by size`);
+    // And every anchor must be inside support, or it is not the model
+    // speaking from data.
+    for (const s of specs) {
+      assert.ok(inSupportCells(shape, s.cells),
+        `${shape}: a ${s.cells}-cell anchor is outside the model's support`);
+    }
+  }
+});
+
+test('the anchor search has somewhere to fall back to', async () => {
+  const { fitCeilingSpecs } = await import('../scripts/topup-marathon-lane.mjs');
+  // Deltoidal certified 0 of 2 at its 90-cell ceiling at ~21% mines and
+  // rhombille 0 of 2 at its 135-cell one, which left every denser cell of
+  // those shapes permanently empty for want of an anchor. The fix is to walk
+  // DOWN the legal geometries, so those shapes must offer more than one.
+  for (const shape of ['deltoidal', 'rhombille', 'floret']) {
+    assert.ok(fitCeilingSpecs(shape).length >= 2,
+      `${shape} offers only one anchor geometry, so a failed certification has nowhere to fall back to`);
+  }
+});

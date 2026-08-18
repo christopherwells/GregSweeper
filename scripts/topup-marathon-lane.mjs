@@ -59,7 +59,7 @@ import {
 } from '../src/logic/matchRules.js';
 import {
   marathonDims, marathonDimsSpread, marathonShapes, marathonProvisionalPar,
-  fitLegalFrontier, inSupportCells,
+  fitLegalFrontier, fitLegalDims, inSupportCells, MARATHON_MIN_SHORT_SIDE,
 } from '../src/logic/marathonFit.js';
 import { buildTiling } from '../src/logic/tilingGeometry.js';
 import { OUT_DIR, writeMatchIndexFiles, matchPageFile, matchPageNames } from './match-index-files.mjs';
@@ -138,23 +138,40 @@ export function laneCellKey(shape, mods, density, sizeClass) {
  * way to re-price under a future model.
  */
 const _anchorCache = new Map();
-function anchorFor(shape, mods, densityMid, fitCeilingSpec) {
+/**
+ * The anchor for a shape+mods+density: a real certified board INSIDE the par
+ * model's support, wearing this cell's modifiers at this cell's density, as
+ * close to the extrapolation region as the support allows.
+ *
+ * WALKS DOWN the fit-legal geometries rather than insisting on the single
+ * largest. Measured 2026-08-18: at ~21% mines, deltoidal certified 0 of 2 at
+ * its 90-cell ceiling and rhombille 0 of 2 at its 135-cell one, so every
+ * denser cell of those shapes was skipped for want of an anchor and stayed
+ * permanently empty. A slightly smaller anchor is still the model speaking
+ * from data, which is the whole property that matters; refusing to look is
+ * what cost those cells.
+ */
+function anchorFor(shape, mods, densityMid, candidates) {
   const key = laneCellKey(shape, mods, String(densityMid));
   if (_anchorCache.has(key)) return _anchorCache.get(key);
   let out = null;
-  for (let t = 0; t < TRIES_PER_DRAW && !out; t++) {
-    const spec = {
-      ...fitCeilingSpec,
-      mines: Math.max(1, Math.round(fitCeilingSpec.cells * densityMid)),
-      gimmicks: mods.slice(),
-      ...(mods.includes('walls') ? { wallSegments: 4 } : {}),
-    };
-    let r = null;
-    try {
-      r = buildChallenge250Board(spec, `manchor:${specFace(spec)}:${t}`, {});
-    } catch { r = null; }
-    if (r && r.check && r.check.solvable && r.par > 0 && r.features) {
-      out = { par: r.par, cells: fitCeilingSpec.cells, features: r.features };
+  const list = Array.isArray(candidates) ? candidates : [candidates].filter(Boolean);
+  for (const geom of list) {
+    if (out) break;
+    for (let t = 0; t < TRIES_PER_DRAW && !out; t++) {
+      const spec = {
+        ...geom,
+        mines: Math.max(1, Math.round(geom.cells * densityMid)),
+        gimmicks: mods.slice(),
+        ...(mods.includes('walls') ? { wallSegments: 4 } : {}),
+      };
+      let r = null;
+      try {
+        r = buildChallenge250Board(spec, `manchor:${specFace(spec)}:${t}`, {});
+      } catch { r = null; }
+      if (r && r.check && r.check.solvable && r.par > 0 && r.features) {
+        out = { par: r.par, cells: geom.cells, features: r.features };
+      }
     }
   }
   _anchorCache.set(key, out);
@@ -164,19 +181,40 @@ function anchorFor(shape, mods, densityMid, fitCeilingSpec) {
 /** The fit-ceiling spec for a shape: the largest fit-legal board it has.
  * Derived from marathonFit's own frontier so the anchor and the lane ceiling
  * come from one source. */
-export function fitCeilingSpec(shape) {
-  let best = null;
-  for (const [M, N] of fitLegalFrontier(shape)) {
+export function fitCeilingSpecs(shape) {
+  const out = [];
+  const seen = new Set();
+  // EVERY fit-legal geometry, not just the frontier: the frontier is what
+  // BOUNDS the region and is usually a single pair, which gave a failed
+  // certification nowhere to fall back to.
+  for (const { M, N } of fitLegalDims(shape)) {
+    // THE ANCHOR MUST BE A BOARD, NOT A STRIP. The frontier is ranked by
+    // cells alone, and on floret the largest fit-legal pair is 1 x 23: a
+    // single row of rosettes, the degenerate path-graph shape the lane
+    // itself refuses (MARATHON_MIN_SHORT_SIDE). It certifies happily and in
+    // milliseconds, so nothing complained, and every floret lane board would
+    // have taken its seconds-per-cell from a board that plays nothing like a
+    // floret board. The anchor is held to the same thinness floor as the
+    // boards it prices.
+    if (Math.min(M, N) < MARATHON_MIN_SHORT_SIDE) continue;
     const cells = shape === 'rect' ? M * N : (() => {
       try { return buildTiling(shape, M, N).total; } catch { return 0; }
     })();
-    if (cells > 0 && (!best || cells > best.cells)) {
-      best = shape === 'rect'
-        ? { shape, rows: M, cols: N, cells }
-        : { shape, M, N, cells };
-    }
+    if (cells <= 0 || seen.has(cells)) continue;
+    seen.add(cells);
+    out.push(shape === 'rect'
+      ? { shape, rows: M, cols: N, cells }
+      : { shape, M, N, cells });
   }
-  return best;
+  // Biggest first: the anchor should sit as close to the extrapolation
+  // region as the model's own support allows.
+  out.sort((a, b) => b.cells - a.cells);
+  return out;
+}
+
+/** The single best anchor geometry, kept for callers that want one. */
+export function fitCeilingSpec(shape) {
+  return fitCeilingSpecs(shape)[0] || null;
 }
 
 /** Draw one certified lane board, priced provisionally. */
@@ -323,15 +361,22 @@ async function main() {
   let draws = 0;
   outer:
   for (const w of wanted) {
-    const ceiling = fitCeilingSpec(w.shape);
-    if (!ceiling) continue;
+    // The ranked anchor candidates, biggest legal board first. A WIDE cell
+    // needs no anchor at all (its boards are in support and price straight
+    // through predictPar), so a shape whose anchor cannot be built still
+    // fills its wide half.
+    const ceiling = fitCeilingSpecs(w.shape);
+    if (!ceiling.length) continue;
     const lo = MATCH_DENSITY_BANDS.indexOf(w.band) === 0
       ? 0.06 : MATCH_DENSITY_BANDS[MATCH_DENSITY_BANDS.indexOf(w.band) - 1].max;
     const hi = Number.isFinite(w.band.max) ? w.band.max : 0.34;
     const mid = lo + (hi - lo) * 0.5;
     const anchor = anchorFor(w.shape, w.mods, mid, ceiling);
-    if (!anchor) {
-      console.log(`  ${w.key}: no certified anchor at fit-ceiling dims, skipped`);
+    if (!anchor && w.sizeClass === 'big') {
+      // Only the BIG half needs one: an out-of-support par is extrapolated
+      // from the anchor, and a board with no anchor could never be re-priced
+      // under a future model. A wide board is priced by the model itself.
+      console.log(`  ${w.key}: no certified anchor at any fit-legal dims, skipped`);
       continue;
     }
     // Sizes SPREAD across this class's own range rather than the biggest

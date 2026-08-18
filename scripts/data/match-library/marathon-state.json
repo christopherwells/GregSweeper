@@ -1,5 +1,5 @@
 {
- "runs": 2,
+ "runs": 3,
  "cells": {
   "rect||sparse": {
    "fails": 0
@@ -308,6 +308,21 @@
    "fails": 0
   },
   "rhombille|liar|sparse|wide": {
+   "fails": 0
+  },
+  "rhombille||standard|wide": {
+   "fails": 0
+  },
+  "rhombille|sonar|standard|wide": {
+   "fails": 0
+  },
+  "rhombille|liar|standard|wide": {
+   "fails": 0
+  },
+  "rhombille|liar|dense|wide": {
+   "fails": 0
+  },
+  "rhombille|walls|sparse|wide": {
    "fails": 0
   }
  }
