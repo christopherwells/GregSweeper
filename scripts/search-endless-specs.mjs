@@ -921,7 +921,19 @@ async function runEmit(cache, which) {
   }
   // The ladder pool: everything the 8-minute ceiling and the standing
   // 2-second cap admit, across the whole difficulty range.
+  //
+  // THE LADDER YIELDS TO COVERAGE EXACTLY AS THE ENDLESS POOL DOES. The
+  // coverage table is the complement of the other two, it is not one of the
+  // tables write-challenge-pool regenerates, and its disjointness test reads
+  // from coverage's side — so a fresh ladder emit that re-picks a face
+  // coverage already ships (the cache still holds it; it cleared every gate
+  // once) breaks the contract on a table this run never touched. The Climb
+  // loses nothing by the exclusion: CLIMB_POOL is the deduped union of this
+  // table and coverage, so a coverage face reaches the braid either way.
+  const ladderCoverageFaces = new Set(
+    (await import('../src/logic/challengePool.js')).CHALLENGE_POOL.map((e) => specFace(e)));
   const pool = emitPool(cache, {
+    excludeFaces: ladderCoverageFaces,
     floorFn: () => 0,
     ceilFn: () => PAR_CEILING_SECONDS,
     // Sized for the ladder's appetite: 225 levels need 225 distinct faces
@@ -1004,7 +1016,13 @@ function repriceCache(cache) {
   for (const e of Object.values(cache)) {
     if (!e.ok) continue;
     if (!e.features) { stale++; continue; }
-    const par = predictPar(e.features) * SCALE;
+    // POPULATION seconds, the cache's one unit: measure() documents it, and
+    // reprice-challenge-pool writes evicted faces back "in the cache's own
+    // pre-scale unit". This line multiplied by SCALE for a while, which put
+    // cohort seconds into a cache the emit then scales AGAIN — a quiet
+    // double-scaling that stays invisible while the cohort's handicaps sit
+    // near the frozen base and grows with them the day they move.
+    const par = predictPar(e.features);
     const ppc = Number((par / e.cells).toFixed(3));
     if (Math.abs(ppc / e.ppc - 1) > 0.05) moved++;
     e.ppc = ppc;
