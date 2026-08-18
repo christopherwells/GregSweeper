@@ -89,7 +89,13 @@ const MODS = [
 ];
 
 const DENS = [['sparse', 'Sparse'], ['standard', 'Standard'], ['dense', 'Packed']];
-const TIMES = [['quick', 'Quick'], ['short', 'Standard'], ['long', 'Long']];
+// Marathon is the fourth LENGTH band (open top past 720s): fit-legal
+// 13-minute harvest boards land here without being oversized, and the
+// oversized lane's longest boards join them. Oversized boards at ORDINARY
+// pars (his 25x3 prices ~52s) count in their own par band's cells, with
+// the per-cell tooltip carrying the oversized share, because they deal
+// only under the sheet's scrolling opt-in.
+const TIMES = [['quick', 'Quick'], ['short', 'Standard'], ['long', 'Long'], ['marathon', 'Marathon']];
 
 const argVal = (flag, fallback) => {
   const i = process.argv.indexOf(flag);
@@ -113,6 +119,9 @@ function readBoards() {
         mods: (b.spec.gimmicks || []).slice().sort(),
         density: densityBandOf(b.spec.mines, b.spec.cells),
         time: timeBandOf(b.par),
+        // Dealable only under the scrolling opt-in; counted in its par
+        // band's cell with the share reported separately.
+        over: b.oversized === true,
       });
     }
   }
@@ -141,7 +150,7 @@ function readBoards() {
 export function buildCells(rows) {
   const cells = new Map();
   const at = (key) => {
-    if (!cells.has(key)) cells.set(key, { m: 0, c: 0, nm: 0, nc: 0 });
+    if (!cells.has(key)) cells.set(key, { m: 0, c: 0, nm: 0, nc: 0, mo: 0 });
     return cells.get(key);
   };
   const cellKey = (shape, mod, density, time) => [shape, mod, density, time].join('|');
@@ -153,6 +162,7 @@ export function buildCells(rows) {
       const own = at(cellKey(r.shape, '(plain)', r.density, r.time));
       own[r.lib] += 1;
       own[r.lib === 'm' ? 'nm' : 'nc'] += 1;
+      if (r.over) own.mo += 1;
       for (const [mod] of MODS) {
         if (mod === '(plain)') continue;
         const cell = at(cellKey(r.shape, mod, r.density, r.time));
@@ -163,6 +173,7 @@ export function buildCells(rows) {
     for (const mod of r.mods) {
       const cell = at(cellKey(r.shape, mod, r.density, r.time));
       cell[r.lib] += 1;
+      if (r.over) cell.mo += 1;
       // Narrow counts a modified board only when that modifier is the ONLY
       // one on it; anything else needs a host who permitted more.
       if (r.mods.length === 1) cell[r.lib === 'm' ? 'nm' : 'nc'] += 1;
@@ -273,10 +284,13 @@ const commas = (n) => n.toLocaleString('en-US');
 
 function renderPanels(cells, targets) {
   let out = '';
-  for (const [dk, dl] of DENS) {
-    for (const [tk, tl] of TIMES) {
-      out += `<section class="panel"><h3><span class="d">${dl}</span>`
-        + `<span class="sep">/</span><span class="t">${tl}</span>`
+  // FLIPPED 2026-08-18 (his call, with the marathon row): LENGTH is the
+  // outer axis so each visual row of panels is one time band and Marathon
+  // reads as the fourth row; density runs across.
+  for (const [tk, tl] of TIMES) {
+    for (const [dk, dl] of DENS) {
+      out += `<section class="panel"><h3><span class="d">${tl}</span>`
+        + `<span class="sep">/</span><span class="t">${dl}</span>`
         + '<span class="verdict"></span></h3>'
         + '<div class="scroll"><table><thead><tr><th class="corner"></th>';
       for (const [, ml] of MODS) out += `<th class="gh"><span>${ml}</span></th>`;
@@ -295,7 +309,8 @@ function renderPanels(cells, targets) {
               + ` combined ${v.m + v.c} · only this modifier: match ${v.nm},`
               + ` climb ${v.nc}, combined ${v.nm + v.nc}`)
             + ` · target pooled ${t.p}, narrow ${t.n}`
-            + (closedAt ? ` · measured closed: best legal config reaches ${closedAt}s` : '');
+            + (v.mo > 0 ? ` · ${v.mo} of the match boards are scrolling-only` : '')
+            + (closedAt ? ` · measured closed: best legal config reaches ${closedAt}s (fit-legal dims)` : '');
           out += `<td class="c" data-m="${v.m}" data-c="${v.c}" data-nm="${v.nm}"`
             + ` data-nc="${v.nc}" data-t="${t.p}|${t.p}|${t.n}|${t.n}"`
             + ` data-f="${states.join('|')}"`
