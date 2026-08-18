@@ -240,7 +240,16 @@ test('across dates, the draw tracks the target par and reaches the whole table',
     // measures ~0.78, and variety serves the identifiability the table
     // exists for). 0.85 still catches a genuine collapse (a dead draw
     // reads ~1.0).
-    const TRACK_BAR = { rhombille: 0.85 };
+    // 4.8.8 joined the reach-limited set on 2026-08-18, when the M1 size
+    // curve compressed its whole table to ~45-97s against the band's 240s
+    // top. The limit is structural, not a table gap: enumerated over every
+    // patch, 8x7 = 98 cells is the largest that clears all four fit gates
+    // at once (12x7 fails the height cap, 137 is prime, 10x7/11x6 have no
+    // [5,30] container, 10x6 is a tall ribbon under MIN_WIDTH_USE), so no
+    // committable entry can price past ~97s under M1. Measured with the
+    // shipped table: 0.725 against the 0.72 default; 0.80 gives refit
+    // wiggle while a genuine collapse still reads ~1.0.
+    const TRACK_BAR = { rhombille: 0.85, '4.8.8': 0.80 };
     const bar = TRACK_BAR[type] ?? 0.72;
     assert.ok(bandedErr < uniformErr * bar,
       `${type}: banded draw must track the target (banded ${bandedErr.toFixed(1)} vs uniform ${uniformErr.toFixed(1)}, need < x${bar})`);

@@ -349,12 +349,19 @@ test('GOLDEN: the first endless block is fixed', () => {
   // re-measured at current-model deciles (floret under the shared floor for
   // the first time, at 2.6) and the convergence loop re-emitted the pool at
   // 64 entries across all seven shapes. Different deck, different five.
+  // Moved on 2026-08-18 by the M1 size-term refit (his ruling: log(cells)
+  // joins the equation beside a signed linear term). The concave size curve
+  // re-priced the whole pool, big boards downward most, so which entries
+  // clear the 400s floor and where each shape's deciles sit both moved, and
+  // the re-priced deck deals a different five. The same night's re-price
+  // also fixed the zone-span red on its own (the morning's "hardest 4.99
+  // s/cell" reading was the OLD model's compression, not a supply gap).
   assert.deepEqual(got, [
-    'deltoidal:36c:10m:[mirror+sonar+compass]',
     'cairo:112c:13m:[locked+mirror+sonar]',
-    'rect:30c:11m:[mystery+compass]',
-    'hex:104c:38m:[liar+mirror+sonar]',
-    '4.8.8:50c:18m:[walls+locked+mirror]',
+    'hex:108c:36m:[sonar]',
+    'cairo:112c:30m:[liar+wormhole+mirror]',
+    'rect:25c:11m:[walls+locked+sonar]',
+    '4.8.8:72c:22m:[walls+locked+compass]',
   ]);
 
 

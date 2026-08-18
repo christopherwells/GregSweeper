@@ -146,9 +146,20 @@ test('bandedArgmax: the band beats raw score, falls back to nearest when nothing
 // disengages from either selector. They run the full generation contest
 // (~0.5s total, DEFAULT experiment target since nothing loads the JSON in
 // this process).
+//
+// The pinned DATE moved 2026-09-01 -> 2026-09-04 on 2026-08-18: the M1
+// size-term refit re-priced every candidate, 09-01's winner fell to a 29%
+// lottery share, and the flip is the documented replacement case below
+// (a pin flips on a big re-price without anything being wrong). 09-04 wins
+// by the wide-margin rule: trial5 takes 91% of the effective lottery
+// weight, top-two 0.463 against 0.025 (18.5x), measured under the M1
+// equations. Pick any future replacement the same way — a dominant SHARE
+// of the weighted draw, not just a fresh recording, and not a share built
+// on near-zero scores (2026-09-29 reads 100% on 0.036 vs 0.000, the
+// everything-out-of-band trap).
 
 test('REGRESSION: selectDailyRngSeed is banded — frozen-date golden', () => {
-  assert.equal(selectDailyRngSeed('2026-09-01'), '2026-09-01:trial9');
+  assert.equal(selectDailyRngSeed('2026-09-04'), '2026-09-04:trial5');
 });
 
 // A pinned week has to have a DECISIVE winner or the pin guards nothing.

@@ -151,7 +151,14 @@ test('the re-price is NOT vacuous: a moved coefficient moves every price', () =>
   const dearer = { ...PAR_MODEL, intercept: PAR_MODEL.intercept + Math.log(1.2) };
   // Coefficients sit TOP-LEVEL on the model object, not under a
   // `coefficients` key — applyParModel reads `model[coef]` directly.
-  const cheaper = { ...PAR_MODEL, secPerCell: PAR_MODEL.secPerCell * 0.5 };
+  //
+  // The cheaper perturbation halves the MINES rate, not the per-cell rate:
+  // secPerCell is SIGNED since the M1 size pair (it shipped negative on
+  // 2026-08-18), so halving it RAISES prices and the direction assertion
+  // inverted. secPerMineFlag rides the lognormal-bounded base block, whose
+  // lb = 0 blanket keeps it structurally non-negative, and every stored
+  // board has mines, so halving it lowers every price by construction.
+  const cheaper = { ...PAR_MODEL, secPerMineFlag: PAR_MODEL.secPerMineFlag * 0.5 };
 
   let rose = 0, fell = 0;
   for (const e of shipped.slice(0, 60)) {
