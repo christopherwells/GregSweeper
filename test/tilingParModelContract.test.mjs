@@ -501,19 +501,24 @@ test('the M1 SIZE PAIR is signed end to end: dev routing, sn() extraction, deriv
     'the PRIOR_SIGMAS slice did not find totalMines — it is not reading the block');
 });
 
-test('the JS side derives the elasticity at predict time and ships it at 0 until a refit emits it', () => {
-  // Shipped now at exactly 0 in every block (the wormLoad landing pattern):
-  // predictPar is byte-identical until the nightly emits a real value.
-  assert.equal(PAR_MODEL.secPerLogCell, 0, 'PAR_MODEL must carry the key at 0');
-  assert.equal(PAR_MODEL_TIMED.secPerLogCell, 0, 'PAR_MODEL_TIMED must carry the key at 0');
+test('the JS side derives the elasticity at predict time and every block carries the key', () => {
+  // The landing pin (key at exactly 0 in every block) EXPIRED BY DESIGN on
+  // 2026-08-18 when the first M1 refit emitted the fitted value the same
+  // evening (secPerLogCell 0.68293 beside a negative secPerCell). What
+  // remains pinned: the key exists as a number in every block, so the
+  // emitter's table and the shipped artifact cannot drift apart, and the
+  // TIMED block (whose own fit keeps the M0 formula over frozen rows)
+  // carries the key as a number too, 0 whenever its fit ran without it.
+  assert.equal(typeof PAR_MODEL.secPerLogCell, 'number', 'PAR_MODEL must carry the key');
+  assert.equal(typeof PAR_MODEL_TIMED.secPerLogCell, 'number', 'PAR_MODEL_TIMED must carry the key');
   for (const t of TILING_TYPES) {
-    assert.equal(PAR_MODEL_SHAPES[t].secPerLogCell, 0, `${t} must carry the key at 0`);
+    assert.equal(typeof PAR_MODEL_SHAPES[t].secPerLogCell, 'number', `${t} must carry the key`);
   }
-  // The predictor is DERIVED from cellCount, so a doped model moves par by
-  // exactly exp(gamma * log(cells)) = cells^gamma, and a stored feature
-  // vector needs no new key.
+  // The predictor is DERIVED from cellCount, so SHIFTING the elasticity by
+  // gamma moves par by exactly cells^gamma, whatever the shipped base value
+  // is (a replacement-style dope only worked while the key was 0).
   const gamma = 0.5;
-  const doped = { ...PAR_MODEL, secPerLogCell: gamma };
+  const doped = { ...PAR_MODEL, secPerLogCell: PAR_MODEL.secPerLogCell + gamma };
   const f = { cellCount: 100, totalMines: 10 };
   const ratio = applyParModel(f, doped) / applyParModel(f, PAR_MODEL);
   assert.ok(Math.abs(ratio - Math.pow(100, gamma)) < 0.05 * Math.pow(100, gamma),
@@ -533,21 +538,21 @@ test('modelFingerprint ignores zero-valued keys, so a coefficient can land at 0 
   const { modelFingerprint } = await import('../src/logic/parModelFingerprint.js');
   const fp = modelFingerprint();
   assert.match(fp, /^[0-9a-f]{8}$/, 'fingerprint shape');
-  // Behavioral pin via the module's own canonicalization: the shipped model
-  // carries secPerLogCell at 0 in every block (asserted above), so a
-  // hypothetical model WITHOUT the key must fingerprint identically. Rebuild
-  // both through the exported function by momentarily doping the inputs is
-  // not possible (it reads the shipped globals), so pin the property the
-  // other direction: strip the zero keys by hand and assert the canonical
-  // JSON round-trip prices identically, while a nonzero value changes par.
-  const stripped = Object.fromEntries(
-    Object.entries(PAR_MODEL).filter(([, v]) => v !== 0));
+  // Behavioral pin of the property the skip encodes, on EXPLICIT
+  // constructions rather than the shipped values (the launch state, every
+  // block at 0, expired when the first M1 refit emitted the coefficient):
+  // a real coefficient key at exactly 0 prices identically to the key being
+  // absent, while a nonzero value moves par, so the fingerprint may skip
+  // zeros and only zeros.
   const f = { cellCount: 80, totalMines: 12, zeroClusterCount: 1 };
-  assert.equal(applyParModel(f, stripped), applyParModel(f, PAR_MODEL),
+  const withZero = { ...PAR_MODEL, secPerWallEdge: 0 };
+  const { secPerWallEdge, ...withoutKey } = withZero;
+  assert.equal(applyParModel({ ...f, wallEdgeCount: 4 }, withZero),
+    applyParModel({ ...f, wallEdgeCount: 4 }, withoutKey),
     'a zero-valued key must be predictively inert (the property the fingerprint skip encodes)');
-  assert.notEqual(applyParModel(f, { ...PAR_MODEL, secPerLogCell: 0.5 }),
+  assert.notEqual(applyParModel(f, { ...PAR_MODEL, secPerLogCell: PAR_MODEL.secPerLogCell + 0.5 }),
     applyParModel(f, PAR_MODEL),
-    'a NONZERO value must move par (so the fingerprint must move with it)');
+    'a NONZERO shift must move par (so the fingerprint must move with it)');
 });
 
 test('REGRESSION: matchPlay is a SIGNED deviation, never a bounded slope', () => {
