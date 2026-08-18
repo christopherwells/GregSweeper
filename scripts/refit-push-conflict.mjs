@@ -49,6 +49,14 @@ export const FIT_OUTPUT_PATHS = [
 /** Generated data: re-derive rather than merge. */
 export const DERIVED_PATHS = [
   'src/logic/challengePool.js',
+  // The pool's feature store, re-stamped by the SAME repricer run that
+  // rewrites challengePool.js. It is derived for the same reason the pool is,
+  // and it has to be committed WITH the pool: a run that re-prices one and
+  // not the other leaves the committed store describing a pool that no longer
+  // exists. Missing from the staged set until 2026-08-18, which is what left
+  // the working tree dirty after every commit and made `git rebase` refuse to
+  // start on any night a human pushed while Stan was sampling.
+  'scripts/data/pool-features.json',
   'scripts/data/climb-library',
   'scripts/data/match-library',
 ];

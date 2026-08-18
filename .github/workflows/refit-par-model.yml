@@ -313,14 +313,14 @@ jobs:
       - name: Commit and push if anything changed
         id: commit
         run: |
-          if git diff --quiet src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json src/logic/journalRewrite.json src/logic/challengePool.js scripts/data/climb-library scripts/data/match-library; then
+          if git diff --quiet src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json src/logic/journalRewrite.json src/logic/challengePool.js scripts/data/pool-features.json scripts/data/climb-library scripts/data/match-library; then
             echo "No model, handicap, experiment-target, history, journal-rewrite, ladder-price, or library changes — nothing to commit."
             echo "pushed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git config user.name  "Christopher Wells"
           git config user.email "c.wells@bowdoin.edu"
-          git add src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json src/logic/journalRewrite.json src/logic/challengePool.js scripts/data/climb-library scripts/data/match-library
+          git add src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json src/logic/journalRewrite.json src/logic/challengePool.js scripts/data/pool-features.json scripts/data/climb-library scripts/data/match-library
           git commit -m "refit PAR_MODEL, handicaps, experiment target, ladder prices, and the journal rewrite — $(date -u +%Y-%m-%d)"
           # A plain push LOSES THE WHOLE NIGHT'S FIT if a human pushed to main
           # while Stan was sampling. That is not hypothetical: the 2026-08-03
@@ -350,17 +350,30 @@ jobs:
             if git push; then pushed=true; break; fi
             echo "push rejected (attempt $attempt) — rebasing onto origin/main and retrying"
             git fetch origin main
-            if ! git rebase origin/main; then
+            # --autostash because a rebase REFUSES TO START on a dirty tree,
+            # and the failure then reads as a conflict it is not: `git diff
+            # --diff-filter=U` is empty, the classifier correctly says nothing
+            # conflicted, and the else branch runs `git rebase --abort` with no
+            # rebase in progress. That is the 2026-08-17 failure exactly. The
+            # staged set above is the real fix; this is the guard that keeps
+            # the next stray file from costing another night.
+            if ! git rebase --autostash origin/main; then
               if git diff --name-only --diff-filter=U | node scripts/refit-push-conflict.mjs; then
-                git checkout origin/main -- src/logic/challengePool.js scripts/data/climb-library scripts/data/match-library
+                git checkout origin/main -- src/logic/challengePool.js scripts/data/pool-features.json scripts/data/climb-library scripts/data/match-library
                 node scripts/reprice-challenge-pool.mjs || echo "::warning::pool left at main's prices"
                 node scripts/reprice-climb-library.mjs || echo "::warning::climb library left at main's prices"
                 node scripts/reprice-match-library.mjs || echo "::warning::match library left at main's prices"
-                git add src/logic/challengePool.js scripts/data/climb-library scripts/data/match-library
+                git add src/logic/challengePool.js scripts/data/pool-features.json scripts/data/climb-library scripts/data/match-library
                 GIT_EDITOR=true git rebase --continue || { git rebase --abort; exit 1; }
               else
-                git rebase --abort
-                echo "::error::refit push conflicted outside the generated data; not auto-resolving"
+                # `|| true`: when the rebase never STARTED (a dirty tree, a
+                # fetch problem) there is nothing to abort, and a failing
+                # abort under `set -e` kills the step with a bare 128 before
+                # the error below can say why. Losing the diagnostic is how
+                # this bug stayed unread for three runs.
+                git rebase --abort || true
+                echo "::error::refit push failed to rebase, and the conflict (if any) is outside the generated data; not auto-resolving"
+                git status --porcelain | head -20
                 exit 1
               fi
             fi
