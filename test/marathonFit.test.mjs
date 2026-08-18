@@ -9,8 +9,10 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import {
-  marathonFits, marathonDims, marathonShapes, fitLegalFrontier, fitCeilingCells,
+  marathonFits, marathonDims, marathonDimsSpread, marathonShapes,
+  fitLegalFrontier, fitCeilingCells, inSupportCells,
   marathonProvisionalPar, MARATHON_TRAVERSAL_FLOOR_PPC, CANONICAL_MAX_DIM,
+  MARATHON_MIN_SHORT_SIDE,
 } from '../src/logic/marathonFit.js';
 import { boardFitsPhone, rectFitsPhone } from '../src/logic/boardFit.js';
 import { buildTiling, containerIsStorable, TILING_TYPES } from '../src/logic/tilingGeometry.js';
@@ -55,31 +57,68 @@ test('the doubled bound really bounds: past 2x either axis is refused', () => {
   assert.equal(marathonFits('rect', 35, 22), false);
 });
 
-test('REGRESSION: marathon means BIGGER, so a tall thin board is not one', () => {
-  // Found by this file, 2026-08-17: the doubled-dims bound alone admitted a
-  // 25x1 at twenty-five cells as a "marathon" board, because rectFitsPhone
-  // tolerates thin boards (a 17x1 passes it) and failing it by HEIGHT says
-  // nothing about size. Every shape's lane now has to exceed that shape's
-  // own fit ceiling in cells, which is the doubling ruling read in the
-  // currency a player actually feels.
-  assert.equal(marathonFits('rect', 25, 1), false, 'twenty-five cells is not a marathon');
-  assert.equal(marathonFits('rect', 27, 3), false, 'eighty-one cells is not either');
-  assert.equal(marathonFits('rect', 24, 3), false);
+test('THE DEGENERACY LINE: a short side under 3 is refused, 3 and up is not', () => {
+  // Measured 2026-08-17, after his "I was musing about the merits of a 25x3
+  // board myself". Thinness, not proportion, is what breaks a board: at one
+  // column a cell has at most 2 neighbors, at two at most 5 and NO cell has
+  // a full neighborhood, and at three the middle column carries all 8. The
+  // generator agrees independently: a 25x3 certified 3 draws of 3 while a
+  // 25x2 certified none. So the bound is the short side, and the aspect cap
+  // that used to sit here (twice as long as wide) is gone with it, because
+  // it was refusing exactly the boards the toggle exists to unlock.
+  assert.equal(MARATHON_MIN_SHORT_SIDE, 3);
+  assert.equal(marathonFits('rect', 25, 1), false, 'a path graph is not a board');
+  assert.equal(marathonFits('rect', 25, 2), false, 'two columns have no interior cell');
+  assert.equal(marathonFits('rect', 25, 3), true, 'his 25x3 is a real board');
+  // Its wide twin is 3x22, not 3x25: the doubling ruling caps columns at
+  // twice BOARD_WIDTH_CAP, so 22 is as wide as any rect may ever be, and a
+  // board asking for 25 columns is out on the same rule that lets 25 rows in.
+  assert.equal(marathonFits('rect', 3, 22), true, 'the wide twin, at the doubled cap');
+  assert.equal(marathonFits('rect', 3, 25), false, 'past twice the column cap');
   for (const shape of marathonShapes()) {
-    const ceiling = fitCeilingCells(shape);
-    assert.ok(ceiling > 0, `${shape} must have a fit ceiling`);
     for (const d of marathonDims(shape)) {
-      assert.ok(d.cells > ceiling,
-        `${shape} offered ${d.cells} cells against a fit ceiling of ${ceiling}`);
+      const M = shape === 'rect' ? d.rows : d.M;
+      const N = shape === 'rect' ? d.cols : d.N;
+      assert.ok(Math.min(M, N) >= MARATHON_MIN_SHORT_SIDE,
+        `${shape} offered ${M}x${N}, under the short-side floor`);
     }
   }
-  // And the menu stays PROPORTIONED: one entry per cell count, the squarest
-  // dims that produce it, because the camera scrolls both axes and a
-  // balanced board keeps every point nearer the middle of a glide.
-  for (const d of marathonDims('rect')) {
-    const ratio = Math.max(d.rows, d.cols) / Math.min(d.rows, d.cols);
-    assert.ok(ratio <= 3, `the menu offered ${d.rows}x${d.cols} (ratio ${ratio.toFixed(1)})`);
-  }
+});
+
+test('PROPORTION qualifies, not only size: an ordinary-cell wide board is lane material', () => {
+  // The half the first cut missed. A 6x20 is 120 cells, well inside rect's
+  // 187-cell fit ceiling, and it is lane material purely because 20 columns
+  // is past BOARD_WIDTH_CAP and no phone can hold it.
+  assert.ok(marathonFits('rect', 6, 20), 'a wide board at an ordinary cell count');
+  assert.ok(120 < fitCeilingCells('rect'), 'and it really is inside the fit ceiling');
+  // Which means it is INSIDE the model's support and must not be priced
+  // provisionally: that is the point of splitting the two.
+  assert.equal(inSupportCells('rect', 120), true);
+  assert.equal(inSupportCells('rect', 660), false, 'a giant is still out of support');
+  assert.equal(inSupportCells('rect', fitCeilingCells('rect')), true, 'the ceiling itself is in');
+  // The menu must actually OFFER such boards, or the rule would be theory.
+  const dims = marathonDims('rect');
+  assert.ok(dims.some((d) => d.cells <= fitCeilingCells('rect')),
+    'the menu must offer at least one in-support size');
+  assert.ok(dims.some((d) => d.cells > fitCeilingCells('rect')),
+    'and at least one giant');
+});
+
+test('the menu SPREADS across the size range, so giants cannot crowd out the rest', () => {
+  // The generator walks the menu until a cell is full, so taking the head
+  // would build only giants and the proportion half would exist in the
+  // rules and never on disk.
+  const spread = marathonDimsSpread('rect', 4);
+  assert.equal(spread.length, 4);
+  assert.equal(spread[0].cells, marathonDims('rect')[0].cells, 'still biggest first');
+  const cells = spread.map((d) => d.cells);
+  assert.deepEqual(cells, [...cells].sort((a, b) => b - a), 'descending');
+  assert.ok(new Set(cells).size === 4, 'four distinct sizes');
+  assert.ok(cells[3] < cells[0] / 2, `the spread must reach small sizes, got ${cells.join(',')}`);
+  // Degenerate asks answer sanely rather than throwing.
+  assert.deepEqual(marathonDimsSpread('rect', 0), []);
+  assert.equal(marathonDimsSpread('rect', 1).length, 1);
+  assert.equal(marathonDimsSpread('rect', 9999).length, marathonDims('rect').length);
 });
 
 test('a fit-legal board is NOT marathon: the two lanes are disjoint by construction', () => {
