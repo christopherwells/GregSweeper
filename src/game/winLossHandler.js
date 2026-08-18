@@ -382,6 +382,7 @@ export async function submitArchiveCompletion(dateStr, name, scoreTime) {
       rngSeed: state.dailyRngSeed || dateStr,
       totalMines: state.totalMines,
       cruxViewed,
+      scrolled: !!state.boardScrolled,
     });
   }
   // dailyHistory is durable (its own retry queue), so the completion and the
@@ -869,6 +870,7 @@ export async function handleWin() {
       par: state.matchPar || 0,
       bombHitEvents: (state.dailyBombHitEvents || []).slice(),
       wormEvents: (state.wormEvents || []).slice(),
+      scrolled: !!state.boardScrolled,
     };
     // Post it live (his ruling: times appear as they land, for everyone,
     // finished or not). Fire-and-forget: a refused post is almost always the

@@ -1010,6 +1010,10 @@ export function cameraMinZoom() {
 
 export function updateZoom() {
   if (needsZoom()) {
+    // One flag, set at the one place that knows: this board is being played
+    // with the camera. Sticky for the board's life (a player who scrolls once
+    // has paid the traversal cost), reset by newGame with everything else.
+    state.boardScrolled = true;
     zoomControls.classList.remove('hidden');
     boardScrollWrapper.classList.add('zoomed');
     const scale = state.zoomLevel / 100;

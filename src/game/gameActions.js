@@ -359,6 +359,8 @@ export async function newGame() {
   // itself was torn down by stopTimer above).
   state.worms = [];
   state.wormEvents = [];
+  // Fresh board, fresh traversal question: updateZoom re-answers it below.
+  state.boardScrolled = false;
   // inputLocked is set transiently during cascade/chord animations and cleared
   // by a setTimeout. Starting a new game between the lock and the timeout would
   // leave the new game with input frozen until the next interaction would

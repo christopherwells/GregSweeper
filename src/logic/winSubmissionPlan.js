@@ -16,11 +16,11 @@
  * auto-submit (winLossHandler) and manual-submit (main.js) paths must use this.
  *
  * @param {object} state   live game state, reads dailyPar, dailyFeatures,
- *   dailyBombHitEvents, wormEvents, dailyRngSeed, totalMines
+ *   dailyBombHitEvents, wormEvents, dailyRngSeed, totalMines, boardScrolled
  * @param {string} dateStr the board's effective date/seed key (rngSeed falls back to it)
  * @param {string} uid     the player's Firebase uid (getUid())
  * @returns {{uid: string, par: number, features: object, bombHitEvents: Array,
- *   wormEvents: Array, rngSeed: string, totalMines: number}}
+ *   wormEvents: Array, rngSeed: string, totalMines: number, scrolled: boolean}}
  */
 export function buildDailyScoreExtras(state, dateStr, uid) {
   return {
@@ -35,5 +35,11 @@ export function buildDailyScoreExtras(state, dateStr, uid) {
     wormEvents: state.wormEvents || [],
     rngSeed: state.dailyRngSeed || dateStr,
     totalMines: state.totalMines,
+    // ALWAYS written, never omitted when false, and that is the point: an
+    // ABSENT scrolled means a client that predates the field, while `false`
+    // means a client that measured and found the board fitted. The R side
+    // needs to tell those apart, so the boolean is stated rather than
+    // implied.
+    scrolled: !!state.boardScrolled,
   };
 }

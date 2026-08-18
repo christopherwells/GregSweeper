@@ -42,6 +42,9 @@
           "totalBombPenalty": {
             ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600"
           },
+          "scrolled": {
+            ".validate": "newData.isBoolean()"
+          },
           "hintEvents": {
             ".validate": "newData.hasChildren() || newData.val() === null",
             "$idx": {
@@ -123,6 +126,9 @@
           },
           "totalBombPenalty": {
             ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600"
+          },
+          "scrolled": {
+            ".validate": "newData.isBoolean()"
           },
           "hintEvents": {
             ".validate": "newData.hasChildren() || newData.val() === null",

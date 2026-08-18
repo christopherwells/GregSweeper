@@ -129,6 +129,7 @@ export function persistGameState() {
     // The hatch log must survive a resume, a resumed daily's submission
     // reports the realized worm dose, same contract as bombHitEvents.
     wormEvents: state.wormEvents || [],
+    boardScrolled: !!state.boardScrolled,
     wallEdges: state.board._wallEdges ? Array.from(state.board._wallEdges) : [],
     // An explicit topology (Coastline tiling boards) rides the save the same
     // way wallEdges does, and for the same reason: the snapshot is JSON, and
@@ -271,6 +272,7 @@ export function tryResumeGame(mode) {
   state.gimmickData = gs.gimmickData || {};
   state.worms = rehydrateWorms(gs.worms);
   state.wormEvents = Array.isArray(gs.wormEvents) ? gs.wormEvents : [];
+  state.boardScrolled = gs.boardScrolled === true;
   // No save is ever a Chaos board (Chaos always starts fresh), so a resumed
   // game never inherits a shift cadence. This is the one resume path that does
   // NOT run stopTimer, which is where the leaked cadence used to survive

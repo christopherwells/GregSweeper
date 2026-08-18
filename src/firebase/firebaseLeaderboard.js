@@ -446,6 +446,10 @@ export function buildArchivePayload(date, name, time, bombHits, extras = {}, tim
   if (Array.isArray(extras.wormEvents) && extras.wormEvents.length > 0) {
     payload.wormEvents = extras.wormEvents;
   }
+  // Stated in both directions, never omitted when false: absent means a
+  // client older than the field, false means one that measured and found the
+  // board fitted the screen. The refit needs to tell those apart.
+  if (typeof extras.scrolled === 'boolean') payload.scrolled = extras.scrolled;
   // Archive boards are PAST dates, so the effective seed routinely differs
   // from `date` (the daily flips `:trialN` on experiment days). Store it only
   // when it differs so the refit can reproduce the exact board.
