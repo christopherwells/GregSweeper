@@ -8,7 +8,7 @@
 import { state, clearCoastlinePractice } from './state/gameState.js';
 import { PROD_SITE_BASE } from './config.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
-import { resizeCells, updateAllCells, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, renderWallOverlays, showGimmickRegion, clearGimmickRegion, cameraCenterOnCell, cameraMinZoom } from './ui/boardRenderer.js';
+import { resizeCells, updateAllCells, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, renderWallOverlays, showGimmickRegion, clearGimmickRegion, cameraCenterOnCell, cameraMinZoom, snapFirstClick } from './ui/boardRenderer.js';
 import { chordHasWork } from './logic/boardSolver.js';
 import { CELL_SIZE_PREFS, prefMinPx } from './logic/boardCamera.js';
 import { renderWormOverlays } from './ui/wormRenderer.js';
@@ -435,8 +435,12 @@ boardEl.addEventListener('mousedown', (e) => {
   if (Date.now() - lastTouchTime < 500) return;
   const cellEl = e.target.closest('.cell');
   if (!cellEl) return;
-  const row = parseInt(cellEl.dataset.row);
-  const col = parseInt(cellEl.dataset.col);
+  // A first click near the marked opener IS the marked opener (his ruling):
+  // at the opening survey a cell is a few pixels across, so an honest aim
+  // can miss. snapFirstClick returns null except in exactly that state.
+  const snapped = snapFirstClick(e.clientX, e.clientY);
+  const row = snapped ? snapped.row : parseInt(cellEl.dataset.row);
+  const col = snapped ? snapped.col : parseInt(cellEl.dataset.col);
 
   if (e.button === 0) {
     const cell = state.board[row]?.[col];
@@ -483,8 +487,11 @@ boardEl.addEventListener('touchstart', (e) => {
   e.preventDefault();
 
   longPressTriggered = false;
-  touchedCellRow = parseInt(cellEl.dataset.row);
-  touchedCellCol = parseInt(cellEl.dataset.col);
+  // The opener snap (his ruling), resolved at touchSTART so a long press
+  // flags the same cell the tap would have revealed.
+  const snapped = snapFirstClick(touch.clientX, touch.clientY);
+  touchedCellRow = snapped ? snapped.row : parseInt(cellEl.dataset.row);
+  touchedCellCol = snapped ? snapped.col : parseInt(cellEl.dataset.col);
   touchStartX = touch.clientX;
   touchStartY = touch.clientY;
   touchedCellEl = cellEl;

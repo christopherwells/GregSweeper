@@ -20,6 +20,7 @@ import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { predictPar } from '../src/logic/dailyFeatures.js';
 import { packPayload } from '../src/logic/boardPack.js';
 import { timeBandOf } from '../src/logic/matchRules.js';
+import { marathonProvisionalPar } from '../src/logic/marathonFit.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
 import { OUT_DIR, writeMatchIndexFiles, matchPageNames } from './match-index-files.mjs';
 
@@ -60,7 +61,23 @@ function main() {
       }
       if (b.features) {
         let par = 0;
-        try { par = predictPar(b.features); } catch { par = 0; }
+        // An OVERSIZED (marathon-lane) board never takes raw predictPar: the
+        // model has no support at its size (probed 2026-08-17: hex collapses,
+        // cairo explodes). His scheme re-prices the board's STORED ANCHOR
+        // (a real fit-ceiling board's features, in support) under tonight's
+        // model and extends linearly with the traversal floor, so lane pars
+        // keep moving with the refit like everything else.
+        try {
+          if (b.oversized === true && b.anchorFeatures && b.anchorCells) {
+            par = marathonProvisionalPar({
+              cells: b.spec.cells,
+              anchorPar: predictPar(b.anchorFeatures),
+              anchorCells: b.anchorCells,
+            });
+          } else {
+            par = predictPar(b.features);
+          }
+        } catch { par = 0; }
         if (par > 0) {
           par = Math.round(par * 10) / 10;
           const shift = Math.abs(par - b.par);

@@ -459,6 +459,13 @@ async function main() {
   // depth (or the corner would read full while dealing thin), and the
   // arity-scaled targets are what stop the trimmed surplus regrowing.
   const existing = pages.flat().filter((b) => b && !b.evicted);
+  // The FIT lane's census sees fit boards only. Oversized (marathon-lane)
+  // rows share pages and corners but serve a different legality: counting
+  // them toward a corner's depth would read the corner as full while every
+  // opted-out host deals thin, and an oversized spec offered as an in-cell
+  // anchor would hand marathon dims to a generator whose lattice candidates
+  // carry no fit re-check. The seed-duplicate guard still spans BOTH lanes.
+  const fitOnly = existing.filter((b) => b.oversized !== true);
   // A SEED THE LIBRARY ALREADY HOLDS IS DROPPED, NOT ADDED TWICE (the climb
   // re-bin's own rule, which this tool lacked until 2026-08-16). Draw seeds
   // derive from the run counter, and a TARGETED run leaves that counter
@@ -478,7 +485,7 @@ async function main() {
   // has been dug through stops earning new boards rather than earning more.
   const total = new Map();
   const playedIn = new Map();
-  for (const b of existing) {
+  for (const b of fitOnly) {
     const k = cornerOf(b);
     total.set(k, (total.get(k) || 0) + 1);
     if (played.set.has(matchRowKey(b.seed))) playedIn.set(k, (playedIn.get(k) || 0) + 1);
@@ -486,14 +493,14 @@ async function main() {
   /** Boards still owed in this corner: its target total, less what it holds. */
   const needOf = (k) => cornerTotalTarget(playedIn.get(k) || 0, arityOfKey(k)) - (total.get(k) || 0);
 
-  const space = featureSpace(existing);
-  const corpus = existing.map((b) => vecOf(space, b.features));
+  const space = featureSpace(fitOnly);
+  const corpus = fitOnly.map((b) => vecOf(space, b.features));
 
   // In-cell anchors for the census (his expandable rule): up to three
   // distinct geometries already proven in each (shape, time, density) cell
   // under ANY modifier set, offered to every corner of that cell.
   const cellAnchors = new Map();
-  for (const b of existing) {
+  for (const b of fitOnly) {
     const k = `${b.spec.shape}|${timeBandOf(b.par)}|${densityBandOf(b.spec.mines, b.spec.cells)}`;
     const list = cellAnchors.get(k) || [];
     if (list.length < 3 && !list.some((s) => s.cells === b.spec.cells)) list.push(b.spec);
@@ -540,7 +547,8 @@ async function main() {
   const due = targeted ? wanted : wanted.filter((w) => corner_isDue(state.corners[w.key], runNo));
 
   const bufferDesc = BUFFER_OVERRIDE != null ? `flat ${Number(BUFFER_OVERRIDE)}` : `${ARITY_BUFFERS.join('/')} by arity`;
-  console.log(`topup-match-library: ${existing.length} boards on ${pages.length} pages;`
+  console.log(`topup-match-library: ${fitOnly.length} fit boards on ${pages.length} pages`
+    + `${existing.length - fitOnly.length ? ` (+${existing.length - fitOnly.length} oversized, not this lane's)` : ''};`
     + ` ${total.size} corners occupied, ${wanted.length} below target (buffer ${bufferDesc}, ceiling ${CORNER_CEILING}),`
     + ` ${due.length} due this run (${targeted ? 'targeted' : `run #${runNo}`}); budget ${BUDGET_MS / 60000} min`);
   if (due.length === 0) {

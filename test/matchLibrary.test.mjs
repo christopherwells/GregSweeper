@@ -35,8 +35,9 @@ import {
 import {
   parseMatchIndex, parseMatchSummary, countEligibleCorners, eligibleRows,
   matchIndexRow, matchIndexFeatureKeys, timeBandOf, MATCH_TIME_BANDS,
-  matchShardFileForRow,
+  matchShardFileForRow, MARATHON_PAR_CEILING_SECONDS,
 } from '../src/logic/matchRules.js';
+import { marathonFits, marathonProvisionalPar } from '../src/logic/marathonFit.js';
 import { predictPar } from '../src/logic/dailyFeatures.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
 import { CLIMB_MIN_DEDUCTIONS } from '../src/logic/challenge250.js';
@@ -64,10 +65,18 @@ const SHAPES = ['rect', ...TILING_TYPES];
 // ONE FILE PER CORNER since 2026-08-14, so the shard set is read off the
 // directory rather than composed from SHAPES: the corner axis includes the
 // modifier SET, and there is no list of those to iterate.
-const shardNames = readdirSync(OUT_DIR).filter((f) => /^mx-.+\.json$/.test(f)).sort();
+// BOTH FILE CLASSES: `mx-` holds the fit lane, `mxo-` the marathon lane
+// (2026-08-17). A regex of `^mx-` matches only the first, which is the whole
+// point of the name (a client predating the lane cannot ask for a file it
+// cannot construct), so the test has to name both deliberately or it would
+// measure the library against half of itself.
+const fitShardNames = readdirSync(OUT_DIR).filter((f) => /^mx-.+\.json$/.test(f)).sort();
+const laneShardNames = readdirSync(OUT_DIR).filter((f) => /^mxo-.+\.json$/.test(f)).sort();
+const shardNames = [...fitShardNames, ...laneShardNames].sort();
 const shards = Object.fromEntries(shardNames
   .map((f) => [f, JSON.parse(readFileSync(new URL(f, OUT_DIR), 'utf8'))]));
-/** Every shard's rows, parsed and concatenated: what a deal over everything sees. */
+/** Every shard's rows, parsed and concatenated: what a deal over everything,
+ * INCLUDING the scroll opt-in, sees. */
 const allRows = shardNames.flatMap((f) => parseMatchIndex(shards[f]) || []);
 
 test('the match library is real, sharded, and its summary tells the truth', () => {
@@ -91,8 +100,15 @@ test('the match library is real, sharded, and its summary tells the truth', () =
   // ONE SHARD PER OCCUPIED CORNER, and every board in exactly one of them. A
   // corner whose file went missing would deal nothing while the summary went
   // on advertising it, which is this split's own failure mode.
-  assert.equal(shardNames.length, summary.corners.length,
-    'every occupied corner needs its own shard file, and no file may outlive its corner');
+  // A corner has a base file when it holds fit boards and a lane file when
+  // it holds oversized ones, so the count is over (corner x class) rather
+  // than over corners. Derived from the rows themselves through the writer's
+  // own function, so the two cannot disagree about where a row lives.
+  const expectedFiles = new Set(allRows.map((r) => matchShardFileForRow(r)));
+  assert.equal(shardNames.length, expectedFiles.size,
+    'every occupied (corner, lane) needs its own shard file, and no file may outlive it');
+  assert.deepEqual(shardNames, [...expectedFiles].sort(),
+    'the files on disk and the files the rows call for must be the same set');
   assert.equal(allRows.length, boards.length, 'the shards together hold every board exactly once');
   // The summary's per-shape totals still have to add up, even though nothing
   // is stored per shape any more: the sheet's supply line reads them.
@@ -172,8 +188,15 @@ test('LOCKSTEP: every file is priced under the model of the day', () => {
     + 'run: node scripts/reprice-match-library.mjs');
 });
 
-test('every board prices from its own stored features', () => {
+test('every FIT board prices from its own stored features', () => {
+  // Oversized boards are excluded because they price by a DIFFERENT rule,
+  // not because they are unchecked: the model has no support at marathon
+  // sizes (raw predictPar puts a 660-cell rect at 1068s and a 600-cell hex
+  // at 17s), so the lane prices through marathonProvisionalPar from a real
+  // anchor in support. The test right below holds every lane board to that
+  // rule just as strictly as this one holds the fit library to predictPar.
   for (const b of boards) {
+    if (b.oversized === true) continue;
     assert.ok(b.features, `${b.seed} stores its feature vector`);
     const par = Math.round(predictPar(b.features) * 10) / 10;
     assert.ok(Math.abs(par - b.par) < 0.06,
@@ -293,7 +316,15 @@ test('the bands the sheet sells are stocked', () => {
     cnt[`${b.spec.shape}|${band}`] = (cnt[`${b.spec.shape}|${band}`] || 0) + 1;
   }
   for (const band of MATCH_TIME_BANDS) {
-    assert.ok((cnt[band.key] || 0) >= 100, `band ${band.key} holds ${cnt[band.key] || 0} boards`);
+    // MARATHON is stocked by the lane, which grows a few boards a night
+    // rather than arriving full, and it is also the one band a player
+    // cannot reach by accident. Its floor is therefore its own and is
+    // stated as a number that must RISE: if this ever reads as failing
+    // because the lane shrank, that is the alarm working. Every other band
+    // serves every host on every deal and keeps the full bar.
+    const floor = band.key === 'marathon' ? 10 : 100;
+    assert.ok((cnt[band.key] || 0) >= floor,
+      `band ${band.key} holds ${cnt[band.key] || 0} boards, under its floor of ${floor}`);
   }
   for (const shape of SHAPES) {
     for (const band of ['quick', 'short']) {
@@ -371,17 +402,51 @@ test('validateTargetCorners refuses a key the library cannot hold', () => {
   assert.equal(ok.length, 2);
 });
 
-test('every dealable rect board fits the phone the rules describe', () => {
+test('every dealable FIT rect board fits the phone the rules describe', () => {
   // The pool outlives the rules it was searched under (BOARD_WIDTH_CAP moved
   // 2026-08-14), and the overnight burst regenerated 365 phone-illegal rects
   // from stale pool dims because nothing at the match generation boundary
   // re-checked fit. specsForCorner filters at consumption now and the
   // eviction tool tombstones offenders; this is the alarm if either stops.
+  //
+  // OVERSIZED boards are excluded BY DEFINITION, not waved through: the
+  // marathon lane exists to ship boards a phone cannot hold, dealt only
+  // under the scroll opt-in. They are held to their own ceiling by the test
+  // below, so nothing is unmeasured; what would be a bug is an oversized
+  // board reachable WITHOUT the opt-in, which the filter tests pin.
   const bad = boards
+    .filter((b) => b.oversized !== true)
     .filter((b) => b.spec.shape === 'rect' && !rectFitsPhone(b.spec.rows, b.spec.cols))
     .map((b) => `${b.spec.rows}x${b.spec.cols}`);
   assert.deepEqual([...new Set(bad)].sort(), [],
     `${bad.length} dealable rect board(s) fail rectFitsPhone; run scripts/evict-match-surplus.mjs`);
+});
+
+test('every oversized board is inside the marathon ceiling, and priced provisionally', () => {
+  // The lane's own alarm, the counterpart to the fit rule above. His ceiling
+  // is 2x the established fit-legal dims per shape (marathonFit.js), so a
+  // lane board outside marathonFits is one nothing should have generated,
+  // and a lane board without its anchor could never be re-priced when the
+  // model moves.
+  const lane = boards.filter((b) => b.oversized === true);
+  for (const b of lane) {
+    const M = b.spec.shape === 'rect' ? b.spec.rows : b.spec.M;
+    const N = b.spec.shape === 'rect' ? b.spec.cols : b.spec.N;
+    assert.ok(marathonFits(b.spec.shape, M, N),
+      `${b.seed}: ${b.spec.shape} ${M}x${N} is outside the marathon region`);
+    assert.equal(b.parProvisional, true, `${b.seed}: a lane par must be flagged provisional`);
+    assert.ok(Number.isFinite(b.anchorCells) && b.anchorCells > 0,
+      `${b.seed}: no anchorCells, so the nightly re-price cannot re-anchor it`);
+    assert.ok(b.anchorFeatures && typeof b.anchorFeatures === 'object',
+      `${b.seed}: no anchorFeatures`);
+    assert.ok(b.par > 0 && b.par <= MARATHON_PAR_CEILING_SECONDS,
+      `${b.seed}: par ${b.par}s is outside the lane's admission ceiling`);
+    // The stored par must be exactly what the pure rule says, so a page
+    // hand-edited or written by an older tool cannot drift from the scheme.
+    assert.equal(b.par, marathonProvisionalPar({
+      cells: b.spec.cells, anchorPar: predictPar(b.anchorFeatures), anchorCells: b.anchorCells,
+    }), `${b.seed}: stored par disagrees with marathonProvisionalPar under today's model`);
+  }
 });
 
 test('specsForCorner: anchors join, illegal rects are refused, only quick leads small', () => {
