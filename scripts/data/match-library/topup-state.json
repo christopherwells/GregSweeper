@@ -1,5 +1,5 @@
 {
- "runs": 14,
+ "runs": 15,
  "corners": {
   "4.8.8||short|sparse": {
    "fails": 4,
@@ -5223,8 +5223,8 @@
   },
   "hex|mystery|short|dense": {
    "fails": 0,
-   "attempts": 20,
-   "lastRun": 1
+   "attempts": 34,
+   "lastRun": 15
   },
   "hex|mystery|long|dense": {
    "fails": 0,
@@ -5447,9 +5447,9 @@
    "lastRun": 8
   },
   "rhombille|liar|short|dense": {
-   "fails": 0,
-   "attempts": 49,
-   "lastRun": 11
+   "fails": 1,
+   "attempts": 50,
+   "lastRun": 15
   },
   "hex|worm|quick|sparse": {
    "fails": 0,
@@ -9523,8 +9523,8 @@
   },
   "floret||long|dense": {
    "fails": 0,
-   "attempts": 8,
-   "lastRun": 4
+   "attempts": 26,
+   "lastRun": 15
   },
   "rect|liar+locked+wormhole|quick|standard": {
    "fails": 0,
