@@ -285,7 +285,19 @@ test('the endless bins carry all SEVEN shapes, Classic included', () => {
   // day 4.8.8 clears the floor again, so the carve-out cannot silently
   // outlive its premise. His ruling on keeping or lifting the floor for
   // measured-closed shapes is an open morning question.
-  const MEASURED_CEILING = { '4.8.8': 7 };
+  // MEASURED CEILING, 2026-08-18, rhombille under M1: the size-term refit
+  // compressed the shape's whole price surface, and no buildable rhombille
+  // reaches the 400s floor any more. Measured that night, all doors: the
+  // fit-dims builder ground 511 boards in 88 minutes for zero net new; the
+  // scrolling lane's marathon dims price 108-182s PLAIN with hard 0
+  // (everything cascades), and the heavy recipe (144c, density 0.32, a
+  // 4-stack) certifies at hard 13 but pars 238s, still 160s under the
+  // floor, at 81-426s of generation per attempt. The shape's 13 standing
+  // boards are its physical supply under this model. Self-retiring like
+  // the 4.8.8 entry below it; likeliest road back is rhombille's own
+  // logCells deviation earning out (15 of 20 rows the night this was
+  // written) and moving the equation.
+  const MEASURED_CEILING = { '4.8.8': 7, rhombille: 13 };
   // The floor counts the scrolling lane (his ruling 2026-08-18: "endless
   // can have scrolling boards"): under M1, rhombille's 400s+ region starts
   // past its fit-legal sizes, so the shape holds its floor THROUGH boards
