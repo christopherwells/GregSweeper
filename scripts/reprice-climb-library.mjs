@@ -41,7 +41,9 @@ import {
   parFloor, parWindowTop, hardFloor, minBoardsFor,
   intakeRules, boardAllowedAtLevel, PAR_FLOOR_SHAPE_RELIEF, OUT_DIR,
   ENDLESS_PAR_FLOOR, ENDLESS_FACE_CAP, ENDLESS_SHAPE_FLOOR, ENDLESS_SHAPE_TARGET, ENDLESS_INDEX,
+  endlessOverPageFile, loadEndlessOverPages, writeEndlessIndex,
 } from './build-climb-library.mjs';
+import { marathonProvisionalPar } from '../src/logic/marathonFit.js';
 import { ENDLESS_MIN_HARD, endlessHardOf } from '../src/logic/challengeRules.js';
 import { deserializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
@@ -113,6 +115,36 @@ if (backfilled) console.log(`backfilled ${backfilled} feature vectors in ${Math.
 for (const L of levels) for (const b of L.json.boards) b.par = predictPar(b.features);
 for (const P of endlessPages) for (const b of P.json.boards) b.par = predictPar(b.features);
 for (const b of reserve) b.par = predictPar(b.features);
+
+// The scrolling lane re-prices on its own rule (the match lane's): an
+// in-support row on the model verbatim, a past-support row through its
+// stored fit-ceiling anchor re-priced under tonight's model, never through
+// predictPar over its own features (extrapolation there is unusable in
+// both directions, the marathon doctrine). A row whose re-anchored par
+// falls under the endless floor is DROPPED from its page: the lane's one
+// membership bound, and seed-keyed seen lists shrug off the removal.
+const overPagesJson = loadEndlessOverPages();
+let overDropped = 0;
+for (const page of overPagesJson) {
+  const keep = [];
+  for (const b of page.boards) {
+    b.par = (b.parProvisional && b.anchorFeatures && b.anchorCells)
+      ? marathonProvisionalPar({
+        cells: b.spec.cells,
+        anchorPar: predictPar(b.anchorFeatures),
+        anchorCells: b.anchorCells,
+      })
+      : predictPar(b.features);
+    b.par = Math.round(b.par * 10) / 10;
+    if (b.par >= ENDLESS_PAR_FLOOR) keep.push(b);
+    else overDropped++;
+  }
+  page.boards = keep;
+}
+if (overPagesJson.length) {
+  console.log(`scroll lane: ${overPagesJson.reduce((a, p) => a + p.boards.length, 0)} boards re-anchored`
+    + (overDropped ? `, ${overDropped} under the floor dropped` : ''));
+}
 
 // ── Stability pass: in-window boards stay; the rest go homeless ─────────
 const homeless = reserve.splice(0, reserve.length);
@@ -303,14 +335,15 @@ if (!DRY) {
     for (const b of P.json.boards) delete b.parModel;
     writeFileSync(new URL(P.file, OUT_DIR), JSON.stringify(P.json));
   }
-  if (hasEndless) {
-    writeFileSync(ENDLESS_INDEX, JSON.stringify({
-      parModel: fp,
-      parFloor: ENDLESS_PAR_FLOOR,
-      boards: endlessBoardCount(),
-      pages: endlessPages.length,
-      counts: endlessPages.map((P) => P.json.boards.length),
-    }));
+  for (let k = 0; k < overPagesJson.length; k++) {
+    const page = overPagesJson[k];
+    page.parModel = fp;
+    writeFileSync(endlessOverPageFile(k), JSON.stringify(page));
+  }
+  if (hasEndless || overPagesJson.length) {
+    // The ONE index writer (build-climb-library.mjs): an inline write here
+    // knew only the fit class and would drop the scrolling lane's fields.
+    writeEndlessIndex(fp);
   }
   writeFileSync(RESERVE_URL, JSON.stringify({ parModel: fp, boards: stillHomeless }));
   writeFileSync(DEFICITS_URL, JSON.stringify({ parModel: fp, deficits }));

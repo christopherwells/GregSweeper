@@ -52,6 +52,12 @@ const endlessIndex = JSON.parse(readFileSync(new URL('endless-index.json', OUT_D
 const endlessPages = Array.from({ length: endlessIndex.pages }, (_, k) =>
   JSON.parse(readFileSync(new URL(`endless-${String(k).padStart(3, '0')}.json`, OUT_DIR), 'utf8')));
 const endlessBoards = endlessPages.flatMap((p) => p.boards);
+// The scrolling lane (his ruling 2026-08-18): its own page class, invisible
+// to a pre-scroll client (the index's overCounts field is the only thing
+// that names it), dealt in the same single cycle by new ones.
+const overFiles = readdirSync(OUT_DIR).filter((f) => /^endless-over-\d+\.json$/.test(f)).sort();
+const overPages = overFiles.map((f) => JSON.parse(readFileSync(new URL(f, OUT_DIR), 'utf8')));
+const overBoards = overPages.flatMap((p) => p.boards);
 
 test('the library is complete and non-vacuous', () => {
   assert.equal(levels.length, 225, 'one file per level, L26 through L250');
@@ -181,8 +187,23 @@ test('the endless library is real, sharded, and its index tells the truth', () =
   assert.ok(endlessBoards.length >= 350,
     `${endlessBoards.length} endless boards is far under the ~500 launch target `
     + '(his 2026-08-11 ruling); append supply with: node scripts/build-climb-library.mjs --endless');
-  const seeds = new Set(endlessBoards.map((b) => b.seed));
-  assert.equal(seeds.size, endlessBoards.length, 'every endless board has a unique seed');
+  const seeds = new Set([...endlessBoards, ...overBoards].map((b) => b.seed));
+  assert.equal(seeds.size, endlessBoards.length + overBoards.length,
+    'every endless board, scrolling lane included, has a unique seed');
+  // The lane's index fields tell the same truth its pages do; a lane-less
+  // library carries none of them (the historical index bytes).
+  if (overBoards.length > 0) {
+    assert.equal(endlessIndex.overPages, overPages.length, 'index over-page count matches the files');
+    assert.deepEqual(endlessIndex.overCounts, overPages.map((p) => p.boards.length),
+      'per-page over counts drive the lane half of the deal');
+    assert.equal(endlessIndex.overBoards, overBoards.length, 'the index over total matches the boards');
+    for (const b of overBoards) {
+      assert.equal(b.oversized, true, `${b.seed} rides the lane pages without the oversized flag`);
+    }
+  } else {
+    assert.equal(endlessIndex.overCounts, undefined,
+      'a lane-less index must not carry over fields');
+  }
 });
 
 test('LOCKSTEP: the endless bins are priced under the model of the day', () => {
@@ -192,6 +213,9 @@ test('LOCKSTEP: the endless bins are priced under the model of the day', () => {
     + 'A refit landed without re-binning: run node scripts/reprice-climb-library.mjs');
   for (const p of endlessPages) {
     assert.equal(p.parModel, fp, `endless page ${p.page} is stale; run the reprice`);
+  }
+  for (const p of overPages) {
+    assert.equal(p.parModel, fp, `scroll-lane page ${p.page} is stale; run the reprice`);
   }
 });
 
@@ -204,7 +228,7 @@ test('every endless board clears the strict work floor (his 2026-08-17 ruling)',
   // Shape-blind and strict: no per-shape relief. The bar reads through
   // endlessHardOf, the SAME function the builder's candidate scoring
   // uses, so the test and the producer cannot mean different things.
-  for (const b of endlessBoards) {
+  for (const b of [...endlessBoards, ...overBoards]) {
     const hard = endlessHardOf(b.features);
     assert.ok(hard >= ENDLESS_MIN_HARD,
       `endless ${b.seed} (${b.spec.shape}) carries ${hard} hard deductions, under the ${ENDLESS_MIN_HARD} bar`);
@@ -220,6 +244,26 @@ test('every endless board prices from its own stored features, at or above the f
     assert.ok(b.par >= ENDLESS_PAR_FLOOR,
       `endless ${b.seed}: par ${Math.round(b.par)}s under the ${ENDLESS_PAR_FLOOR}s floor`);
     assert.ok(b.payload, `endless ${b.seed} has no stored payload to deal`);
+  }
+});
+
+test('every scroll-lane board is priced by the right rule (the marathon doctrine)', () => {
+  // In-support rows on the model verbatim; past-support rows through their
+  // stored fit-ceiling anchor, flagged provisional, never predictPar over
+  // their own features (extrapolation there is unusable both ways). The
+  // same split test/matchLibrary.test.mjs holds the match lane to.
+  for (const b of overBoards) {
+    assert.ok(b.payload, `lane ${b.seed} has no stored payload to deal`);
+    assert.ok(b.par >= ENDLESS_PAR_FLOOR,
+      `lane ${b.seed}: par ${Math.round(b.par)}s under the ${ENDLESS_PAR_FLOOR}s floor`);
+    if (b.parProvisional) {
+      assert.ok(b.anchorFeatures && typeof b.anchorCells === 'number',
+        `lane ${b.seed} is provisional but carries no anchor to re-price from`);
+    } else {
+      const par = predictPar(b.features);
+      assert.ok(Math.abs(par - b.par) < 1e-6,
+        `lane ${b.seed}: stored par ${b.par} but features price to ${par} (in-support rows price on the model)`);
+    }
   }
 });
 
@@ -241,9 +285,28 @@ test('the endless bins carry all SEVEN shapes, Classic included', () => {
   // day 4.8.8 clears the floor again, so the carve-out cannot silently
   // outlive its premise. His ruling on keeping or lifting the floor for
   // measured-closed shapes is an open morning question.
-  const MEASURED_CEILING = { '4.8.8': 7 };
+  // MEASURED CEILING, 2026-08-18, rhombille under M1: the size-term refit
+  // compressed the shape's whole price surface, and no buildable rhombille
+  // reaches the 400s floor any more. Measured that night, all doors: the
+  // fit-dims builder ground 511 boards in 88 minutes for zero net new; the
+  // scrolling lane's marathon dims price 108-182s PLAIN with hard 0
+  // (everything cascades), and the heavy recipe (144c, density 0.32, a
+  // 4-stack) certifies at hard 13 but pars 238s, still 160s under the
+  // floor, at 81-426s of generation per attempt. The shape's 13 standing
+  // boards are its physical supply under this model. Self-retiring like
+  // the 4.8.8 entry below it; likeliest road back is rhombille's own
+  // logCells deviation earning out (15 of 20 rows the night this was
+  // written) and moving the equation.
+  const MEASURED_CEILING = { '4.8.8': 7, rhombille: 13 };
+  // The floor counts the scrolling lane (his ruling 2026-08-18: "endless
+  // can have scrolling boards"): under M1, rhombille's 400s+ region starts
+  // past its fit-legal sizes, so the shape holds its floor THROUGH boards
+  // that scroll, and a floor that only counted the fit class would demand
+  // supply the fit rules cannot deliver.
   const byShape = new Map();
-  for (const b of endlessBoards) byShape.set(b.spec.shape, (byShape.get(b.spec.shape) || 0) + 1);
+  for (const b of [...endlessBoards, ...overBoards]) {
+    byShape.set(b.spec.shape, (byShape.get(b.spec.shape) || 0) + 1);
+  }
   for (const s of ['rect', '4.8.8', 'hex', 'cairo', 'floret', 'rhombille', 'deltoidal']) {
     const n = byShape.get(s) || 0;
     const capped = MEASURED_CEILING[s];
