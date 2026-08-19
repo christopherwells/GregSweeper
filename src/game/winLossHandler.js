@@ -40,6 +40,7 @@ import {
 } from '../logic/achievements.js';
 import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js';
 import { submitOnlineScore, submitArchiveScore, submitWeeklyScore, fetchWeeklyLeaderboard, fetchOnlineLeaderboard, submitMatchFitRows } from '../firebase/firebaseLeaderboard.js';
+import { repairMatchResults } from './matchRepair.js';
 import { dailyStanding } from '../logic/leaderboardViews.js';
 import { getHandicapRatioMap } from '../logic/handicaps.js';
 import { matchFitRows, MATCH_FIT_MIN_TIME } from '../logic/matchStandings.js';
@@ -522,6 +523,30 @@ function _finishMatchRun() {
     import('../storage/matchHistoryStorage.js')
       .then((mod) => mod.recordSoloRun(m))
       .catch((err) => reportCaughtError('match-solo-record', err));
+  }
+
+  // RE-DERIVE BEFORE FILING (his 2026-08-19 recovery). A result banked by a
+  // build that priced strikes off the raw extrapolation carries a penalty in
+  // the thousands of seconds, which BOTH destinations refuse: the node
+  // validates time and penalty at <= 3600 (so the board never reached the
+  // standings) and matchFitRows refuses the same range (so it never reached
+  // the model). The repair replays each strike on the stored board under the
+  // fixed pricing and rebuilds the row exactly; it is a no-op on results that
+  // were already honest, so it runs unconditionally rather than sniffing for
+  // a bad build. Anything it cannot derive exactly it leaves alone.
+  const repaired = repairMatchResults(m);
+  if (repaired.length > 0) {
+    console.warn(`match: re-derived strike penalties on board(s) ${repaired.map((i) => i + 1).join(', ')}`);
+    // The node refused these results when they were first posted, so the
+    // standings are MISSING those boards, which reads as a partial run (and
+    // with a gap at index 0 the whole player reads as empty, Firebase
+    // returning sparse indices as an object). Re-post now that the numbers
+    // fit the rules, so the final report is whole.
+    if (m.id) {
+      import('../firebase/firebaseMatch.js')
+        .then((mod) => Promise.all(repaired.map((i) => mod.postMatchResult(m.id, i, m.results[i]))))
+        .catch((err) => reportCaughtError('match-result-repost', err));
+    }
   }
 
   const uid = getUid();
