@@ -43,7 +43,7 @@ import {
   ENDLESS_PAR_FLOOR, ENDLESS_FACE_CAP, ENDLESS_SHAPE_FLOOR, ENDLESS_SHAPE_TARGET, ENDLESS_INDEX,
   endlessOverPageFile, loadEndlessOverPages, writeEndlessIndex,
 } from './build-climb-library.mjs';
-import { marathonProvisionalPar } from '../src/logic/marathonFit.js';
+import { marathonProvisionalPar, inSupportCells } from '../src/logic/marathonFit.js';
 import { ENDLESS_MIN_HARD, endlessHardOf } from '../src/logic/challengeRules.js';
 import { deserializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
@@ -128,7 +128,18 @@ let overDropped = 0;
 for (const page of overPagesJson) {
   const keep = [];
   for (const b of page.boards) {
-    b.par = (b.parProvisional && b.anchorFeatures && b.anchorCells)
+    // The support split RE-DERIVES nightly (the match repricer's rule, from
+    // the 2026-08-19 tap-floor ruling): a row whose cells the grown fit
+    // ceiling now covers drops its provisional fields and prices on the
+    // model verbatim. Its `oversized` stays: in this lane the flag is the
+    // page-class marker, not a fit claim.
+    const inSupport = b.spec && inSupportCells(b.spec.shape, b.spec.cells);
+    if (inSupport && b.parProvisional) {
+      delete b.parProvisional;
+      delete b.anchorFeatures;
+      delete b.anchorCells;
+    }
+    b.par = (!inSupport && b.anchorFeatures && b.anchorCells)
       ? marathonProvisionalPar({
         cells: b.spec.cells,
         anchorPar: predictPar(b.anchorFeatures),

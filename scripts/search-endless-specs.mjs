@@ -92,6 +92,18 @@ const REPORT_ONLY = hasFlag('--report');
 const EMIT = argVal('--emit');
 const ABSORB = hasFlag('--absorb');
 const REPRICE = hasFlag('--reprice-cache');
+// PROVEN-ONLY EMISSION, for the re-search after a structural refit. An
+// ordinary emit may ship low-seed candidates (they pass bandStable unjudged,
+// the clearsDeductionFloor convergence pattern), and after a refit that
+// re-shapes the price landscape the emit reaches for thousands of fresh
+// 3-seed tickets at once: measured on the M1 re-search, every re-emit
+// swapped in ~300 unproven faces and the validator oscillated near 30
+// failures however many absorb rounds ran. Under this flag the emitters
+// ship ONLY faces measured at absorb grade (>= 10 seeds, spread known), so
+// every shipped verdict is one the validator can reproduce; the supply for
+// it is built by --absorb passes and by --refine at --seeds 16.
+const PROVEN_ONLY = hasFlag('--proven-only');
+const provenGate = (e) => !PROVEN_ONLY || ((e.seeds || 0) >= 10 && e.spread != null);
 
 // The endless floor's own margin now lives beside the floor in
 // challengeRules.js (ENDLESS_PPC_FLOOR_MARGIN), read through
@@ -332,6 +344,13 @@ function record(cache, spec, r) {
       ? {
         ppc: Number(r.ppc.toFixed(3)), medPar: Math.round(r.medPar), worstMs: r.worstMs,
         minDed: r.minDed, medDed: r.medDed,
+        // The within-face price spread of this measurement's own draws,
+        // max/min. The validator's band asks a STABILITY question the
+        // median alone cannot answer (see bandStable below); the ratio is
+        // meaningful at absorb grade and above, and the emit ignores it on
+        // low-seed entries the same way clearsDeductionFloor treats
+        // pre-floor verdicts.
+        spread: r.minPar > 0 ? Number((r.maxPar / r.minPar).toFixed(3)) : null,
         // The two halves of a re-priceable measurement: WHAT was measured, and
         // WHICH equations turned it into a price.
         features: r.medFeatures,
@@ -546,6 +565,45 @@ function clearsDeductionFloor(e) {
   return e.features.totalClicks - 1 >= CLIMB_MIN_DEDUCTIONS;
 }
 
+// THE BAND-STABILITY GATE (2026-08-19, the M1 re-search's own lesson). The
+// validator holds a 10-seed median to +-12% of the stored price, which is a
+// claim about the FACE, not about one sample: two independent seed families
+// must land their medians within the band of each other. Under the settled
+// M1 term the highest prices per cell live on SMALL dense lattice boards,
+// and those have within-face draw spreads the band cannot contain: the first
+// M1 emit shipped 33 such faces at 10/10 builds whose fresh median then
+// landed up to 40% from the 16-seed store price, and no absorb loop can
+// converge that, because every re-measurement is another sample of the same
+// wide distribution (the bound-the-rate lesson from the generation cap,
+// wearing a price). So the acceptance measures the spread and the emitters
+// refuse faces that cannot hold the band, exactly as the deduction floor
+// rides every measurement (issue #286).
+//
+// THE THRESHOLD WAS MEASURED, NOT PICKED, and the measurement shows a
+// smooth trade rather than a clean valley. Joining the first M1 emit's
+// validator verdicts against 16-seed absorb spreads over the same shipped
+// faces: the band-failing faces read spreads 1.58-12.54 (p25 2.00, median
+// 2.47) while the passing faces sat at p50 1.46, p75 1.72, p90 2.63.
+// Sweeping the cut over that labeled set: 2.0 blocks 14 of the 18
+// band-fails that carried a spread and costs 26 of 141 proven-pass faces;
+// 1.8 blocks one more for four further losses, 1.6 two more for twenty-five
+// further. The wide "passing" tail a 2.0 cut spends is not really a cost:
+// a face with spread past 2 passed its round by where the median happened
+// to land, which is the #303 flapper class by construction. The few
+// band-misses UNDER the cut (1.58-1.81 here) are cross-seed-family
+// disagreements the spread statistic cannot see, and they stay what #303
+// made them: remove-and-replace on evidence, one by one.
+//
+// Meaningful at absorb grade only: a 3-seed sweep spread is a systematic
+// UNDER-estimate (three draws rarely visit both tails), so low-seed entries
+// pass unjudged and earn their verdict when the prove loop absorbs them,
+// the clearsDeductionFloor convergence pattern.
+const SPREAD_MAX = 2.0;
+function bandStable(e) {
+  if (!e.spread || (e.seeds || 0) < 10) return true;  // unknowable, converges via absorb
+  return e.spread <= SPREAD_MAX;
+}
+
 function emitLine(e) {
   const dims = e.shape === 'rect' ? `${e.a}, ${e.b}` : `'${e.shape}', ${e.a}, ${e.b}, ${e.cells}`;
   const opts = [];
@@ -611,6 +669,8 @@ function emitPool(cache, { floorFn, ceilFn, perSlice, slices, maxPerShape = Infi
   const ok = Object.values(cache)
     .filter((e) => e.ok && legal.get(e.shape)?.has(`${e.a}x${e.b}`))
     .filter(clearsDeductionFloor)
+    .filter(bandStable)
+    .filter(provenGate)
     // Population seconds in, ladder seconds out. Every threshold below — the
     // admission floor, the par ceiling, and the ppc that ships — is on the
     // cohort's yardstick from this line on.
@@ -678,7 +738,19 @@ function emitPool(cache, { floorFn, ceilFn, perSlice, slices, maxPerShape = Infi
       if (!buckets.has(k)) buckets.set(k, []);
       buckets.get(k).push(e);
     }
-    for (const list of buckets.values()) list.sort((x, y) => x.cells - y.cells);
+    // PROVEN FACES FIRST within a bucket, then smallest. A face measured at
+    // absorb grade (>= 10 seeds) has a verdict the validator can reproduce:
+    // its builds held over 10-16 draws and its spread cleared bandStable. A
+    // 3-seed face is a lottery ticket on both counts (a spec refusing half
+    // its draws still passes 3/3 one time in eight, and the candidate pool
+    // is tens of thousands deep), and under the M1 size term the old
+    // smallest-first sort reached for exactly the highest-variance end.
+    // Proven-first turns the absorb loop into a ratchet: every absorb grows
+    // the proven set, so every emit re-picks more faces whose verdicts
+    // already stand instead of re-rolling fresh tickets.
+    for (const list of buckets.values()) {
+      list.sort((x, y) => ((y.seeds >= 10) - (x.seeds >= 10)) || x.cells - y.cells);
+    }
 
     // Interleave the bucket order by shape, so a truncated slice is still
     // balanced across shapes as well as across modifier sets.
@@ -749,7 +821,10 @@ function emitPool(cache, { floorFn, ceilFn, perSlice, slices, maxPerShape = Infi
         if (!buckets.has(k)) buckets.set(k, []);
         buckets.get(k).push(e);
       }
-      for (const list of buckets.values()) list.sort((x, y) => x.cells - y.cells);
+      // Proven-first here too, for the ratchet reason above.
+      for (const list of buckets.values()) {
+        list.sort((x, y) => ((y.seeds >= 10) - (x.seeds >= 10)) || x.cells - y.cells);
+      }
       const keys = [...buckets.keys()];
       for (let round = 0; room > 0; round++) {
         let progressed = false;
@@ -786,6 +861,8 @@ function admissible(cache) {
   return Object.values(cache)
     .filter((e) => e.ok && legal.get(e.shape)?.has(`${e.a}x${e.b}`))
     .filter(clearsDeductionFloor)
+    .filter(bandStable)
+    .filter(provenGate)
     .map((e) => ({ ...e, ppc: e.ppc * SCALE, medPar: e.medPar * SCALE }))
     .filter((e) => e.medPar <= PAR_CEILING_SECONDS * PAR_CEILING_MARGIN)
     .filter((e) => e.worstMs <= GEN_CAP_MS * ENDLESS_GEN_HEADROOM);
@@ -921,7 +998,19 @@ async function runEmit(cache, which) {
   }
   // The ladder pool: everything the 8-minute ceiling and the standing
   // 2-second cap admit, across the whole difficulty range.
+  //
+  // THE LADDER YIELDS TO COVERAGE EXACTLY AS THE ENDLESS POOL DOES. The
+  // coverage table is the complement of the other two, it is not one of the
+  // tables write-challenge-pool regenerates, and its disjointness test reads
+  // from coverage's side — so a fresh ladder emit that re-picks a face
+  // coverage already ships (the cache still holds it; it cleared every gate
+  // once) breaks the contract on a table this run never touched. The Climb
+  // loses nothing by the exclusion: CLIMB_POOL is the deduped union of this
+  // table and coverage, so a coverage face reaches the braid either way.
+  const ladderCoverageFaces = new Set(
+    (await import('../src/logic/challengePool.js')).CHALLENGE_POOL.map((e) => specFace(e)));
   const pool = emitPool(cache, {
+    excludeFaces: ladderCoverageFaces,
     floorFn: () => 0,
     ceilFn: () => PAR_CEILING_SECONDS,
     // Sized for the ladder's appetite: 225 levels need 225 distinct faces
@@ -1004,7 +1093,13 @@ function repriceCache(cache) {
   for (const e of Object.values(cache)) {
     if (!e.ok) continue;
     if (!e.features) { stale++; continue; }
-    const par = predictPar(e.features) * SCALE;
+    // POPULATION seconds, the cache's one unit: measure() documents it, and
+    // reprice-challenge-pool writes evicted faces back "in the cache's own
+    // pre-scale unit". This line multiplied by SCALE for a while, which put
+    // cohort seconds into a cache the emit then scales AGAIN — a quiet
+    // double-scaling that stays invisible while the cohort's handicaps sit
+    // near the frozen base and grows with them the day they move.
+    const par = predictPar(e.features);
     const ppc = Number((par / e.cells).toFixed(3));
     if (Math.abs(ppc / e.ppc - 1) > 0.05) moved++;
     e.ppc = ppc;
