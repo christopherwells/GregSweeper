@@ -175,86 +175,94 @@ test('getActiveBombPenaltyTotal sums the per-hit event log', { skip: !HAS_FEATUR
   assert.equal(getActiveBombPenaltyTotal(), 0);
 });
 
-test('REGRESSION: the oversized rescale prices the move share at the sane par, and is a no-op on fit boards', { skip: !HAS_FEATURE }, async () => {
-  // His report, 2026-08-19: two Classic marathon boards in a Challenge
-  // match charged strike penalties in the thousands of seconds and the
-  // run read "10 h over par". Under the log model the info-value
-  // difference carries the board's whole multiplicative baseline, and on
-  // a board past its shape's fit ceiling that baseline is the raw
-  // extrapolation. The rescale prices the move SHARE against the board's
-  // sane (anchored) par instead: infoValue x (parBaseline / rawWith).
-  const board = await deductionBoard();
-  const { rows, cols, fr, fc } = FIXTURE;
-  const { predictPar } = await import('../src/logic/dailyFeatures.js');
+test('REGRESSION: the rescale factor belongs to the BOARD, so a fit board is untouched at EVERY strike', async () => {
+  // Two bugs live here, an hour apart, and this pin exists for the second.
+  //
+  // His report, 2026-08-19: marathon boards charged strike penalties in the
+  // thousands of par-seconds, because the info-value difference carries the
+  // board's whole multiplicative baseline and past a shape's fit ceiling
+  // that baseline is raw extrapolation. The rescale prices the move SHARE
+  // at the board's sane par instead.
+  //
+  // Issue #391: the first cut divided by the PER-STRIKE read (prior strikes
+  // pre-flagged), which equals the board's own read only until a prior
+  // strike removes a pooled deduction. From the second strike on the ratio
+  // exceeded 1 and charged MORE than the pre-fix formula, on ordinary fit
+  // boards. The pin that shipped with it could not see this: it fed the
+  // per-strike read back in as the baseline (true of any denominator) and
+  // never passed a prior strike.
+  //
+  // So the fixture is chosen to MAKE THE MECHANISM BITE: a prior that
+  // genuinely reduces resultA's pooled move counts while the target still
+  // prices above zero. Both conditions are asserted below rather than
+  // assumed, because a prior that removes nothing, or a target that prices
+  // 0, turns this whole test back into the tautology it replaces.
+  const { generateBoard, cleanSolverArtifacts } = await import('../src/logic/boardGenerator.js');
+  const { createDailyRNG } = await import('../src/logic/seededRandom.js');
+  const { isBoardSolvable } = await import('../src/logic/boardSolver.js');
+  const { computeDailyFeatures, predictPar } = await import('../src/logic/dailyFeatures.js');
 
-  // Find a mine with positive info-value under plain pricing.
-  let target = null;
-  for (let r = 0; r < rows && !target; r++) {
-    for (let c = 0; c < cols && !target; c++) {
-      if (!board[r][c].isMine) continue;
-      const { infoValue } = bomb.computeBombInfoValue(board, rows, cols, fr, fc, r, c);
-      if (infoValue > 0) target = { r, c };
-    }
-  }
-  assert.ok(target, 'the fixture must offer a positive-info mine or this test is vacuous');
+  const rows = 12, cols = 12, mines = 30, seed = 'pin-a';
+  const fr = 6, fc = 6;
+  const board = generateBoard(rows, cols, mines, fr, fc, createDailyRNG(seed));
+  cleanSolverArtifacts(board);
+  const check = isBoardSolvable(board, rows, cols, fr, fc);
+  const features = computeDailyFeatures(
+    { board, rows, cols, totalMines: mines, activeGimmicks: [], rngSeed: seed }, check);
+  const target = { row: 1, col: 1 };     // prices > 0
+  const prior = { row: 8, col: 10 };     // removes a pooled deduction
+  const pooled = (r) => (r.canonicalSubsetMoves || 0) + (r.genericSubsetMoves || 0) + (r.advancedLogicMoves || 0);
 
-  // A marathon-class feature vector: the raw model read explodes on it.
-  // Dense with real deduction load, the shape of an actual lane board:
-  // the move terms are what carry the explosion under the concave size
-  // curve (measured the night of the fix: this vector reads ~20,000s raw
-  // where a sparse 660-cell one reads only ~123s).
-  const monster = { cellCount: 432, totalMines: 120, canonicalSubsetMoves: 60,
-    genericSubsetMoves: 8, advancedLogicMoves: 6, zeroClusterCount: 3, mysteryCellCount: 4 };
-  const raw = bomb.computeBombInfoValue(
-    board, rows, cols, fr, fc, target.r, target.c, [], monster);
-  assert.ok(raw.infoValue > 0, 'precondition: the monster baseline prices positive');
+  const solo = bomb.computeBombInfoValue(board, rows, cols, fr, fc, target.row, target.col, [], features);
+  const withPrior = bomb.computeBombInfoValue(
+    board, rows, cols, fr, fc, target.row, target.col, [prior], features);
+  // NON-VACUITY, the two conditions the old pin lacked.
+  assert.ok(solo.infoValue > 0.5, `the target must price above zero (${solo.infoValue})`);
+  assert.ok(withPrior.infoValue > 0.5, `and still price above zero behind the prior (${withPrior.infoValue})`);
+  assert.ok(pooled(withPrior.resultA) < pooled(solo.resultA),
+    `the prior must REMOVE a pooled deduction (${pooled(solo.resultA)} -> ${pooled(withPrior.resultA)}), `
+    + 'or the per-strike denominator never diverges and this pin cannot fail on the old code');
 
-  // The anchored par a real lane row would carry (anchor rate x cells is
-  // a few hundred seconds, nothing like the raw read).
-  const sane = 600;
-  const rescaled = bomb.computeBombInfoValue(
-    board, rows, cols, fr, fc, target.r, target.c, [], monster, sane);
-  // The denominator is the BOARD's own raw read, not the per-strike one
-  // (issue #391): over the board's read the move terms cancel, which is
-  // what makes the factor constant across strikes.
-  const rawBoardPar = predictPar(monster);
-  assert.ok(rawBoardPar > sane * 2,
-    `precondition: the raw board read (${rawBoardPar}s) must dwarf the sane par or the rescale is untested`);
-  const expected = raw.infoValue * (sane / rawBoardPar);
-  assert.ok(Math.abs(rescaled.infoValue - expected) < 1e-6,
-    `rescaled ${rescaled.infoValue} should equal raw x sane/rawWith = ${expected}`);
-  assert.ok(rescaled.infoValue < raw.infoValue,
-    'the rescale must shrink an extrapolated penalty');
-
-  // No-op contract, ON THE REAL FIT-BOARD PATH and across MULTIPLE
-  // STRIKES (issue #391). The first cut asserted this by feeding the
-  // per-strike read back in as the baseline, which is a tautology: it
-  // held for any denominator and never passed a prior strike. A fit
-  // board's baseline is predictPar(its own features), so the honest
-  // assertion is that passing it changes nothing at strike 1 AND at
-  // every strike after one that removed a deduction, which is exactly
-  // where the per-strike denominator diverged (measured 3.77x).
-  const fitPar = predictPar(monster);
-  const others = [];
-  for (let r = 0; r < rows && others.length < 3; r++) {
-    for (let c = 0; c < cols && others.length < 3; c++) {
-      if (board[r][c].isMine && !(r === target.r && c === target.c)) others.push({ row: r, col: c });
-    }
-  }
-  assert.ok(others.length >= 2, 'the fixture must offer prior strikes or the multi-strike pin is vacuous');
-  for (let n = 0; n <= others.length; n++) {
-    const prior = others.slice(0, n);
+  // A FIT board's baseline is predictPar of its own features. Passing it
+  // must change nothing, with and without the biting prior. The old code
+  // passes the first and fails the second.
+  const fitPar = predictPar(features);
+  for (const priors of [[], [prior]]) {
     const plain = bomb.computeBombInfoValue(
-      board, rows, cols, fr, fc, target.r, target.c, prior, monster);
+      board, rows, cols, fr, fc, target.row, target.col, priors, features);
     const based = bomb.computeBombInfoValue(
-      board, rows, cols, fr, fc, target.r, target.c, prior, monster, fitPar);
+      board, rows, cols, fr, fc, target.row, target.col, priors, features, fitPar);
     assert.ok(Math.abs(based.infoValue - plain.infoValue) < 1e-9,
-      `a fit board's own par must be an exact no-op at ${n} prior strike(s), got ${based.infoValue} vs ${plain.infoValue}`);
+      `a fit board must be untouched at ${priors.length} prior strike(s): ${based.infoValue} vs ${plain.infoValue}`);
   }
-  // And absent baseline stays byte-identical to the pre-fix behavior.
+
+  // OVERSIZED: the correction applies, and it is CONSTANT across strikes,
+  // which is the property the per-strike denominator destroyed.
+  const huge = { ...features, cellCount: 660, totalMines: 185 };
+  const rawBoardPar = predictPar(huge);
+  const sane = 520;                       // an anchored lane par
+  assert.ok(rawBoardPar > sane * 2,
+    `precondition: the raw board read (${rawBoardPar}s) must dwarf the anchored par`);
+  const factors = [];
+  for (const priors of [[], [prior]]) {
+    const plain = bomb.computeBombInfoValue(
+      board, rows, cols, fr, fc, target.row, target.col, priors, huge);
+    const scaled = bomb.computeBombInfoValue(
+      board, rows, cols, fr, fc, target.row, target.col, priors, huge, sane);
+    assert.ok(Math.abs(scaled.infoValue - plain.infoValue * (sane / rawBoardPar)) < 1e-6,
+      'the scaled value must be the unscaled one times sane/rawBoardPar');
+    assert.ok(scaled.infoValue < plain.infoValue, 'the rescale must shrink an extrapolated penalty');
+    factors.push(scaled.infoValue / plain.infoValue);
+  }
+  assert.ok(Math.abs(factors[0] - factors[1]) < 1e-9,
+    `the factor is a property of the BOARD, so it must not move with prior strikes (${factors.join(' vs ')})`);
+
+  // And with no baseline at all, behavior is byte-identical to before.
   const absent = bomb.computeBombInfoValue(
-    board, rows, cols, fr, fc, target.r, target.c, [], monster);
-  assert.equal(absent.infoValue, raw.infoValue);
+    board, rows, cols, fr, fc, target.row, target.col, [prior], huge);
+  const nulled = bomb.computeBombInfoValue(
+    board, rows, cols, fr, fc, target.row, target.col, [prior], huge, null);
+  assert.equal(absent.infoValue, nulled.infoValue);
 });
 
 test('the strike handler prices match boards at the sane par, and the two par re-prices carry the provisional guard', () => {
