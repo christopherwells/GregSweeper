@@ -637,7 +637,11 @@ export async function newGame() {
       // be older or newer than the fetched JSON. Pricing the stored
       // features locally keeps the pace bar and expected-time line
       // coherent with every other par this client shows.
-      if (res.features) {
+      // A PROVISIONALLY PRICED BOARD KEEPS ITS STORED PAR (the match
+      // install's rule, verbatim): past a shape's fit ceiling predictPar
+      // extrapolates, and the endless scrolling lane deals exactly such
+      // boards; their stored par is re-anchored nightly by the repricer.
+      if (res.features && res.parProvisional !== true) {
         try { state.challengePar = predictPar(res.features); } catch { /* stored par stands */ }
       }
     }
