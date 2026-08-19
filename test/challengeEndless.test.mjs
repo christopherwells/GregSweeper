@@ -356,12 +356,20 @@ test('GOLDEN: the first endless block is fixed', () => {
   // the re-priced deck deals a different five. The same night's re-price
   // also fixed the zone-span red on its own (the morning's "hardest 4.99
   // s/cell" reading was the OLD model's compression, not a supply gap).
+  // Moved on 2026-08-19 by the drawn-pool re-search under the settled M1
+  // term: both tables re-emitted from a cache the overnight sweeps doubled,
+  // shipping ONLY absorb-proven faces (16-seed builds, within-face spread
+  // gated at 2.0, the new band-stability acceptance), the per-shape floors
+  // re-measured at current-model deciles with deltoidal and floret taken
+  // from the SHIPPABLE population (stable material prices lower than the
+  // all-fresh decile; a floor set on the wider population priced deltoidal
+  // out of the zone entirely). Whole different pool, whole different five.
   assert.deepEqual(got, [
-    'cairo:112c:13m:[locked+mirror+sonar]',
-    'hex:108c:36m:[sonar]',
-    'cairo:112c:30m:[liar+wormhole+mirror]',
-    'rect:25c:11m:[walls+locked+sonar]',
-    '4.8.8:72c:22m:[walls+locked+compass]',
+    '4.8.8:50c:18m:[liar+locked+compass]',
+    'cairo:112c:37m:[locked+sonar+compass]',
+    'deltoidal:36c:12m:[walls+liar]',
+    'floret:72c:26m:[locked+wormhole+sonar]',
+    'hex:30c:11m:[mystery+locked+sonar]',
   ]);
 
 

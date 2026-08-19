@@ -67,14 +67,28 @@ globalThis.firebase = {
 const wire = (p) => JSON.parse(JSON.stringify(p));
 const round1 = (x) => Math.round(x * 10) / 10;
 
-// One frozen tiling canonical shared by every site. 4.8.8 at M=6,N=7 is 72
-// cells in an 8x9 container whose opener ALWAYS diverges from the container
-// centre; 22 mines (density 0.31, the constructive placer) is what gives the
-// board a tier-2 crux and nonzero bomb info-values — the 14-mine fixture in
-// canonicalOpenerConsumers is a genuine tier-0 breather from BOTH anchors,
-// which cannot discriminate these three surfaces.
+// One frozen tiling canonical shared by every site. A 4.8.8 whose opener
+// ALWAYS diverges from the container centre; dense enough (the constructive
+// placer) to carry a tier-2 crux and nonzero bomb info-values — the 14-mine
+// fixture in canonicalOpenerConsumers is a genuine tier-0 breather from BOTH
+// anchors, which cannot discriminate these three surfaces.
+//
+// THE BOMB DISCRIMINATION IS MODEL-COUPLED and the fixture is chosen for the
+// most robust margin the class can give. computeBombInfoValue prices through
+// PAR_MODEL, so a refit moves every info value: the 2026-08-19 nightly (the
+// second M1 fit) compressed the previous fixture's opener-vs-centre margins
+// under the event log's own 0.1 resolution and the precondition below went
+// vacuous. Measured across 60+ candidates at 72 to 98 cells and three
+// densities under that model, NO 4.8.8 fixture separates any mine by more
+// than one rounding step — single-cell information deltas simply price that
+// small now — so margin cannot be bought and REDUNDANCY is the defense:
+// this board separates THREE mines at the stored resolution, and a refit
+// must erase all three at once to silence the pin. If a future model does
+// exactly that, this fixture describes the old regime (the pipeline-smoke
+// rule): re-sweep pre-signature-epoch seeds for the new best and re-freeze,
+// in the same commit.
 function makeTilingCanonical(rngSeed) {
-  const res = generateTilingBoard({ type: '4.8.8', M: 6, N: 7, mines: 22, seed: rngSeed, gimmicks: [] });
+  const res = generateTilingBoard({ type: '4.8.8', M: 7, N: 7, mines: 26, seed: rngSeed, gimmicks: [] });
   assert.ok(res, 'expected a certified 4.8.8 board');
   let totalMines = 0;
   for (const row of res.board) for (const cell of row) if (cell.isMine) totalMines++;
@@ -98,7 +112,7 @@ function makeRectCanonical(genSeed, rngSeed) {
 // The dates double as the payloads' rngSeeds and sit before SIGNATURE_EPOCH
 // (2026-07-06), so the unsigned test payloads are grandfathered by the
 // trust gate rather than needing a play-window writtenAt.
-const TILING_DATE = '2026-05-10';
+const TILING_DATE = '2026-05-05';
 const RECT_CRUX_DATE = '2026-06-21';     // tier-1 crux from the centre
 const RECT_BREATHER_DATE = '2026-06-22'; // certifies tier 0 — a TRUE breather
 

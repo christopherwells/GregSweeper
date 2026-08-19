@@ -334,7 +334,12 @@ export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
   // Re-measured 2026-08-19 (M1 settled): p90 3.47 over n=3798, the one
   // decile that ROSE tonight. 3.35 puts the admission bar at 3.4505, half
   // a cent over a stored 3.45 (the rounding trap), so 3.30.
-  floret: 3.3,
+  // Re-derived the same night on the SHIPPABLE population: the emit ships
+  // only band-stable faces (spread <= 2.0 at absorb grade; see the search
+  // tool), and stable floret prices lower than the all-fresh decile the
+  // 3.30 came from, so that floor left the zone four entries. p90 over the
+  // 200 proven floret faces reads 2.94; 2.94/1.03 rounds down to 2.85.
+  floret: 2.85,
   // KITES joined on 2026-08-19, the M1 size term's own doing: the concave
   // size curve prices deltoidal's deep end lower (its old 6-7 s/cell
   // readings were the linear model's compression of big stacked boards),
@@ -344,7 +349,15 @@ export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
   // accumulates this entry should shrink toward the shared floor. 2.75
   // and 2.70 both land the admission bar in the rounding trap (2.8325,
   // 2.781), so 2.65, the rect one-notch precedent applied twice.
-  deltoidal: 2.65,
+  // Re-derived the same night on the SHIPPABLE population, which is the
+  // sharper correction here: deltoidal's high end is exactly the small
+  // dense stacked class whose within-face spread the band-stability gate
+  // refuses, so the stable subset tops out at 2.38 and a 2.65 floor
+  // priced the shape out of the zone entirely, which the every-tiling
+  // ruling forbids. p90 over the 183 proven deltoidal faces reads 1.82;
+  // 1.82/1.03 = 1.77, and 1.75 and 1.70 both land the admission bar in
+  // the rounding trap (1.8025, 1.751), so 1.65.
+  deltoidal: 1.65,
 });
 
 /** The admission floor a shape is held to. */
