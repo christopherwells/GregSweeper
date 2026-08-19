@@ -31,20 +31,37 @@
 // there is only one cell class and both reduce to the majority floor. The split
 // exists for the 4.8.8, whose two cell sizes differ by 39% and whose diamonds
 // are ~45% of the board, a single floor there either lets the diamonds shrink
-// to 21px (majority-only) or costs the shape its presence in the end game
+// to 21px (majority-only) or removes the shape from the end game
 // (28px on the diamond removes Octagons from the ladder above L50 and from the
 // endless pool entirely). 24px on the minority is the middle he chose.
 //
-// WHERE 28 CAME FROM. Scored by delivered tap diameter at 360px, the configs
-// shipping before this module cluster with a clean gap: everything is either
-// <= 25.5px or >= 28.5px, nothing in between. Honeycomb's worst board (which he
-// reports as fine) sits at 29.9 and Octagons' at 28.6; Paving Stones' worst
-// (which he reports as too wide) sits at 23.0. So any floor in [26, 28] sorts
-// the shipped boards identically, the bar is not balanced on a knife edge, and
-// it is calibrated to his own verdicts rather than to a guideline. For scale,
-// the rectangular game's own floor is --cell-min-size 18px, but that is a
-// last-resort clamp for Expert Quick Play, which has zoom controls as its
-// escape hatch; a tiling board has none.
+// WHERE 24 CAME FROM (his ruling 2026-08-19, superseding the 28). The floor
+// measures the PRESSING SURFACE: the diameter of the circle that fits inside
+// the cell polygon. That is not a proxy here, it is verified geometry: the
+// pitch normalization makes inscribed diameter exactly one pitch on every
+// isohedral lattice (measured 1.000 against the shipped vertices for the
+// hexagon, both pentagons, the rhombus, and the kite), and the 4.8.8's two
+// classes carry their own measured inscribed diameters (0.877 / 0.537 of
+// pitch). With the unit verified as the true press, he set the floor at the
+// pressing surface itself: 24px, every shape. The felt-experience data that
+// produced the old 28 still sorts identically under it (the one config he
+// reported as too wide measured 23.0px and is still refused), and the
+// Octagons are unmoved because their squares' 24px minority floor already
+// binds the shape (~45px pitch). The frontier growth this bought, measured
+// the night of the ruling: hex 170 -> 252 ceiling cells, cairo 172 -> 212,
+// floret 138 -> 216, rhombille 135 -> 180, deltoidal 90 -> 168; rect and
+// 4.8.8 unchanged.
+//
+// WHERE 28 CAME FROM, kept as history. Scored by delivered tap diameter at
+// 360px, the configs shipping before this module clustered with a clean gap:
+// everything either <= 25.5px or >= 28.5px. Honeycomb's worst board (which
+// he reported as fine) sat at 29.9 and Octagons' at 28.6; Paving Stones'
+// worst (too wide, his report) at 23.0. Any floor in [26, 28] sorted those
+// boards identically and 28 was the middle he chose; the 2026-08-19 ruling
+// re-anchored the number on the verified pressing-circle geometry instead.
+// For scale, the rectangular game's own floor is --cell-min-size 18px, but
+// that is a last-resort clamp for Expert Quick Play, which has zoom controls
+// as its escape hatch; a tiling board has none.
 //
 // WHAT CONSTRAINING COSTS: nothing in difficulty. The largest legal board of
 // every shape still prices far past the 240s daily band ceiling, so each
@@ -73,8 +90,10 @@ import { BOARD_WIDTH_CAP } from './difficulty.js';
  */
 export const FIT_REFERENCE = Object.freeze({ width: 360, height: 740 });
 
-/** Minimum tap diameter (px) for the board's majority cell class. */
-export const MIN_TAP_MAJORITY = 28;
+/** Minimum tap diameter (px) for the board's majority cell class: the
+ * diameter of the pressing circle (his 2026-08-19 ruling; the WHERE 24 CAME
+ * FROM block above). */
+export const MIN_TAP_MAJORITY = 24;
 
 /**
  * Minimum tap diameter (px) for a minority cell class. Only the 4.8.8 has one;
@@ -313,7 +332,7 @@ export function rectCellSizeAt(rows, cols, viewport = FIT_REFERENCE) {
  * THIS DID NOT EXIST UNTIL 2026-08-14, and its absence is a bug players saw.
  * `BOARD_WIDTH_CAP` caps COLUMNS and nothing capped rows, so rect specs aimed
  * at nothing vertically. Two budgets are in play and the gap between them is
- * exactly where those boards landed: the renderer sizes cells to 70vh (502px
+ * exactly where those boards sat: the renderer sizes cells to 70vh (502px
  * at the reference) while a phone showing its own URL bar and toolbar displays
  * 462px. Measured on the shipped Climb library: 299 of 767 rect boards, 39%,
  * stood 1.1 to 1.6 cells taller than the visible area, which is his report
@@ -325,7 +344,7 @@ export function rectCellSizeAt(rows, cols, viewport = FIT_REFERENCE) {
  *
  * WIDTH is his column cap, not the tap floor (his ruling 2026-08-14: eleven
  * columns max). The two disagree and he chose: 314px of width over 11 columns
- * delivers 26px cells, under the 28px floor every lattice is held to. That
+ * delivers 26px cells, under the tap floor every lattice is held to. That
  * asymmetry is deliberate. Rect is the shape people know, its cells are square
  * so the whole 26px is tappable where a hexagon's inscribed circle is not, and
  * capping rect at the tap floor would mean 10 columns and a Classic board

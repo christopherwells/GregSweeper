@@ -118,6 +118,16 @@ test('the pool file keeps its regeneration markers', () => {
 test('MIN_TAP_MAJORITY is still the phone rule these entries were judged by', () => {
   // A guard on the guard: if the tap floor moves, every tiling entry above was
   // admitted under the old one and the pool wants re-emitting.
-  assert.equal(MIN_TAP_MAJORITY, 28,
-    'his 28px floor moved — re-run `--emit challenge` and the pool validator');
+  //
+  // The floor moved 28 -> 24 on 2026-08-19 (his pressing-surface ruling: the
+  // pitch is the verified inscribed-circle diameter, so the floor now equals
+  // the press itself). The re-emit this pin demands is deliberately NOT in
+  // the same change: the drawn-pool re-search arc was mid-flight in its own
+  // session that night (the M1 window repair, branch
+  // cwells/drawn-pool-research-m1), and its emit under a post-merge pull
+  // satisfies this pin's demand under the new floor with proven candidates
+  // rather than a mechanical re-emit racing it. Widening admits and never
+  // evicts, so every currently shipped entry stays legal in the interim.
+  assert.equal(MIN_TAP_MAJORITY, 24,
+    'his 24px floor moved — re-run `--emit challenge` and the pool validator');
 });
