@@ -1658,13 +1658,20 @@ export function handleDailyBombHit(mineRow, mineCol, extraMines = []) {
   // coastlineFeatures.
   const boardFeatures = state.weeklyFeatures || state.dailyFeatures
     || state.matchFeatures || state.coastlineFeatures || null;
+  // The SANE par the info-value's move share is priced against (the
+  // oversized rescale in bombInfoValue.js, his 10-hours-over-par report,
+  // 2026-08-19). On a match board state.matchPar holds the anchored number
+  // for an oversized deal and the client re-price for a fit one, so the
+  // rescale is exact where it matters and a no-op everywhere else; daily
+  // and weekly boards pass nothing and price exactly as before.
+  const parBaseline = state.matchFeatures ? (state.matchPar || null) : null;
   let totalPenalty = 0;
   let firstInfoValueRounded = 0;
   for (let i = 0; i < mines.length; i++) {
     const m = mines[i];
     let infoValue = 0;
     try {
-      const result = computeBombInfoValue(state.board, state.rows, state.cols, fr, fc, m.row, m.col, priorStrikes, boardFeatures);
+      const result = computeBombInfoValue(state.board, state.rows, state.cols, fr, fc, m.row, m.col, priorStrikes, boardFeatures, parBaseline);
       infoValue = result.infoValue;
     } catch (err) {
       // The solver is robust on well-formed daily/weekly boards; if it

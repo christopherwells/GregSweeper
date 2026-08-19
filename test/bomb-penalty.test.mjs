@@ -5,6 +5,7 @@
 // present yet (e.g. main before the bomb feature merges).
 
 import './helpers.mjs';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -172,4 +173,85 @@ test('getActiveBombPenaltyTotal sums the per-hit event log', { skip: !HAS_FEATUR
   // Fresh game (no events) → zero, so a stale total can't leak forward.
   state.dailyBombHitEvents = [];
   assert.equal(getActiveBombPenaltyTotal(), 0);
+});
+
+test('REGRESSION: the oversized rescale prices the move share at the sane par, and is a no-op on fit boards', { skip: !HAS_FEATURE }, async () => {
+  // His report, 2026-08-19: two Classic marathon boards in a Challenge
+  // match charged strike penalties in the thousands of seconds and the
+  // run read "10 h over par". Under the log model the info-value
+  // difference carries the board's whole multiplicative baseline, and on
+  // a board past its shape's fit ceiling that baseline is the raw
+  // extrapolation. The rescale prices the move SHARE against the board's
+  // sane (anchored) par instead: infoValue x (parBaseline / rawWith).
+  const board = await deductionBoard();
+  const { rows, cols, fr, fc } = FIXTURE;
+  const { predictPar } = await import('../src/logic/dailyFeatures.js');
+
+  // Find a mine with positive info-value under plain pricing.
+  let target = null;
+  for (let r = 0; r < rows && !target; r++) {
+    for (let c = 0; c < cols && !target; c++) {
+      if (!board[r][c].isMine) continue;
+      const { infoValue } = bomb.computeBombInfoValue(board, rows, cols, fr, fc, r, c);
+      if (infoValue > 0) target = { r, c };
+    }
+  }
+  assert.ok(target, 'the fixture must offer a positive-info mine or this test is vacuous');
+
+  // A marathon-class feature vector: the raw model read explodes on it.
+  // Dense with real deduction load, the shape of an actual lane board:
+  // the move terms are what carry the explosion under the concave size
+  // curve (measured the night of the fix: this vector reads ~20,000s raw
+  // where a sparse 660-cell one reads only ~123s).
+  const monster = { cellCount: 432, totalMines: 120, canonicalSubsetMoves: 60,
+    genericSubsetMoves: 8, advancedLogicMoves: 6, zeroClusterCount: 3, mysteryCellCount: 4 };
+  const raw = bomb.computeBombInfoValue(
+    board, rows, cols, fr, fc, target.r, target.c, [], monster);
+  assert.ok(raw.infoValue > 0, 'precondition: the monster baseline prices positive');
+
+  // The anchored par a real lane row would carry (anchor rate x cells is
+  // a few hundred seconds, nothing like the raw read).
+  const sane = 600;
+  const rescaled = bomb.computeBombInfoValue(
+    board, rows, cols, fr, fc, target.r, target.c, [], monster, sane);
+  const withMoves = { ...monster };
+  for (const term of bomb.POOLED_TERMS) {
+    for (const k of term.moveKeys) withMoves[k] = raw.resultA[k] || 0;
+  }
+  const rawWith = predictPar(withMoves);
+  assert.ok(rawWith > sane * 2,
+    `precondition: the raw read (${rawWith}s) must dwarf the sane par or the rescale is untested`);
+  const expected = raw.infoValue * (sane / rawWith);
+  assert.ok(Math.abs(rescaled.infoValue - expected) < 1e-6,
+    `rescaled ${rescaled.infoValue} should equal raw x sane/rawWith = ${expected}`);
+  assert.ok(rescaled.infoValue < raw.infoValue,
+    'the rescale must shrink an extrapolated penalty');
+
+  // No-op contract: a baseline equal to the raw read reproduces the
+  // unscaled value byte for byte, which is the fit-board case (the
+  // client's displayed par IS predictPar there).
+  const noop = bomb.computeBombInfoValue(
+    board, rows, cols, fr, fc, target.r, target.c, [], monster, rawWith);
+  assert.ok(Math.abs(noop.infoValue - raw.infoValue) < 1e-9,
+    'baseline == raw read must be an exact no-op');
+  // And absent baseline stays byte-identical to the pre-fix behavior.
+  const absent = bomb.computeBombInfoValue(
+    board, rows, cols, fr, fc, target.r, target.c, [], monster);
+  assert.equal(absent.infoValue, raw.infoValue);
+});
+
+test('the strike handler prices match boards at the sane par, and the two par re-prices carry the provisional guard', () => {
+  // Source pins for the two consumers the 10h incident named: the strike
+  // loop must pass the match board's displayed par (the anchored number on
+  // an oversized deal), and BOTH client par re-prices (match and Climb)
+  // must keep the stored par on a provisional board.
+  const wl = readFileSync(new URL('../src/game/winLossHandler.js', import.meta.url), 'utf8');
+  assert.match(wl, /const parBaseline = state\.matchFeatures \? \(state\.matchPar \|\| null\) : null;/,
+    'the strike handler must derive the sane baseline from state.matchPar on match boards');
+  assert.match(wl, /computeBombInfoValue\([^)]*boardFeatures, parBaseline\)/,
+    'the strike call must pass the baseline through');
+  const ga = readFileSync(new URL('../src/game/gameActions.js', import.meta.url), 'utf8');
+  const guards = ga.match(/res\.parProvisional !== true/g) || [];
+  assert.ok(guards.length >= 2,
+    `both the match and Climb par re-prices must carry the provisional guard (found ${guards.length})`);
 });

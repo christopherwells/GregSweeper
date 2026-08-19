@@ -70,6 +70,12 @@ const RAW_DELTA_KEYS = ['passAMoves', 'canonicalSubsetMoves', 'genericSubsetMove
  *        to price the info-value under the log-scale model; ignored (all
  *        shape terms cancel) under the additive model. Pass it so a struck
  *        mine on a hard board is priced against that board's own par.
+ * @param {number|null} [parBaseline=null]
+ *        The board's SANE displayed par (the anchored number on an
+ *        oversized board). When supplied, the info-value is the move
+ *        SHARE priced at this baseline instead of at the raw model read,
+ *        which is a no-op on fit boards and the whole fix on oversized
+ *        ones (see the rescale below).
  *
  * @returns {{
  *   infoValue: number,    // par-seconds, clamped to ≥ 0
@@ -78,7 +84,7 @@ const RAW_DELTA_KEYS = ['passAMoves', 'canonicalSubsetMoves', 'genericSubsetMove
  *   resultB: Object,      // solver result with strike+prior pre-flagged
  * }}
  */
-export function computeBombInfoValue(board, rows, cols, safeRow, safeCol, strikeRow, strikeCol, priorStrikes = [], boardFeatures = null) {
+export function computeBombInfoValue(board, rows, cols, safeRow, safeCol, strikeRow, strikeCol, priorStrikes = [], boardFeatures = null, parBaseline = null) {
   const priorFlags = Array.isArray(priorStrikes)
     ? priorStrikes
         .filter(p => p && Number.isInteger(p.row) && Number.isInteger(p.col))
@@ -124,7 +130,26 @@ export function computeBombInfoValue(board, rows, cols, safeRow, safeCol, strike
     featuresWith[k] = resultA[k] || 0;
     featuresWithout[k] = resultB[k] || 0;
   }
-  let infoValue = predictPar(featuresWith) - predictPar(featuresWithout);
+  const rawWith = predictPar(featuresWith);
+  let infoValue = rawWith - predictPar(featuresWithout);
+
+  // THE OVERSIZED RESCALE (his report, 2026-08-19: two Classic marathon
+  // boards read "10 h over par", and "the mine penalties were all
+  // enormous"). Under the log model the difference above carries the
+  // board's full multiplicative baseline, exp(everything) x the move
+  // share; past a shape's fit ceiling that baseline is the raw
+  // extrapolation the marathon lane exists to avoid: the same
+  // move share that prices a few seconds on a fit board priced THOUSANDS
+  // of par-seconds per strike. The par DISPLAY was already guarded (the
+  // parProvisional carve-outs in gameActions); this was the consumer left
+  // behind. The fix prices the move SHARE against the board's sane par:
+  // infoValue x (parBaseline / rawWith) algebraically equals
+  // parBaseline x (1 - exp(movesB - movesA)), the marginal share at the
+  // anchored price. On a fit board the caller's baseline IS
+  // predictPar(features), the ratio is 1, and this is a no-op.
+  if (Number.isFinite(parBaseline) && parBaseline > 0 && rawWith > 0) {
+    infoValue *= parBaseline / rawWith;
+  }
 
   // Clamp ≥ 0. A mine whose discovery somehow ADDS solver work shouldn't
   // refund time; that would imply a negative penalty and a strict
