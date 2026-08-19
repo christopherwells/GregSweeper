@@ -214,26 +214,43 @@ test('REGRESSION: the oversized rescale prices the move share at the sane par, a
   const sane = 600;
   const rescaled = bomb.computeBombInfoValue(
     board, rows, cols, fr, fc, target.r, target.c, [], monster, sane);
-  const withMoves = { ...monster };
-  for (const term of bomb.POOLED_TERMS) {
-    for (const k of term.moveKeys) withMoves[k] = raw.resultA[k] || 0;
-  }
-  const rawWith = predictPar(withMoves);
-  assert.ok(rawWith > sane * 2,
-    `precondition: the raw read (${rawWith}s) must dwarf the sane par or the rescale is untested`);
-  const expected = raw.infoValue * (sane / rawWith);
+  // The denominator is the BOARD's own raw read, not the per-strike one
+  // (issue #391): over the board's read the move terms cancel, which is
+  // what makes the factor constant across strikes.
+  const rawBoardPar = predictPar(monster);
+  assert.ok(rawBoardPar > sane * 2,
+    `precondition: the raw board read (${rawBoardPar}s) must dwarf the sane par or the rescale is untested`);
+  const expected = raw.infoValue * (sane / rawBoardPar);
   assert.ok(Math.abs(rescaled.infoValue - expected) < 1e-6,
     `rescaled ${rescaled.infoValue} should equal raw x sane/rawWith = ${expected}`);
   assert.ok(rescaled.infoValue < raw.infoValue,
     'the rescale must shrink an extrapolated penalty');
 
-  // No-op contract: a baseline equal to the raw read reproduces the
-  // unscaled value byte for byte, which is the fit-board case (the
-  // client's displayed par IS predictPar there).
-  const noop = bomb.computeBombInfoValue(
-    board, rows, cols, fr, fc, target.r, target.c, [], monster, rawWith);
-  assert.ok(Math.abs(noop.infoValue - raw.infoValue) < 1e-9,
-    'baseline == raw read must be an exact no-op');
+  // No-op contract, ON THE REAL FIT-BOARD PATH and across MULTIPLE
+  // STRIKES (issue #391). The first cut asserted this by feeding the
+  // per-strike read back in as the baseline, which is a tautology: it
+  // held for any denominator and never passed a prior strike. A fit
+  // board's baseline is predictPar(its own features), so the honest
+  // assertion is that passing it changes nothing at strike 1 AND at
+  // every strike after one that removed a deduction, which is exactly
+  // where the per-strike denominator diverged (measured 3.77x).
+  const fitPar = predictPar(monster);
+  const others = [];
+  for (let r = 0; r < rows && others.length < 3; r++) {
+    for (let c = 0; c < cols && others.length < 3; c++) {
+      if (board[r][c].isMine && !(r === target.r && c === target.c)) others.push({ row: r, col: c });
+    }
+  }
+  assert.ok(others.length >= 2, 'the fixture must offer prior strikes or the multi-strike pin is vacuous');
+  for (let n = 0; n <= others.length; n++) {
+    const prior = others.slice(0, n);
+    const plain = bomb.computeBombInfoValue(
+      board, rows, cols, fr, fc, target.r, target.c, prior, monster);
+    const based = bomb.computeBombInfoValue(
+      board, rows, cols, fr, fc, target.r, target.c, prior, monster, fitPar);
+    assert.ok(Math.abs(based.infoValue - plain.infoValue) < 1e-9,
+      `a fit board's own par must be an exact no-op at ${n} prior strike(s), got ${based.infoValue} vs ${plain.infoValue}`);
+  }
   // And absent baseline stays byte-identical to the pre-fix behavior.
   const absent = bomb.computeBombInfoValue(
     board, rows, cols, fr, fc, target.r, target.c, [], monster);

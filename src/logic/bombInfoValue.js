@@ -130,8 +130,7 @@ export function computeBombInfoValue(board, rows, cols, safeRow, safeCol, strike
     featuresWith[k] = resultA[k] || 0;
     featuresWithout[k] = resultB[k] || 0;
   }
-  const rawWith = predictPar(featuresWith);
-  let infoValue = rawWith - predictPar(featuresWithout);
+  let infoValue = predictPar(featuresWith) - predictPar(featuresWithout);
 
   // THE OVERSIZED RESCALE (his report, 2026-08-19: two Classic marathon
   // boards read "10 h over par", and "the mine penalties were all
@@ -147,8 +146,21 @@ export function computeBombInfoValue(board, rows, cols, safeRow, safeCol, strike
   // parBaseline x (1 - exp(movesB - movesA)), the marginal share at the
   // anchored price. On a fit board the caller's baseline IS
   // predictPar(features), the ratio is 1, and this is a no-op.
-  if (Number.isFinite(parBaseline) && parBaseline > 0 && rawWith > 0) {
-    infoValue *= parBaseline / rawWith;
+  // The factor is a property of the BOARD, never of this strike: the ratio
+  // of the board's sane par to the board's OWN raw model read, both over
+  // the same stored feature vector. The first cut divided by the
+  // per-strike read instead (issue #391), which equals the board's read
+  // only while no prior strike has removed a pooled deduction; from the
+  // second strike on, the ratio climbed above 1 and CHARGED MORE than the
+  // pre-fix formula, on ordinary fit boards the change claimed to leave
+  // alone (measured on shipped library boards: a 72-cell deltoidal went
+  // 670.6s to 1213.3s, worst single strike 3.77x). Over the board's own
+  // read the move terms cancel, so the ratio is exactly 1 on a fit board
+  // for EVERY strike, and on an oversized one it is the constant
+  // anchored-over-extrapolated correction the lane needs.
+  const rawBoardPar = boardFeatures ? predictPar(boardFeatures) : 0;
+  if (Number.isFinite(parBaseline) && parBaseline > 0 && rawBoardPar > 0) {
+    infoValue *= parBaseline / rawBoardPar;
   }
 
   // Clamp ≥ 0. A mine whose discovery somehow ADDS solver work shouldn't
