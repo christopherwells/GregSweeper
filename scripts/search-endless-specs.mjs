@@ -92,6 +92,18 @@ const REPORT_ONLY = hasFlag('--report');
 const EMIT = argVal('--emit');
 const ABSORB = hasFlag('--absorb');
 const REPRICE = hasFlag('--reprice-cache');
+// PROVEN-ONLY EMISSION, for the re-search after a structural refit. An
+// ordinary emit may ship low-seed candidates (they pass bandStable unjudged,
+// the clearsDeductionFloor convergence pattern), and after a refit that
+// re-shapes the price landscape the emit reaches for thousands of fresh
+// 3-seed tickets at once: measured on the M1 re-search, every re-emit
+// swapped in ~300 unproven faces and the validator oscillated near 30
+// failures however many absorb rounds ran. Under this flag the emitters
+// ship ONLY faces measured at absorb grade (>= 10 seeds, spread known), so
+// every shipped verdict is one the validator can reproduce; the supply for
+// it is built by --absorb passes and by --refine at --seeds 16.
+const PROVEN_ONLY = hasFlag('--proven-only');
+const provenGate = (e) => !PROVEN_ONLY || ((e.seeds || 0) >= 10 && e.spread != null);
 
 // The endless floor's own margin now lives beside the floor in
 // challengeRules.js (ENDLESS_PPC_FLOOR_MARGIN), read through
@@ -658,6 +670,7 @@ function emitPool(cache, { floorFn, ceilFn, perSlice, slices, maxPerShape = Infi
     .filter((e) => e.ok && legal.get(e.shape)?.has(`${e.a}x${e.b}`))
     .filter(clearsDeductionFloor)
     .filter(bandStable)
+    .filter(provenGate)
     // Population seconds in, ladder seconds out. Every threshold below — the
     // admission floor, the par ceiling, and the ppc that ships — is on the
     // cohort's yardstick from this line on.
@@ -849,6 +862,7 @@ function admissible(cache) {
     .filter((e) => e.ok && legal.get(e.shape)?.has(`${e.a}x${e.b}`))
     .filter(clearsDeductionFloor)
     .filter(bandStable)
+    .filter(provenGate)
     .map((e) => ({ ...e, ppc: e.ppc * SCALE, medPar: e.medPar * SCALE }))
     .filter((e) => e.medPar <= PAR_CEILING_SECONDS * PAR_CEILING_MARGIN)
     .filter((e) => e.worstMs <= GEN_CAP_MS * ENDLESS_GEN_HEADROOM);

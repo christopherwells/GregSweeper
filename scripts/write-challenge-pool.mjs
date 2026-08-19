@@ -48,7 +48,11 @@ if (ONLY && !TABLES[ONLY]) {
 const WANTED = ONLY ? [ONLY] : Object.keys(TABLES);
 
 function emit(which) {
-  const out = execFileSync(process.execPath, [SEARCH, '--emit', which], { encoding: 'utf8' });
+  // --proven-only passes through to the emitters (see the flag's note in
+  // search-endless-specs.mjs: the post-refit re-search ships only faces
+  // measured at absorb grade).
+  const extra = process.argv.includes('--proven-only') ? ['--proven-only'] : [];
+  const out = execFileSync(process.execPath, [SEARCH, '--emit', which, ...extra], { encoding: 'utf8' });
   const lines = out.split('\n');
   const start = lines.findIndex((l) => l.startsWith('export const'));
   const end = lines.findIndex((l) => l.trim() === ']);');
