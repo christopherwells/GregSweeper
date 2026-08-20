@@ -1663,18 +1663,43 @@ diagnostic_failure <- FALSE
 
 # ── 2. Fit ──────────────────────────────────────────────
 
-fit_formula_fixed <- log(pure_time) ~
-  totalMines +
-  patternMoves + searchMoves +
-  wallEdgeCount +
-  mysteryCellCount + liarCellCount + lockedCellCount +
-  wormholePairCount + mirrorPairCount +
-  sonarCellCount + compassCellCount +
-  zeroClusterCount
-  # cellCount is GONE from this bounded formula (his M1 ruling, 2026-08-18):
-  # the size pair (cellCount + logCells) is SIGNED and enters through
-  # dev_cols below, because M1's linear half is negative by measurement and
-  # the class-wide lb = 0 would censor it. See the SIZE_DEV_COLS block.
+# DERIVED from BASE_MODEL_FEATURES, never written out (2026-08-20).
+#
+# This was a hand-written list of predictors sitting beside COEF_TO_PREDICTOR,
+# and the two were a mirror pair nothing held in lockstep. The extraction's own
+# comment claims "the table IS the extraction, so a key missing from it never
+# has a posterior to lose" — true of the table, and false of this formula. Add
+# a coefficient to the table without adding it here and the fit never estimates
+# it, `co[p]` comes back NA, and nn() maps NA to 0: the coefficient SHIPS AT
+# ZERO with no error anywhere. That is exactly what the rate-form change hit,
+# and it would have shipped a par model with no mine or move terms at all.
+#
+# The two exclusions are the real ones, and both are stated where they are
+# decided rather than assumed here:
+#   - SIZE_DEV_COLS rides the SIGNED dev nlpar, because the class-wide lb = 0
+#     is a claim about features par is monotonic in and the size curve's sign
+#     is the question (his M1 ruling, 2026-08-18).
+#   - wormLoad joins conditionally below (add_worm_term): before the first
+#     worm board's scores land it is identically zero in df_fit, a
+#     zero-variance predictor, so it gates on real data like archivePlay.
+BOUNDED_BASE_TERMS <- setdiff(BASE_MODEL_FEATURES, c(SIZE_DEV_COLS, "wormLoad"))
+stopifnot(length(BOUNDED_BASE_TERMS) > 0)
+fit_formula_fixed <- as.formula(
+  paste("log(pure_time) ~", paste(BOUNDED_BASE_TERMS, collapse = " + ")))
+
+# THE DRIFT GUARD. Every shipped coefficient must have a route into the fit:
+# the bounded block, the signed dev nlpar, or a named conditional gate. A key
+# with no route is the silent-zero above, so this stops the run rather than
+# emitting a model with a hole in it.
+local({
+  routed <- c(BOUNDED_BASE_TERMS, SIZE_DEV_COLS, "wormLoad")
+  orphans <- setdiff(BASE_MODEL_FEATURES, routed)
+  if (length(orphans) > 0) {
+    stop(sprintf(
+      "COEF_TO_PREDICTOR names %s with no route into the fit; it would ship at 0 silently",
+      paste(orphans, collapse = ", ")))
+  }
+})
   # wormLoad joins conditionally below (add_worm_term): until the first
   # worm board's scores land it is identically zero in df_fit — a
   # zero-variance predictor — so it gates on real data like archivePlay.
@@ -2584,6 +2609,22 @@ if (fit_method == "brms-ranef") {
   # is per REALIZED wormLoad unit (the fit's regressor); the
   # scheduled-to-realized bridge is applied below, after the realization ratio
   # is computed.
+  # A term that ENTERED the bounded formula must come back with a posterior.
+  # nn() maps NA to 0, which is right for a term deliberately gated out (the
+  # worm term before the first worm board) and wrong for one the sampler
+  # dropped: that ships a zero coefficient for a feature the model was asked
+  # to estimate. The formula-time drift guard cannot see this, because the
+  # term was routed correctly and simply did not survive.
+  local({
+    fitted_names <- names(co)
+    missing_base <- setdiff(BOUNDED_BASE_TERMS, fitted_names)
+    if (length(missing_base) > 0) {
+      stop(sprintf(
+        "these bounded terms entered the formula but have no posterior: %s (they would ship at 0)",
+        paste(missing_base, collapse = ", ")))
+    }
+  })
+
   new_coefs <- c(
     list(intercept = nn(co["Intercept"], "intercept")),
     setNames(
