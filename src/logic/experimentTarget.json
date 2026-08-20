@@ -1,56 +1,61 @@
 {
-  "updatedAt": "2026-08-20T14:13:48Z",
-  "target": "wormLoad",
-  "reason": "highest posterior CV (0.470) excluding last 3 targets",
+  "updatedAt": "2026-08-20T20:31:04Z",
+  "target": "mysteryCellCount",
+  "reason": "highest posterior CV (0.711) excluding last 3 targets",
   "lastRevalidationDate": "2026-08-15",
   "recentTargets": [
+    "mysteryCellCount",
     "wormLoad",
-    "clueShare2",
-    "wormholePairCount"
+    "clueShare2"
   ],
   "candidates": [
     {
+      "feature": "mysteryCellCount",
+      "mean": 0.019,
+      "sd": 0.013,
+      "cv": 0.711
+    },
+    {
+      "feature": "clueShare5plus",
+      "mean": 0.057,
+      "sd": 0.039,
+      "cv": 0.682
+    },
+    {
+      "feature": "zeroClusterCount",
+      "mean": 0.013,
+      "sd": 0.008,
+      "cv": 0.591
+    },
+    {
       "feature": "wormLoad",
-      "mean": 0.029,
-      "sd": 0.014,
-      "cv": 0.47
+      "mean": 0.026,
+      "sd": 0.012,
+      "cv": 0.465
     },
     {
-      "feature": "clueShare2",
-      "mean": 0.046,
-      "sd": 0.02,
-      "cv": 0.435
-    },
-    {
-      "feature": "clueShare4",
-      "mean": 0.113,
-      "sd": 0.049,
-      "cv": 0.432
-    },
-    {
-      "feature": "wormholePairCount",
-      "mean": 0.046,
-      "sd": 0.018,
-      "cv": 0.398
-    },
-    {
-      "feature": "compassCellCount",
-      "mean": 0.051,
-      "sd": 0.019,
-      "cv": 0.371
+      "feature": "wallEdgeCount",
+      "mean": 0.003,
+      "sd": 0.004,
+      "cv": 0.379
     }
   ],
   "coverage_targets": [],
   "shape_coverage": [
     {
-      "shape": "cairo",
-      "n_boards": 20,
-      "deficit_weight": 0.0476
+      "shape": "4.8.8",
+      "n_boards": 18,
+      "deficit_weight": 0.0526
     },
     {
       "shape": "rhombille",
-      "n_boards": 25,
-      "deficit_weight": 0.0385
+      "n_boards": 21,
+      "deficit_weight": 0.0455
+    },
+    {
+      "shape": "cairo",
+      "n_boards": 24,
+      "deficit_weight": 0.04
     },
     {
       "shape": "floret",
@@ -59,13 +64,8 @@
     },
     {
       "shape": "deltoidal",
-      "n_boards": 26,
-      "deficit_weight": 0.037
-    },
-    {
-      "shape": "4.8.8",
-      "n_boards": 27,
-      "deficit_weight": 0.0357
+      "n_boards": 31,
+      "deficit_weight": 0.0312
     },
     {
       "shape": "hex",
@@ -74,8 +74,8 @@
     },
     {
       "shape": "rect",
-      "n_boards": 209,
-      "deficit_weight": 0.0048
+      "n_boards": 213,
+      "deficit_weight": 0.0047
     }
   ],
   "lastDecorrelationDate": "2026-08-16"
