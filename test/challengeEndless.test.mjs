@@ -364,12 +364,16 @@ test('GOLDEN: the first endless block is fixed', () => {
   // from the SHIPPABLE population (stable material prices lower than the
   // all-fresh decile; a floor set on the wider population priced deltoidal
   // out of the zone entirely). Whole different pool, whole different five.
+  // Moved on 2026-08-20 by the nightly refit (N=826, Rhat 1.004): the
+  // 08-19 re-search re-emitted these pools proven-faces-only, and the
+  // night's re-price then re-sorted which of them the deck deals. A
+  // golden that moves when the model does is the point.
   assert.deepEqual(got, [
     '4.8.8:50c:18m:[liar+locked+compass]',
     'cairo:112c:37m:[locked+sonar+compass]',
-    'deltoidal:36c:12m:[walls+liar]',
     'floret:72c:26m:[locked+wormhole+sonar]',
     'hex:30c:11m:[mystery+locked+sonar]',
+    'rect:63c:28m:[]',
   ]);
 
 
