@@ -570,6 +570,16 @@ export async function submitMatchFitRows(rows, name, uid) {
       bombHitEvents: row.bombHitEvents,
       wormEvents: row.wormEvents,
       totalMines: row.totalMines,
+      // WHETHER THE BOARD SCROLLED. matchFitRows has computed this per board
+      // since the marathon lane shipped, and it was dropped right here: the
+      // payload writes `scrolled` only when extras carries it, and match rows
+      // never passed it on. Measured 2026-08-20 on the first ten marathon
+      // rows anyone has ever played, his own five and Kate's five: every one
+      // reached the fit with no flag, so the lane's whole data purpose (the
+      // one cost no row has ever carried, the time spent travelling a board
+      // rather than thinking about it) collected nothing. The daily and
+      // archive paths have always passed it; only this one did not.
+      scrolled: row.scrolled === true,
       // A match board's seed IS its bucket key's source, so a row never needs
       // an rngSeed to say which board it was: the key already does.
     };

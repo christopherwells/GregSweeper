@@ -674,3 +674,39 @@ test('#372: a save for a DIFFERENT run, or a disagreeing time, donates nothing',
   const none = matchResumePoint(node, 'u1', null);
   assert.deepEqual(Object.keys(none.results[0]).sort(), ['penalty', 'strikes', 'time']);
 });
+
+test('REGRESSION: a match fit row carries whether the board scrolled, all the way to the payload', () => {
+  // matchFitRows has stamped `scrolled` per board since the marathon lane
+  // shipped, and submitMatchFitRows dropped it while building `extras`: the
+  // payload writes the field only when extras carries it, and this one path
+  // never passed it on. The daily and archive paths always did.
+  //
+  // Measured on the first ten marathon rows ever played (his five and Kate's,
+  // 2026-08-20): every one reached the fit with NO flag, so the lane produced
+  // zero usable rows for the one signal it exists to collect, the time spent
+  // travelling a board rather than thinking about it. Nothing failed loudly,
+  // which is why this is pinned at both ends.
+  const lead = readFileSync(new URL('../src/firebase/firebaseLeaderboard.js', import.meta.url), 'utf8');
+
+  // 1. The row builder still stamps it.
+  const stand = readFileSync(new URL('../src/logic/matchStandings.js', import.meta.url), 'utf8');
+  assert.match(stand, /scrolled: res\.scrolled === true/,
+    'matchFitRows must stamp the board-as-played flag');
+
+  // 2. The match submitter passes it into extras.
+  const submit = lead.slice(lead.indexOf('export async function submitMatchFitRows'),
+    lead.indexOf('* Submit a timed-mode run'));
+  assert.ok(submit.length > 200, 'submitMatchFitRows was not found');
+  assert.match(submit, /scrolled: row\.scrolled === true/,
+    'the match submitter must pass scrolled through, or the lane collects nothing');
+
+  // 3. And the payload writer still honours it, stated even when false (the
+  //    ruling that makes ABSENT mean "a client too old to measure").
+  assert.match(lead, /if \(typeof extras\.scrolled === 'boolean'\) payload\.scrolled = extras\.scrolled;/,
+    'the payload must write the flag whenever the caller states it');
+
+  // 4. Non-vacuity: the daily path, which was always correct, still passes it.
+  const wl = readFileSync(new URL('../src/game/winLossHandler.js', import.meta.url), 'utf8');
+  assert.ok((wl.match(/scrolled: !!state\.boardScrolled/g) || []).length >= 2,
+    'the daily and archive submits must still state it, or this pin is reading the wrong thing');
+});
