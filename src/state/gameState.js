@@ -323,6 +323,37 @@ export function getActiveBombPenaltyTotal() {
   return Math.round(sum * 10) / 10;
 }
 
+// The feature vector of the board a STRIKE is priced against, chosen by the
+// lane that is actually being played (issue #393).
+//
+// This was a first-non-null chain, `weeklyFeatures || dailyFeatures ||
+// matchFeatures || coastlineFeatures`, which is only correct while at most
+// one of them is populated. It is not: `newGame` clears weekly, match,
+// coastline and challenge vectors, but NEVER `dailyFeatures`, and nothing in
+// src/ ever assigns it null. So playing today's daily and then starting a
+// Challenge run in the same session, with no reload, priced every strike
+// against the DAILY board's vector, and since `modelFor` dispatches on
+// `tilingType` a rect daily also picked the wrong per-shape block. Measured
+// on a deltoidal match board with a plausible 121-cell rect daily left
+// behind: strikes priced 0.29x, 0.41x and 0.54x of their true value. The
+// direction is not fixed either, since it depends on which daily happened to
+// be left in state, and the numbers reach the permanent daily/match_* fit
+// rows. The Par Lab lane sat last in the chain and had the same exposure.
+//
+// Keyed on the lane rather than on populated-ness, the same shape
+// detectSkillFeats uses for the same reason. `parLab` leads because it is a
+// FLAG rather than a mode (mineIsStrike tests it separately for that
+// reason), so a lab board must not be read as whatever mode it runs under.
+// Returns null off the strike lanes, which is what the caller wants: the
+// pricing then carries no board baseline rather than a foreign one.
+export function getStrikeBoardFeatures() {
+  if (state.parLab) return state.coastlineFeatures || null;
+  if (state.gameMode === 'weekly') return state.weeklyFeatures || null;
+  if (state.gameMode === 'daily') return state.dailyFeatures || null;
+  if (state.gameMode === 'match') return state.matchFeatures || null;
+  return null;
+}
+
 // The number the LCD clock shows mid-game, capped at the LCD's three
 // digits. elapsedTime is PURE wall-clock (tick-driven); the daily/weekly
 // bomb penalty is held separately in the hit-event log and added here, so
