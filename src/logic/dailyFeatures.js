@@ -439,10 +439,11 @@ function perCell(features, count) {
 // 0.399), so nothing is surrendered where people actually play.
 //
 // secPerCell, secPerMineFlag, secPerPatternMove and secPerSearchMove are
-// RETIRED, following secPerShape*: gone from here, gone from every emitted
+// RETIRED, the way the per-shape indicator offsets were: gone from here,
+// gone from every emitted
 // block, and gone from COEF_TO_PREDICTOR in refit-par-model.R. A model doped
-// with one is inert, which is the property test/tilingParModelContract.test.mjs
-// already pins for the shape offsets. Retiring rather than zeroing is
+// with one is inert, the same property tilingParModelContract already pins
+// for the retired shape indicators. Retiring rather than zeroing is
 // deliberate: a key at 0 reads as "not yet earned", and these are not coming
 // back.
 const COEF_TERMS = [

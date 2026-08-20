@@ -456,10 +456,23 @@ test('path selection is ONE boolean at formula construction; the nl split has th
     'dev_cols must lead with the size pair, then shape deviations, then the match offset');
 });
 
-test('the M1 SIZE PAIR is signed end to end: dev routing, sn() extraction, derived predictor', () => {
-  // The pair's declaration, beside the table it extends.
-  const decl = R_SRC.match(/SIZE_DEV_COLS <- c\("cellCount", "logCells"\)/);
-  assert.ok(decl, 'SIZE_DEV_COLS must declare exactly the size pair');
+test('the SIZE TERM is signed end to end: dev routing, sn() extraction, derived predictor', () => {
+  // M1 shipped size as a PAIR (cellCount beside logCells) because the linear
+  // half measured negative and the two jointly described a concave curve. The
+  // rate form (2026-08-20) retired the linear half: every count that scales
+  // with area now enters divided by the board, so log(cells) carries size
+  // alone and its elasticity came out firmly positive (1.140 shipped, against
+  // 1.164 [1.060, 1.267] measured in par-model-move-rates.qmd).
+  //
+  // It stays on the SIGNED dev nlpar even so. The class-wide lb = 0 is a claim
+  // that par is monotonic non-decreasing in a feature, and leaving the one
+  // term the whole size question rides on unbounded keeps the data able to say
+  // otherwise. Keeping the column non-empty also keeps Path B permanent, which
+  // the dev_cols construction relies on.
+  const decl = R_SRC.match(/SIZE_DEV_COLS <- c\("logCells"\)/);
+  assert.ok(decl, 'SIZE_DEV_COLS must declare the size elasticity');
+  assert.ok(!/SIZE_DEV_COLS <- c\([^)]*"cellCount"/.test(R_SRC),
+    'the linear cell term is retired; it must not return to the size routing');
   assert.ok(/SIZE_DEV_PRIOR_SD <- /.test(R_SRC),
     'the pair must carry its own documented prior width');
   // COEF_TO_PREDICTOR ships the elasticity; the R frame derives its column.
@@ -468,13 +481,27 @@ test('the M1 SIZE PAIR is signed end to end: dev routing, sn() extraction, deriv
     'the elasticity must be a shipped coefficient (secPerLogCell -> logCells)');
   assert.ok(/logCells\s*= log\(pmax\(1, cellCount\)\)/.test(R_SRC),
     'the frame must derive logCells from the stored cellCount (never a stored feature)');
-  // cellCount is OUT of the bounded base formula: under M1 its coefficient
-  // is negative, and the class-wide lb = 0 would censor it (the matchPlay
-  // reasoning, applied to the size curve's linear half).
-  const fixedFormula = R_SRC.match(/fit_formula_fixed <- log\(pure_time\) ~([\s\S]*?)\r?\n\r?\n/);
-  assert.ok(fixedFormula, 'fit_formula_fixed not found');
-  assert.ok(!/\bcellCount\b/.test(fixedFormula[1].split('#')[0]),
-    'cellCount must not ride the bounded fixed formula');
+  // The bounded formula is DERIVED from the coefficient table, not written
+  // out beside it, replacing a hand-written predictor list. The failure that
+  // closes was silent in the worst way: the list and the table were a mirror
+  // pair nothing held in lockstep, so adding a coefficient to the table alone
+  // meant the fit never estimated it, co[p] came back NA, and nn() shipped it
+  // at ZERO with no error. Measured 2026-08-20: all three rate coefficients
+  // emitted 0.00000 that way. Asserting the MECHANISM rather than the
+  // resulting list is deliberate; only the derivation makes a stray term
+  // impossible to add by accident.
+  assert.ok(/BOUNDED_BASE_TERMS <- setdiff\(BASE_MODEL_FEATURES/.test(R_SRC),
+    'the bounded formula must be derived from the coefficient table by exclusion');
+  assert.ok(/fit_formula_fixed <- as\.formula\(/.test(R_SRC),
+    'fit_formula_fixed must be built from BOUNDED_BASE_TERMS, never hand-written');
+  assert.ok(/orphans <- setdiff\(BASE_MODEL_FEATURES, routed\)/.test(R_SRC),
+    'an unrouted shipped coefficient must be caught before fitting');
+  assert.ok(/would ship at 0 silently/.test(R_SRC),
+    'the orphan guard must stop the run, not warn');
+  const coefTableAll = R_SRC.match(/COEF_TO_PREDICTOR\s*<-\s*c\(([\s\S]*?)\n\)/);
+  assert.ok(coefTableAll, 'COEF_TO_PREDICTOR literal not found; this scan is vacuous');
+  assert.ok(!/=\s*"cellCount"/.test(coefTableAll[1]),
+    'cellCount is retired and must not be a shipped predictor');
   // The extraction must not clamp the pair: nn() zeroes negatives, so the
   // size keys route through the signed sn() instead. A clamped linear half
   // ships the refuted replace-form at its worst (log term alone).
