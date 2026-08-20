@@ -163,7 +163,16 @@ export function matchFitRows(entries, results) {
       // The anti-cheat guard's denominator (isBombHitCheat): a run that found
       // most of a board's mines by stepping on them was probing it.
       totalMines: Number(entry.spec && entry.spec.mines) || Number(entry.features.totalMines) || 0,
-      par: Number(res.par) || 0,
+      // THE ENTRY IS THE FALLBACK, because the node never stores par: the
+      // results block whitelists time, penalty and strikes and ends
+      // $other: false. A cross-device resume rebuilds results from the node,
+      // so `res.par` is simply absent and the row filed a par of 0 (measured
+      // 2026-08-20: one of the ten marathon rows, on a board whose other
+      // player filed 1263.5). The dealt entry carries the board's own stored
+      // par and rides the node whole under `boards`, which is where
+      // state.matchPar came from at install, so this recovers the same number
+      // rather than inventing one.
+      par: Number(res.par) || Number(entry.par) || 0,
       // Banked per board at finish (winLossHandler): a match run can mix a
       // fit-legal board with a marathon one, so this is a property of the
       // BOARD as played, never of the run.

@@ -136,6 +136,29 @@ test('one row per cleared board, keyed off the board SEED', () => {
   assert.deepEqual(rows[0].features, entries[0].features);
 });
 
+test("REGRESSION: a resumed run's row keeps the board's par (measured 2026-08-20)", () => {
+  // The match node's results block whitelists time, penalty and strikes and
+  // ends $other: false, so par is NEVER stored there. A cross-device resume
+  // rebuilds results from the node, `res.par` comes back undefined, and the
+  // row filed par 0. Measured on the ten marathon rows: one of them, on a
+  // board whose other player filed 1263.5.
+  //
+  // The dealt entry carries the board's own par and rides the node whole
+  // under `boards`, which is where state.matchPar came from at install.
+  const resumed = matchFitRows([entry('resumed-seed')], [{ time: 300, strikes: 0 }]).rows[0];
+  assert.equal(resumed.par, 60, 'a result with no par must recover the one on its entry');
+
+  // The result still WINS when it has one, so a client that played the board
+  // files what that player actually saw.
+  const played = matchFitRows([entry('played-seed')], [{ time: 300, strikes: 0, par: 512 }]).rows[0];
+  assert.equal(played.par, 512, 'a stated par must not be overwritten by the entry');
+
+  // NON-VACUITY: with no par anywhere the answer is still 0, so this is a
+  // recovery and not a floor that invents a number.
+  const bare = matchFitRows([{ ...entry('bare-seed'), par: undefined }], [{ time: 300 }]).rows[0];
+  assert.equal(bare.par, 0, 'nothing to recover must stay 0, never a guess');
+});
+
 test('the same board in two different matches files under the SAME key', () => {
   // This is the property the per-shape fit is starved of: four people playing
   // one Kites board across two matches is four observations of one board, not

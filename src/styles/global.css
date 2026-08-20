@@ -8459,6 +8459,9 @@ pre.diagnostics-pre {
 .match-grid { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
 .match-grid th, .match-grid td { padding: 4px 6px; text-align: right; white-space: nowrap; }
 .match-grid th.match-grid-board { text-align: left; font-weight: 500; color: var(--color-text-secondary, #888); padding-left: 0; max-width: 9em; overflow: hidden; text-overflow: ellipsis; }
+/* Par sits under the shape rather than beside it: the label cell is capped
+   at 9em and a wider one would eat a player column on a phone. */
+.match-grid th.match-grid-board .match-grid-par { display: block; font-size: 10px; opacity: 0.72; font-variant-numeric: tabular-nums; text-transform: none; letter-spacing: 0; }
 .match-grid thead th { font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--color-text-secondary, #888); }
 .match-grid thead th.match-grid-me { color: var(--color-text, #eee); }
 .match-grid tbody tr, .match-grid tfoot tr:first-child { border-top: 1px solid var(--color-border, #333); }
