@@ -126,6 +126,26 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     }
   }
 
+  // Optional: RESUME FROM THE PLAYER'S BOARD (`resumeFromLiveState`).
+  //
+  // Every other caller wants the from-scratch question ("is this board
+  // solvable from its opener"), and this solver has always answered that by
+  // starting with nothing revealed, deliberately ignoring live state. Strike
+  // PRICING wants the other question, his ruling 2026-08-20: "what is the par
+  // now that the mine is hit, given the live board". Answering it from
+  // scratch charged a player for deduction they had already done themselves,
+  // measured at 8-16s per strike on a board with every safe cell revealed and
+  // reported at ~90s on a big one.
+  //
+  // OPT-IN, and off by default, so certification, generation, par features and
+  // every stored contract are byte-identical: a caller that passes nothing
+  // gets exactly the solve it got before (pinned in test/boardSolver*.test.mjs).
+  // The pre-revealed set is read from the board's OWN `isRevealed`, so it can
+  // only ever contain cells the game legally revealed; mines and still-locked
+  // cells are refused here rather than trusted. FLAGS ARE IGNORED, the
+  // flags-blind doctrine every player-facing verdict follows: a player's
+  // wrong flag must never be able to talk the pricing into a cheaper answer.
+  //
   // Cache mine locations and player-visible adjacency counts.
   // liarBase[i] = displayed value for cells that contribute a {X-1, X+1}
   // disjunctive constraint (plain liar, possibly + locked); -1 otherwise.
@@ -281,6 +301,24 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
   function flagCell(i) {
     if (sim[i] !== 0) return;
     sim[i] = 2; // flagged
+  }
+
+  // Resume mode: seed the sim with what the player has already uncovered, so
+  // the counts this returns are the work REMAINING rather than the work the
+  // whole board ever needed. Cascades are not re-run for these: they already
+  // happened on the live board, and `isRevealed` records their result.
+  if (options && options.resumeFromLiveState) {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const i = idx(r, c);
+        if (sim[i] !== 0) continue;                 // a pre-flagged cell stays flagged
+        if (isMine[i] || isLocked[i]) continue;     // never assert a mine or a locked cell as seen
+        if (!board[r][c].isRevealed) continue;
+        sim[i] = 1;
+        revealedCount++;
+      }
+    }
+    if (revealedCount === totalSafe) return buildResult(true, 0);
   }
 
   // Step 1: Simulate first click, reveal safeRow, safeCol and flood-fill zeros

@@ -35,6 +35,12 @@ test('daily bombHitEvents entries: all per-hit fields are whitelisted', () => {
   // src/game/winLossHandler.js handleDailyBombHit event shape.
   assertWhitelist(rules.daily.$date.$entry.bombHitEvents.$idx, 'daily bombHitEvents/$idx', [
     't', 'row', 'col', 'penalty', 'infoValue',
+    // The model-independent record (2026-08-20): the pooled remaining-move
+    // counts either side of the strike, which let a later model re-price the
+    // seconds without the board state. Un-whitelisted, they would drop the
+    // WHOLE score write silently (the 866683d class), which is why they are
+    // pinned here in the same change that starts writing them.
+    'patternBefore', 'searchBefore', 'patternAfter', 'searchAfter',
   ]);
 });
 

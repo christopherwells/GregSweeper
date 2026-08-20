@@ -36,6 +36,10 @@
               "col": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99" },
               "penalty": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
               "infoValue": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
+              "patternBefore": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999" },
+              "searchBefore": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999" },
+              "patternAfter": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999" },
+              "searchAfter": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999" },
               "$other": { ".validate": false }
             }
           },
@@ -121,6 +125,10 @@
               "col": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99" },
               "penalty": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
               "infoValue": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
+              "patternBefore": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999" },
+              "searchBefore": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999" },
+              "patternAfter": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999" },
+              "searchAfter": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999" },
               "$other": { ".validate": false }
             }
           },

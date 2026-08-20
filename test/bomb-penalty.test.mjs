@@ -357,3 +357,130 @@ test('the strike handler reads the lane selector, and the baseline keys on the l
   assert.match(wl, /const parBaseline = state\.gameMode === 'match' \? \(state\.matchPar \|\| null\) : null;/,
     'the sane-par baseline must key on the lane as well, or a stale matchPar can price a daily strike');
 });
+
+test('a strike is priced from the LIVE board, and the opener reading survives for callers with no live board', { skip: !HAS_FEATURE }, async () => {
+  // His report, 2026-08-20: he hit a mine "internal to everything" on a big
+  // board and was charged ~90s. The pricing solved from the OPENER, so it
+  // billed him for deduction he had already done himself. His ruling: "a
+  // check of what the par is now that the mine is hit given the live board".
+  const { generateBoard, cleanSolverArtifacts } = await import('../src/logic/boardGenerator.js');
+  const { createDailyRNG } = await import('../src/logic/seededRandom.js');
+  const { isBoardSolvable } = await import('../src/logic/boardSolver.js');
+  const { computeDailyFeatures } = await import('../src/logic/dailyFeatures.js');
+  const rows = 12, cols = 12, mines = 30, fr = 6, fc = 6, seed = 'demo-internal';
+  const build = () => {
+    const b = generateBoard(rows, cols, mines, fr, fc, createDailyRNG(seed));
+    cleanSolverArtifacts(b);
+    return b;
+  };
+  const board = build();
+  const check = isBoardSolvable(board, rows, cols, fr, fc);
+  const features = computeDailyFeatures(
+    { board, rows, cols, totalMines: mines, activeGimmicks: [], rngSeed: seed }, check);
+
+  // Untouched board: the live reading and the opener reading agree, because
+  // nothing is revealed to make them differ. This is the pin that stops the
+  // fix from simply zeroing every strike.
+  let target = null;
+  for (let r = 0; r < rows && !target; r++) {
+    for (let c = 0; c < cols && !target; c++) {
+      if (!board[r][c].isMine) continue;
+      const s = bomb.computeBombInfoValue(board, rows, cols, fr, fc, r, c, [], features, null, { liveState: false });
+      if (s.infoValue > 1) target = { row: r, col: c, scratch: s.infoValue };
+    }
+  }
+  assert.ok(target, 'the fixture must offer a mine that anchors real deduction');
+  const untouched = bomb.computeBombInfoValue(
+    board, rows, cols, fr, fc, target.row, target.col, [], features);
+  assert.ok(Math.abs(untouched.infoValue - target.scratch) < 1e-9,
+    `on an untouched board the two readings must agree (${untouched.infoValue} vs ${target.scratch})`);
+
+  // HIS CASE: the mine sits inside territory already cleared. The player has
+  // already done that reasoning, so the information is worth nothing.
+  const cleared = build();
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) if (!cleared[r][c].isMine) cleared[r][c].isRevealed = true;
+  }
+  const inside = bomb.computeBombInfoValue(
+    cleared, rows, cols, fr, fc, target.row, target.col, [], features);
+  assert.equal(inside.infoValue, 0,
+    'a mine already determined by what is on screen must cost no information');
+  const insideScratch = bomb.computeBombInfoValue(
+    cleared, rows, cols, fr, fc, target.row, target.col, [], features, null, { liveState: false });
+  assert.ok(insideScratch.infoValue > 1,
+    'and the opener reading must still charge for it, or this pin proves nothing');
+});
+
+test('REGRESSION: the solver resume mode is OPT-IN, so every existing caller is byte-identical', { skip: !HAS_FEATURE }, async () => {
+  // Backwards compatibility, his requirement: certification, generation, par
+  // features and every stored contract ask the from-scratch question and must
+  // keep getting exactly the answer they got before.
+  const { generateBoard, cleanSolverArtifacts } = await import('../src/logic/boardGenerator.js');
+  const { createDailyRNG } = await import('../src/logic/seededRandom.js');
+  const { isBoardSolvable } = await import('../src/logic/boardSolver.js');
+  const rows = 12, cols = 12, mines = 30, fr = 6, fc = 6;
+  const board = generateBoard(rows, cols, mines, fr, fc, createDailyRNG('demo-internal'));
+  cleanSolverArtifacts(board);
+  // Reveal the whole board: under resume mode this changes everything, and
+  // under the default it must change NOTHING.
+  const plain = isBoardSolvable(board, rows, cols, fr, fc);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) if (!board[r][c].isMine) board[r][c].isRevealed = true;
+  }
+  const again = isBoardSolvable(board, rows, cols, fr, fc);
+  assert.deepEqual(
+    { t: again.totalClicks, s: again.solvable, p: again.canonicalSubsetMoves, a: again.advancedLogicMoves },
+    { t: plain.totalClicks, s: plain.solvable, p: plain.canonicalSubsetMoves, a: plain.advancedLogicMoves },
+    'live reveal state must not reach a caller that did not ask for it');
+  const resumed = isBoardSolvable(board, rows, cols, fr, fc, undefined, { resumeFromLiveState: true });
+  assert.ok(resumed.totalClicks < plain.totalClicks,
+    'and the opt-in mode must actually see the revealed board');
+});
+
+test('a stored strike can be RE-PRICED under a later model without the board state (his data requirement)', { skip: !HAS_FEATURE }, async () => {
+  // "I would love for all the old data to be usable still. I am worried that
+  // we do not know the board state for every board when a mine was hit, so
+  // you cannot recalculate the hit when the par is recalculated." So the
+  // event stores the pooled remaining-move counts, which measure the BOARD
+  // and cannot be invalidated by a refit; the seconds are derived from them.
+  const { generateBoard, cleanSolverArtifacts } = await import('../src/logic/boardGenerator.js');
+  const { createDailyRNG } = await import('../src/logic/seededRandom.js');
+  const { isBoardSolvable } = await import('../src/logic/boardSolver.js');
+  const { computeDailyFeatures } = await import('../src/logic/dailyFeatures.js');
+  const rows = 12, cols = 12, mines = 30, fr = 6, fc = 6, seed = 'demo-internal';
+  const board = generateBoard(rows, cols, mines, fr, fc, createDailyRNG(seed));
+  cleanSolverArtifacts(board);
+  const check = isBoardSolvable(board, rows, cols, fr, fc);
+  const features = computeDailyFeatures(
+    { board, rows, cols, totalMines: mines, activeGimmicks: [], rngSeed: seed }, check);
+
+  let priced = null;
+  for (let r = 0; r < rows && !priced; r++) {
+    for (let c = 0; c < cols && !priced; c++) {
+      if (!board[r][c].isMine) continue;
+      const res = bomb.computeBombInfoValue(board, rows, cols, fr, fc, r, c, [], features);
+      if (res.infoValue > 1) priced = res;
+    }
+  }
+  assert.ok(priced, 'need a strike that costs something');
+  for (const k of ['patternBefore', 'searchBefore', 'patternAfter', 'searchAfter']) {
+    assert.equal(typeof priced[k], 'number', `${k} must ride the result so the event can store it`);
+  }
+  // THE ROUND TRIP: the stored counts alone reproduce the seconds, with no
+  // board and no solver run.
+  const ev = {
+    patternBefore: priced.patternBefore, searchBefore: priced.searchBefore,
+    patternAfter: priced.patternAfter, searchAfter: priced.searchAfter,
+  };
+  const again = bomb.repriceStoredStrike(ev, features);
+  assert.ok(Math.abs(again - Math.round(priced.infoValue * 10) / 10) < 0.11,
+    `re-price ${again} should reproduce the live ${priced.infoValue}`);
+  // It COMPUTES rather than echoes: a different baseline gives a different
+  // answer, which is what lets a refit move it.
+  const scaled = bomb.repriceStoredStrike(ev, features, 10);
+  assert.ok(scaled < again, 'a smaller baseline must price the same counts cheaper');
+  // A pre-2026-08-20 event carries no counts: null means "keep the stored
+  // seconds", never zero.
+  assert.equal(bomb.repriceStoredStrike({ t: 1, row: 0, col: 0, penalty: 9, infoValue: 6 }, features), null);
+  assert.equal(bomb.repriceStoredStrike(null, features), null);
+});

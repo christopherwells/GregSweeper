@@ -1694,9 +1694,14 @@ export function handleDailyBombHit(mineRow, mineCol, extraMines = []) {
   for (let i = 0; i < mines.length; i++) {
     const m = mines[i];
     let infoValue = 0;
+    let strikeCounts = null;
     try {
       const result = computeBombInfoValue(state.board, state.rows, state.cols, fr, fc, m.row, m.col, priorStrikes, boardFeatures, parBaseline);
       infoValue = result.infoValue;
+      strikeCounts = {
+        patternBefore: result.patternBefore, searchBefore: result.searchBefore,
+        patternAfter: result.patternAfter, searchAfter: result.searchAfter,
+      };
     } catch (err) {
       // The solver is robust on well-formed daily/weekly boards; if it
       // ever does throw we'd rather charge the base penalty than crash
@@ -1715,7 +1720,19 @@ export function handleDailyBombHit(mineRow, mineCol, extraMines = []) {
     // in this mechanic; legacy events (under the old +10s/re-fog
     // mechanic) lack it, and the R refit treats `bombHits > 0 && no
     // penalty` as the legacy cohort.
+    // The four pooled remaining-move counts ride along so this strike can be
+    // RE-PRICED under any future model without the board state that produced
+    // it (his 2026-08-20 requirement; repriceStoredStrike is the reader). They
+    // are a measurement of the board, not of the model, so a refit cannot
+    // invalidate them. A strike whose solve was refused carries none, and the
+    // reader treats their absence as "keep the stored seconds".
     const event = { t: tClean, row: m.row, col: m.col, penalty, infoValue: infoValueRounded };
+    if (strikeCounts) {
+      event.patternBefore = strikeCounts.patternBefore;
+      event.searchBefore = strikeCounts.searchBefore;
+      event.patternAfter = strikeCounts.patternAfter;
+      event.searchAfter = strikeCounts.searchAfter;
+    }
     if (isWeekly) {
       state.weeklyBombHits = priorHits + i + 1;
       if (!Array.isArray(state.weeklyBombHitEvents)) state.weeklyBombHitEvents = [];
