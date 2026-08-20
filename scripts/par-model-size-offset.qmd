@@ -42,140 +42,24 @@ decision this document feeds: whether $\gamma$ earns a place in `PAR_MODEL`,
 which re-prices every stored artifact the night it ships.
 
 ```{r setup}
-# INTENT: mirror the nightly refit's frame exactly enough that a conclusion
-# here transfers to the pipeline. The filters below restate
-# scripts/refit-par-model.R's rules; the cross-checks at the end of the
-# data section are what make the mirror honest rather than hopeful.
-library(jsonlite)
-library(dplyr)
-library(purrr)
-library(tidyr)
+# The frame is SHARED with par-model-move-rates.qmd rather than built inline
+# here. It used to live in this document; it was extracted on 2026-08-20 when
+# a second decision needed the same frame, because two documents mirroring the
+# pipeline separately drift apart the first time the pipeline moves, and a
+# stale mirror still reads like evidence. What it promises, and the crosscheck
+# that keeps it honest against modelHistory's own n_scores, are in
+# scripts/par-model-frame.R.
+source("par-model-frame.R")
 library(brms)
 library(loo)
-
-DB <- "https://gregsweeper-66d02-default-rtdb.firebaseio.com"
-
-# The refit's own constants (refit-par-model.R). If these drift there, this
-# document must follow.
-MIN_PLAYS_FOR_FIT_INCLUSION <- 5
-ARCHIVE_FIT_THRESHOLD <- 20
-MATCH_FIT_THRESHOLD   <- 20
-LEGACY_BOMB_RATE      <- 10
-PURE_TIME_FLOOR       <- 5
 ```
 
 ```{r pull}
 #| cache: true
-# ASSUMES: daily/ and dailyMeta/ are world-readable (they are, by design).
-daily_raw <- fromJSON(paste0(DB, "/daily.json"), simplifyVector = FALSE)
-meta_raw  <- fromJSON(paste0(DB, "/dailyMeta.json"), simplifyVector = FALSE)
-length(daily_raw); length(meta_raw)
-```
-
-```{r frame}
-# One row per score entry, joined to its date's stored feature vector.
-# Mirrors refit-par-model.R's frame: the bomb algebra removes ALL bomb cost
-# from the response (ramped base where events exist, the legacy rate where a
-# row predates them), probe rows drop, hint rows drop (the Lens survivor
-# filter), and weekly speedrun days never enter (only the _weekly_first key
-# family reaches daily/).
-num_or <- function(x, d = 0) if (is.null(x)) d else as.numeric(x)
-
-rows <- imap(daily_raw, function(entries, date_key) {
-  meta <- meta_raw[[date_key]]
-  if (is.null(meta) || is.null(meta$features)) return(NULL)
-  f <- meta$features
-  imap(entries, function(e, push_id) {
-    if (is.null(e$time) || is.null(e$uid)) return(NULL)
-    n_bomb <- num_or(e$bombHits)
-    penalty <- num_or(e$totalBombPenalty)
-    # The pipeline's own bomb algebra (refit-par-model.R ~1047): the base
-    # surcharge is read from the STORED per-hit events, sum(penalty -
-    # infoValue), never a closed form; a legacy row is bombHits > 0 with
-    # totalBombPenalty == 0 and takes the flat legacy rate instead.
-    ev <- e$bombHitEvents %||% list()
-    bomb_base <- if (length(ev) == 0) 0 else
-      sum(map_dbl(ev, ~ num_or(.x$penalty) - num_or(.x$infoValue)))
-    is_legacy <- n_bomb > 0 && penalty == 0
-    clean <- num_or(e$time) - if (penalty > 0) bomb_base else 0
-    pure <- max(clean - if (is_legacy) LEGACY_BOMB_RATE * n_bomb else 0,
-                PURE_TIME_FLOOR)
-    tibble(
-      date = date_key, uid = as.character(e$uid),
-      time = num_or(e$time),
-      pure_time = pure,
-      hints = length(e$hintEvents %||% list()),
-      matchRow = grepl("^match_", date_key),
-      weeklyFirst = grepl("_weekly_first$", date_key),
-      cellCount = num_or(f$cellCount, num_or(f$rows) * num_or(f$cols)),
-      totalMines = num_or(f$totalMines),
-      patternMoves = num_or(f$canonicalSubsetMoves) + num_or(f$genericSubsetMoves),
-      searchMoves = num_or(f$advancedLogicMoves),
-      wallEdgeCount = num_or(f$wallEdgeCount),
-      zeroClusterCount = num_or(f$zeroClusterCount),
-      mysteryCellCount = num_or(f$mysteryCellCount),
-      liarCellCount = num_or(f$liarCellCount),
-      lockedCellCount = num_or(f$lockedCellCount),
-      wormholePairCount = num_or(f$wormholePairCount),
-      mirrorPairCount = num_or(f$mirrorPairCount),
-      sonarCellCount = num_or(f$sonarCellCount),
-      compassCellCount = num_or(f$compassCellCount),
-      wormLoad = num_or(f$wormLoad),
-      tilingType = if (is.null(f$tilingType)) "rect" else as.character(f$tilingType)
-    )
-  }) |> compact() |> bind_rows()
-}) |> compact() |> bind_rows()
-
-df <- rows |>
-  filter(hints == 0) |>
-  # Archive rows are stored under dailyArchive/, a node this document does not
-  # pull, exactly as the pipeline holds them out below its threshold; probe
-  # rows are gated at the CLIENT and never reach daily/, so neither needs a
-  # filter here. Match rows pool only past their threshold.
-  mutate(matchPlay = as.integer(matchRow), archivePlay = 0L)
-n_match <- sum(df$matchRow)
-if (n_match < MATCH_FIT_THRESHOLD) df <- df |> filter(!matchRow)
-
-# The pipeline's pre-fit outlier screen (CSci P0 #7): reject rows with
-# time < max(5, 0.3 x predicted par) under the CURRENTLY SHIPPED model,
-# priced through the client's own predictPar via node (the ONE definition,
-# so the two languages cannot disagree about the screen).
-tmp_in <- tempfile(fileext = ".json"); tmp_out <- tempfile(fileext = ".json")
-df |> select(cellCount, totalMines, patternMoves, searchMoves, wallEdgeCount,
-             mysteryCellCount, liarCellCount, lockedCellCount,
-             wormholePairCount, mirrorPairCount, sonarCellCount,
-             compassCellCount, zeroClusterCount, wormLoad, tilingType) |>
-  toJSON(auto_unbox = TRUE) |> writeLines(tmp_in)
-system2("node", c("predict-par-bridge.mjs", tmp_in, tmp_out))
-pred <- fromJSON(tmp_out)
-stopifnot(length(pred) == nrow(df))
-pre_n <- nrow(df)
-df <- df |> mutate(predicted = pred) |> filter(time >= pmax(5, 0.3 * predicted))
-cat("outlier screen dropped", pre_n - nrow(df), "row(s)", fill = TRUE)
-
-n_scores_here <- nrow(df)
-eligible <- df |> count(uid) |> filter(n >= MIN_PLAYS_FOR_FIT_INCLUSION) |> pull(uid)
-df_fit <- df |> filter(uid %in% eligible) |>
-  mutate(logCells = log(cellCount))
-
-c(pre_eligibility = n_scores_here, fit_rows = nrow(df_fit), eligible = length(eligible))
-```
-
-```{r crosscheck}
-# CHECK: the mirror is honest. The latest modelHistory row records the fit's
-# own n; this frame must land within a handful of rows of it (same-day play
-# after the refit's pull explains a small positive gap, nothing else does).
-hist_raw <- fromJSON(
-  file.path("..", "src", "logic", "modelHistory.json"), simplifyVector = FALSE)
-latest <- hist_raw[[length(hist_raw)]]
-cat("modelHistory n_scores:", latest$n_scores, " | this frame:", n_scores_here, fill = TRUE)
-stopifnot(!is.null(latest$n_scores))
-# One-sided by construction: daily/ is append-only, so this frame may
-# EXCEED the refit frame by whatever landed since its pull (a finished
-# Challenge match posts its whole batch at once), but may never be
-# under it, which would mean a filter here diverges from the pipeline.
-gap <- n_scores_here - as.numeric(latest$n_scores)
-stopifnot(gap >= 0, gap <= 25)
+raw <- pull_par_data()
+frame <- build_par_frame(raw)
+df_fit <- frame$df_fit
+c(fit_rows = nrow(df_fit), eligible = length(frame$eligible))
 ```
 
 ## The two fits
@@ -192,12 +76,9 @@ their intercept differences.
 
 ```{r fits}
 #| cache: true
-shape_cols <- df_fit |>
-  mutate(one = 1L) |>
-  pivot_wider(names_from = tilingType, values_from = one,
-              values_fill = 0L, names_prefix = "shape_") |>
-  select(starts_with("shape_"), -any_of("shape_rect"))
-df_fit2 <- bind_cols(df_fit, shape_cols)
+sh <- add_shape_columns(df_fit)
+df_fit2 <- sh$df
+shape_names <- sh$names
 
 base_terms <- c(
   "cellCount", "totalMines", "patternMoves", "searchMoves",
@@ -208,7 +89,7 @@ base_terms <- c(
 if (any(df_fit2$wormLoad > 0)) base_terms <- c(base_terms, "wormLoad")
 if (length(unique(df_fit2$archivePlay)) > 1) base_terms <- c(base_terms, "archivePlay")
 if (length(unique(df_fit2$matchPlay)) > 1) base_terms <- c(base_terms, "matchPlay")
-base_terms <- c(base_terms, names(shape_cols))
+base_terms <- c(base_terms, shape_names)
 
 f0 <- as.formula(paste("log(pure_time) ~", paste(base_terms, collapse = " + "), "+ (1|uid)"))
 f1 <- update(f0, . ~ . + logCells)
@@ -278,7 +159,7 @@ newd <- cases |>
          lockedCellCount = 0, wormholePairCount = 0, mirrorPairCount = 0,
          sonarCellCount = 0, compassCellCount = 0, zeroClusterCount = 3,
          wormLoad = 0, archivePlay = 0, matchPlay = 0)
-for (sc in names(shape_cols)) newd[[sc]] <- as.integer(paste0("shape_", newd$tiling) == sc)
+for (sc in shape_names) newd[[sc]] <- as.integer(paste0("shape_", newd$tiling) == sc)
 p0 <- exp(fitted(m0, newdata = newd, re_formula = NA)[, "Estimate"])
 p1 <- exp(fitted(m1, newdata = newd, re_formula = NA)[, "Estimate"])
 tibble(case = cases$label, current = round(p0), with_size_term = round(p1)) |> print()
