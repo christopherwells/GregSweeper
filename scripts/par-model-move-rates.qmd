@@ -264,3 +264,45 @@ in this frame carries it yet: `scrolled` is stated on zero of them, since it
 began being written on 2026-08-18 and every earlier row is honestly absent.
 The rate form is a better shape for the data that exists. It is not a
 substitute for measuring the thing itself.
+
+
+## What it said, 2026-08-20
+
+Recorded here because the rendered HTML is not committed and a re-render costs
+six fits.
+
+**In sample the three forms are indistinguishable.** Residual SD 0.404 for M1
+against 0.399 for both R1 and R2, which is 50% versus 49% as a typical error.
+LOO puts R1 first, but M1 trails by 9.6 with a standard error of 9.5, so the
+comparison does not separate them. The preliminary OLS had reported a 12%
+tightening; that did not survive the real frame, and the honest reading is
+that nothing is bought or lost where people actually play.
+
+**Out of sample the forms are not close.** Trained on boards of 187 cells and
+under, predicting ten rows on 638 and 660-cell boards:
+
+| | typical miss |
+|---|---|
+| the lane's anchor pricing (incumbent) | 1.5x |
+| M1, as shipped | 23.9x |
+| **R1, rates** | **1.3x** |
+| R2, rates plus linear cells | 7.1x |
+
+R1 beats the bespoke anchor machinery built for exactly these boards, having
+never seen one. R2 shows what the linear cell term costs once rates are in.
+
+**The size elasticity is near one:** `logCells` 1.164 [1.060, 1.267], so par
+scales close to proportionally with area and the intercept becomes readable as
+seconds per cell. The rate coefficients are `mineRate` 4.82, `patternRate`
+5.09, `searchRate` 1.46.
+
+**Handicaps barely move.** The three players with over 100 plays shift by 0.1%
+or less; the largest shift is -2.4%, on a 27-play player.
+
+**Two boards resist both.** R1 over-prices the 638-cell pair by about 2x, and
+the lane over-prices the same two by about 1.6x. Two independent methods
+agreeing with each other and disagreeing with the plays points at those
+boards rather than at either method.
+
+**The residual-trend check is weak and should not be leaned on.** Neither form
+slopes across the size bins, but the top two bins hold 10 rows and 4.
