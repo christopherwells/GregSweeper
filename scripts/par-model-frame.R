@@ -16,6 +16,7 @@
 #     infoValue, never a closed form), with the flat legacy rate for rows that
 #     predate the events;
 #   - hint rows drop (the Lens survivor filter);
+#   - probing rows drop on the pipeline's own two-arm anti-cheat rule;
 #   - match rows pool only past MATCH_FIT_THRESHOLD;
 #   - the pre-fit outlier screen prices through the CLIENT's own predictPar,
 #     so the two languages cannot disagree about the screen;
@@ -40,6 +41,11 @@ ARCHIVE_FIT_THRESHOLD       <- 20
 MATCH_FIT_THRESHOLD         <- 20
 LEGACY_BOMB_RATE            <- 10
 PURE_TIME_FLOOR             <- 5
+# The two-arm probing filter, calibrated on every row ever submitted (worst
+# genuine run 25% of the mines, the three real probing episodes 81/100/100%).
+BOMB_HIT_CHEAT_FRACTION     <- 0.50
+BOMB_HIT_CHEAT_FLOOR        <- 10
+BOMB_HIT_EXCAVATED_FRACTION <- 0.80
 
 num_or <- function(x, d = 0) if (is.null(x)) d else as.numeric(x)
 
@@ -56,9 +62,19 @@ pull_par_data <- function(db = DB) {
 #'
 #' @param raw the list returned by pull_par_data()
 #' @param verbose print the screen's drop count and the mirror crosscheck
+#' @param max_gap how far this frame may EXCEED the last refit's own row count
+#'   before the crosscheck stops. The default covers ordinary append lag. A
+#'   caller may widen it, but only with a measured reason written at the call
+#'   site, because the whole point of the check is that a diverged frame still
+#'   reads like evidence. The one reason measured so far is a change of model
+#'   FORM: the screen below prices under whichever model is CURRENTLY shipped,
+#'   while the recorded n_scores was produced by a screen pricing under the
+#'   model shipped before that refit ran, so on a transition night the two
+#'   counts are not comparable. Measured 2026-08-20, the count form's screen
+#'   rejected 50 rows and the rate form's rejected 9, off the same 872.
 #' @return a list: `df` (all eligible rows) and `df_fit` (fit rows, with
 #'   logCells and the per-cell rate columns already derived)
-build_par_frame <- function(raw, verbose = TRUE) {
+build_par_frame <- function(raw, verbose = TRUE, max_gap = 25) {
   rows <- imap(raw$daily, function(entries, date_key) {
     meta <- raw$meta[[date_key]]
     if (is.null(meta) || is.null(meta$features)) return(NULL)
@@ -90,6 +106,7 @@ build_par_frame <- function(raw, verbose = TRUE) {
         # to measure, which is every row before v1.11.14 and is NOT the same
         # claim as FALSE, so it is carried as NA and nothing here models it.
         scrolled = if (is.null(e$scrolled)) NA else as.logical(e$scrolled),
+        bombHits = n_bomb,
         matchRow = grepl("^match_", date_key),
         weeklyFirst = grepl("_weekly_first$", date_key),
         cellCount = num_or(f$cellCount, num_or(f$rows) * num_or(f$cols)),
@@ -116,6 +133,19 @@ build_par_frame <- function(raw, verbose = TRUE) {
     filter(hints == 0) |>
     mutate(matchPlay = as.integer(matchRow), archivePlay = 0L)
   if (sum(df$matchRow) < MATCH_FIT_THRESHOLD) df <- df |> filter(!matchRow)
+
+  # The anti-cheat filter, which this frame lacked until 2026-08-20 and which
+  # the crosscheck below could not see, because the screen's own gap was
+  # larger. Measured that day: two probing rows survived into the frame and
+  # into every plot drawn from it. Both arms restate refit-par-model.R.
+  n_pre_cheat <- nrow(df)
+  df <- df |> filter(is.na(totalMines) | totalMines <= 0 |
+                     (bombHits <= pmax(BOMB_HIT_CHEAT_FLOOR,
+                                       BOMB_HIT_CHEAT_FRACTION * totalMines) &
+                      bombHits <  BOMB_HIT_EXCAVATED_FRACTION * totalMines))
+  if (verbose && n_pre_cheat > nrow(df)) {
+    cat("anti-cheat dropped", n_pre_cheat - nrow(df), "probing row(s)", fill = TRUE)
+  }
 
   # The pre-fit outlier screen: reject rows with time below
   # max(5, 0.3 x predicted par) under the CURRENTLY SHIPPED model, priced
@@ -162,7 +192,7 @@ build_par_frame <- function(raw, verbose = TRUE) {
     cat("modelHistory n_scores:", latest$n_scores,
         " | this frame:", n_scores_here, " | gap:", gap, fill = TRUE)
   }
-  stopifnot(gap >= 0, gap <= 25)
+  stopifnot(gap >= 0, gap <= max_gap)
 
   # `screened_out` rides the return because a screen priced off a broken
   # extrapolation can refuse REAL data, and a document that only ever sees the
