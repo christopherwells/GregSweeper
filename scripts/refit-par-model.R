@@ -425,6 +425,18 @@ PRIOR_SIGMAS <- list(
   # normal(0, SIZE_DEV_PRIOR_SD), routed around this bounded-lognormal
   # machinery the way matchPlay is. See the SIZE_DEV_COLS block below
   # COEF_TO_PREDICTOR.
+  # The rate predictors (2026-08-20). Wide, like the counts they replace: the
+  # priors are OLS-seeded, so the seed adapts to the rates' own scale
+  # (coefficients near 5 rather than near 0.05) and sigma stays a statement
+  # about how much the prior should say, not about units.
+  mineRate             = 1.0,
+  patternRate          = 1.0,
+  searchRate           = 1.0,
+  # The COUNTS keep their sigmas even though the primary fit no longer uses
+  # them. They are retired as SHIPPED coefficients, not as predictors: the
+  # digit, contribution and decorrelation fits still carry them as controls,
+  # and build_priors stop()s on any formula term without a sigma. The pipeline
+  # smoke caught exactly this ("Missing prior sigma for totalMines").
   totalMines           = 1.0,
   patternMoves         = 1.0,
   searchMoves          = 1.0,
@@ -475,11 +487,30 @@ PRIOR_SIGMAS <- list(
 # this replaced did not have (their slot/arg counts silently drifted twice,
 # each drift shifting every later coefficient one slot).
 COEF_TO_PREDICTOR <- c(
-  secPerCell         = "cellCount",
+  # THE RATE FORM (his ruling 2026-08-20, proven in
+  # scripts/par-model-move-rates.qmd). Every count that grows with board AREA
+  # now enters divided by the board, and log(cells) carries size on its own.
+  #
+  # Why: counts multiply on the log scale, so a board four times larger
+  # carried four times the moves and par grew like e^(4*beta*n). Measured, the
+  # shipped form priced a 660-cell board that two people finished in twenty
+  # minutes at five to thirty-one hours. Trained at <= 187 cells and asked to
+  # price 638-660 cell boards, the count form missed by 23.9x typically, this
+  # one by 1.3x, which also beats the marathon lane's own anchor pricing
+  # (1.5x) on boards it was purpose-built for. In sample the two are
+  # indistinguishable (residual SD 0.404 against 0.399), so nothing is given
+  # up where people actually play.
+  #
+  # secPerCell, secPerMineFlag, secPerPatternMove and secPerSearchMove are
+  # RETIRED, the way secPerShape* was: gone from this table, gone from the
+  # emitted blocks, and gone from COEF_TERMS on the JS side, so a stale
+  # coefficient cannot be applied to a predictor that no longer means what it
+  # did. Retiring rather than zeroing is deliberate; a key at 0 reads as
+  # "not yet earned", and these are not coming back.
   secPerLogCell      = "logCells",
-  secPerMineFlag     = "totalMines",
-  secPerPatternMove  = "patternMoves",
-  secPerSearchMove   = "searchMoves",
+  secPerMineRate     = "mineRate",
+  secPerPatternRate  = "patternRate",
+  secPerSearchRate   = "searchRate",
   secPerWallEdge     = "wallEdgeCount",
   secPerZeroCluster  = "zeroClusterCount",
   secPerMysteryCell  = "mysteryCellCount",
@@ -515,7 +546,14 @@ BASE_MODEL_FEATURES <- unname(COEF_TO_PREDICTOR)
 # would shrink the measured gamma ~14% toward zero (posterior SE ~0.2 against
 # a 0.5-wide prior); at 1.0 the pull is ~4%, and an elasticity above 2
 # (par growing faster than cells squared) stays implausible under it.
-SIZE_DEV_COLS <- c("cellCount", "logCells")
+# Under the rate form the linear half is retired, so the size curve is
+# log(cells) alone and its elasticity is firmly positive (1.164 [1.060,
+# 1.267], measured). It stays on the SIGNED dev nlpar anyway: the lb = 0
+# blanket is a claim that par is monotonic non-decreasing in the feature, and
+# leaving the one term the whole size question rides on unbounded keeps the
+# data able to say otherwise. Keeping the column non-empty also keeps Path B
+# permanent for the primary fit, which the dev_cols construction relies on.
+SIZE_DEV_COLS <- c("logCells")
 SIZE_DEV_PRIOR_SD <- 1.0
 
 # JS tilingType string (the PAR_MODEL_SHAPES key) -> R predictor stem. Must
@@ -659,6 +697,14 @@ apply_par_model <- function(df, coefs, log_scale = TRUE, shape_devs = NULL) {
   # coefficient is nonzero. Same pmax guard as the JS derivation; recomputing
   # on a frame that already has the column is the identical value.
   df$logCells <- log(pmax(1, df$cellCount))
+  # The RATE predictors, derived here for the same reason logCells is: a frame
+  # built before the mutate that adds them still carries the raw counts, and
+  # pricing a rate as 0 would misprice every board. Division is by the same
+  # pmax-guarded cell count, so a degenerate zero-cell row cannot produce Inf.
+  cells_safe <- pmax(1, df$cellCount)
+  if (!is.null(df$totalMines))   df$mineRate    <- df$totalMines / cells_safe
+  if (!is.null(df$patternMoves)) df$patternRate <- df$patternMoves / cells_safe
+  if (!is.null(df$searchMoves))  df$searchRate  <- df$searchMoves / cells_safe
   # Data-driven off COEF_TO_PREDICTOR — the same table the emitter and the
   # extraction read, so a coefficient cannot exist in the shipped block
   # without being priced here. `%||% 0` keeps it correct against a parsed
@@ -1318,7 +1364,15 @@ df <- df |>
     # never a stored feature, so every historical row carries it and
     # NEW_STRUCTURAL_FEATURES / FEATURES_EPOCH stay untouched. The pmax guard
     # mirrors the JS derivation (log(max(1, cellCount))).
-    logCells     = log(pmax(1, cellCount))
+    logCells     = log(pmax(1, cellCount)),
+    # THE RATE FORM (2026-08-20). Every count that grows with board AREA
+    # enters divided by the board, so the coefficients describe per-cell
+    # difficulty, a quantity with no reason to grow with the board. Derived
+    # from stored features exactly as logCells is, so no stored vector
+    # changes and FEATURES_EPOCH stays put.
+    mineRate     = totalMines / pmax(1, cellCount),
+    patternRate  = patternMoves / pmax(1, cellCount),
+    searchRate   = searchMoves / pmax(1, cellCount)
   )
 
 # Shape-by-feature interaction columns (per-shape par equations): indicator ×
@@ -1370,11 +1424,36 @@ new_model_is_log <- prev_is_log
 # this refit runs). Threshold: time < max(5s, 0.3 × predicted_par).
 df$predicted_for_outlier <- apply_par_model(df, current_coefs, prev_is_log, current_shape_devs)
 pre_outlier_n <- nrow(df)
-df <- df |> filter(time >= pmax(5, 0.3 * predicted_for_outlier))
+
+# THE SCREEN MUST NOT FIRE ON A PREDICTION IT CANNOT MAKE (2026-08-20).
+# A row is only "impossibly fast" relative to a par worth believing. Where
+# the shipped model is out of its depth the floor it computes is nonsense,
+# and the rows it then refuses are exactly the ones that would fix the
+# pricing: measured the day the first marathon rows landed, the count-form
+# model priced 638-660 cell boards at 16,000-18,000s, putting the floor near
+# 5,000s, and SIX OF THE TEN honest plays (658-1,321s) were thrown out. That
+# is the anti-cheat lesson of 2026-08-09 in a second gate, a filter censoring
+# its own calibration set.
+#
+# The guard is the score validator's own ceiling rather than a new number:
+# no real board is submitted above SCORE_MAX_SECONDS, so a prediction past it
+# is a statement about the model, never about the row. Deliberately NOT
+# widened (his standing ruling on goalposts): a believable prediction screens
+# exactly as hard as it always did, and only an unbelievable one abstains.
+SCORE_MAX_SECONDS <- 3600
+df$screen_is_usable <- df$predicted_for_outlier <= SCORE_MAX_SECONDS
+n_unpriceable <- sum(!df$screen_is_usable)
+df <- df |> filter(!screen_is_usable | time >= pmax(5, 0.3 * predicted_for_outlier))
 n_outliers <- pre_outlier_n - nrow(df)
+if (n_unpriceable > 0) {
+  message(sprintf(
+    "  screen ABSTAINED on %d row(s) the shipped model prices above %ds; unusable prediction, not a verdict",
+    n_unpriceable, SCORE_MAX_SECONDS))
+}
 if (n_outliers > 0) {
   message(sprintf("  rejected %d outlier row(s) with time < max(5, 0.3 × predicted_par)", n_outliers))
 }
+df$screen_is_usable <- NULL
 df$predicted_for_outlier <- NULL
 
 # Recompute n_scores after outlier rejection so downstream diagnostics

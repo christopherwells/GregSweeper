@@ -12,10 +12,12 @@ import { applyParModel, breakdownPar } from '../src/logic/dailyFeatures.js';
 const LOG_MODEL = {
   scale: 'log',
   intercept: 2.0, // exp(2) = 7.389s baseline for an empty board
-  secPerCell: 0.01,
-  secPerMineFlag: 0.05,
-  secPerPatternMove: 0.03,
-  secPerSearchMove: 0.04,
+  // The RATE form (2026-08-20): size is carried by log(cells) alone and the
+  // board-scaling counts enter divided by the board.
+  secPerLogCell: 1.0,
+  secPerMineRate: 0.05,
+  secPerPatternRate: 0.03,
+  secPerSearchRate: 0.04,
   secPerWallEdge: 0.005,
   secPerZeroCluster: 0.01,
   secPerMysteryCell: 0.02,
@@ -30,10 +32,12 @@ const LOG_MODEL = {
 const round1 = (x) => Math.round(x * 10) / 10;
 
 test('applyParModel exponentiates on a log-scale model', () => {
-  // Only cellCount set: acc = intercept + secPerCell·100 = 2.0 + 1.0 = 3.0.
+  // Only cellCount set: acc = intercept + secPerLogCell·log(100)
+  //                          = 2.0 + 1.0 × 4.60517 = 6.60517.
   const par = applyParModel({ cellCount: 100 }, LOG_MODEL);
-  assert.equal(par, round1(Math.exp(3.0)));
-  assert.equal(par, 20.1);
+  assert.equal(par, round1(Math.exp(2.0 + Math.log(100))));
+  // exp(2)·100, the elasticity-1 reading: a hundred cells at exp(2) each.
+  assert.equal(par, round1(Math.exp(2.0) * 100));
 });
 
 test('REGRESSION: log par is never negative on a tiny board (the pathology the migration fixes)', () => {

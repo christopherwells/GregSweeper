@@ -70,8 +70,8 @@ const LAB = JSON.parse(readFileSync(
   new URL('../scripts/data/parlab-prior-centers.json', import.meta.url), 'utf8'));
 const LAB_SEED_MIN_ROWS = 5;
 const PREDICTOR_TO_COEF = {
-  cellCount: 'secPerCell', logCells: 'secPerLogCell', totalMines: 'secPerMineFlag',
-  patternMoves: 'secPerPatternMove', searchMoves: 'secPerSearchMove',
+  logCells: 'secPerLogCell', mineRate: 'secPerMineRate',
+  patternRate: 'secPerPatternRate', searchRate: 'secPerSearchRate',
   wallEdgeCount: 'secPerWallEdge', zeroClusterCount: 'secPerZeroCluster',
   mysteryCellCount: 'secPerMysteryCell', liarCellCount: 'secPerLiarCell',
   lockedCellCount: 'secPerLockedCell', wormholePairCount: 'secPerWormholePair',
@@ -592,8 +592,15 @@ test('REGRESSION: matchPlay is a SIGNED deviation, never a bounded slope', () =>
   // contain under any edit, so it could not fail.)
   const coefTable = R_SRC.match(/COEF_TO_PREDICTOR\s*<-\s*c\(([\s\S]*?)\n\)/);
   assert.ok(coefTable, 'COEF_TO_PREDICTOR literal not found; this scan is vacuous');
-  assert.match(coefTable[1], /secPerCell\s*=\s*"cellCount"/,
+  assert.match(coefTable[1], /secPerLogCell\s*=\s*"logCells"/,
     'the table scan must be reading the real mapping');
+  // The RETIRED count predictors must be gone from the SHIPPED table, the way
+  // secPerShape* went: they survive only as controls in the secondary fits,
+  // and a shipped entry would put a count back in predictPar beside its rate.
+  for (const dead of ['secPerCell', 'secPerMineFlag', 'secPerPatternMove', 'secPerSearchMove']) {
+    assert.ok(!new RegExp(`${dead}\s*=`).test(coefTable[1]),
+      `${dead} is retired and must not be a shipped predictor`);
+  }
   assert.ok(!/=\s*"matchPlay"/.test(coefTable[1]),
     'matchPlay must never be a shipped predictor: no COEF_TO_PREDICTOR entry may map to it');
 });
