@@ -79,6 +79,12 @@ export function repairMatchResult(entry, res) {
       const r = computeBombInfoValue(
         d.board, d.rows, d.cols, fr, fc, e.row, e.col,
         prior.slice(), entry.features || null, par,
+        // A stored payload is not a played board: nothing on it is
+        // revealed, so the live-state reading would price every strike
+        // against an untouched board and overstate it. The recovery asks
+        // the opener question, which is the rule those boards were played
+        // under, and says so rather than pretending otherwise.
+        { liveState: false },
       );
       infoValue = r.infoValue;
     } catch {
