@@ -271,7 +271,10 @@ test('the strike handler prices match boards at the sane par, and the two par re
   // an oversized deal), and BOTH client par re-prices (match and Climb)
   // must keep the stored par on a provisional board.
   const wl = readFileSync(new URL('../src/game/winLossHandler.js', import.meta.url), 'utf8');
-  assert.match(wl, /const parBaseline = state\.matchFeatures \? \(state\.matchPar \|\| null\) : null;/,
+  // The baseline's own pin lives in the lane test below (#393 moved this
+  // expression from `state.matchFeatures ?` to `state.gameMode === 'match'`,
+  // so that a stale matchPar cannot price a daily strike either).
+  assert.match(wl, /const parBaseline = state\.gameMode === 'match' \? \(state\.matchPar \|\| null\) : null;/,
     'the strike handler must derive the sane baseline from state.matchPar on match boards');
   assert.match(wl, /computeBombInfoValue\([^)]*boardFeatures, parBaseline\)/,
     'the strike call must pass the baseline through');
@@ -279,4 +282,78 @@ test('the strike handler prices match boards at the sane par, and the two par re
   const guards = ga.match(/res\.parProvisional !== true/g) || [];
   assert.ok(guards.length >= 2,
     `both the match and Climb par re-prices must carry the provisional guard (found ${guards.length})`);
+});
+
+test('REGRESSION: a strike prices against the LANE being played, not whatever vector is populated (#393)', { skip: !HAS_FEATURE }, async () => {
+  // The chain this replaces was `weeklyFeatures || dailyFeatures ||
+  // matchFeatures || coastlineFeatures`, correct only while at most one is
+  // populated. `newGame` clears every one of them EXCEPT dailyFeatures, and
+  // nothing in src/ ever nulls it, so the real sequence below (play the
+  // daily, then start a Challenge run, same session, no reload) priced every
+  // match strike against the daily board's vector. Measured on a deltoidal
+  // match board with a 121-cell rect daily left behind: 0.29x, 0.41x, 0.54x
+  // of the true values, wrong per-shape block included, into permanent
+  // daily/match_* fit rows.
+  const { state } = gameState;
+  const saved = {
+    gameMode: state.gameMode, parLab: state.parLab,
+    daily: state.dailyFeatures, weekly: state.weeklyFeatures,
+    match: state.matchFeatures, coastline: state.coastlineFeatures,
+  };
+  try {
+    // Distinguishable vectors, so the assertion names WHICH board was read.
+    const dailyV = { cellCount: 121, totalMines: 24, canonicalSubsetMoves: 9 };
+    const weeklyV = { cellCount: 100, totalMines: 20, canonicalSubsetMoves: 7 };
+    const matchV = { cellCount: 72, totalMines: 18, canonicalSubsetMoves: 5, tilingType: 'deltoidal' };
+    const labV = { cellCount: 50, totalMines: 10, canonicalSubsetMoves: 3 };
+    // The daily vector is ALWAYS left behind: that is the whole defect.
+    state.dailyFeatures = dailyV;
+    state.weeklyFeatures = weeklyV;
+    state.matchFeatures = matchV;
+    state.coastlineFeatures = labV;
+
+    state.parLab = null;
+    state.gameMode = 'match';
+    assert.equal(gameState.getStrikeBoardFeatures(), matchV,
+      'a Challenge strike must price against the MATCH board, with the daily still in state');
+    state.gameMode = 'daily';
+    assert.equal(gameState.getStrikeBoardFeatures(), dailyV);
+    state.gameMode = 'weekly';
+    assert.equal(gameState.getStrikeBoardFeatures(), weeklyV);
+    // The Par Lab is a FLAG, not a mode, so it must win over whatever mode
+    // the lab board happens to run under (it sat last in the old chain).
+    state.parLab = { id: 'probe' };
+    state.gameMode = 'daily';
+    assert.equal(gameState.getStrikeBoardFeatures(), labV,
+      'a Par Lab strike must price against the lab board');
+    // Off the strike lanes: no vector at all beats a foreign one.
+    state.parLab = null;
+    state.gameMode = 'normal';
+    assert.equal(gameState.getStrikeBoardFeatures(), null);
+    state.gameMode = 'chaos';
+    assert.equal(gameState.getStrikeBoardFeatures(), null);
+    // A lane whose own vector is missing reports null rather than falling
+    // through to a populated neighbour.
+    state.gameMode = 'match';
+    state.matchFeatures = null;
+    assert.equal(gameState.getStrikeBoardFeatures(), null,
+      'a match board with no vector must NOT fall through to the daily');
+  } finally {
+    state.gameMode = saved.gameMode;
+    state.parLab = saved.parLab;
+    state.dailyFeatures = saved.daily;
+    state.weeklyFeatures = saved.weekly;
+    state.matchFeatures = saved.match;
+    state.coastlineFeatures = saved.coastline;
+  }
+});
+
+test('the strike handler reads the lane selector, and the baseline keys on the lane too', () => {
+  const wl = readFileSync(new URL('../src/game/winLossHandler.js', import.meta.url), 'utf8');
+  assert.match(wl, /const boardFeatures = getStrikeBoardFeatures\(\);/,
+    'the strike handler must select by lane, never by first-non-null');
+  assert.ok(!/state\.weeklyFeatures \|\| state\.dailyFeatures/.test(wl),
+    'the first-non-null chain must not return');
+  assert.match(wl, /const parBaseline = state\.gameMode === 'match' \? \(state\.matchPar \|\| null\) : null;/,
+    'the sane-par baseline must key on the lane as well, or a stale matchPar can price a daily strike');
 });
