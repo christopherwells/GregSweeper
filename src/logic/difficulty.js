@@ -46,13 +46,23 @@ export function plateSeconds(est) {
 // "one cell too long, maybe 2"). `rectFitsPhone` in boardFit.js is the rule
 // now, and it reads the cap below rather than keeping a second copy.
 //
-// ELEVEN, not twelve (his ruling 2026-08-14). Twelve columns delivers 24px
-// cells at the 360px reference and eleven delivers 26px, both under the 28px
-// tap floor the lattices honor; he chose eleven knowing that, because rect's
-// cells are square so the whole width is tappable, and capping at the floor
-// would mean ten columns and a Classic board smaller than the game shipped
-// with. Mines are rescaled to preserve density.
-export const BOARD_WIDTH_CAP = 11;
+// DERIVED FROM THE TAP FLOOR, not chosen (his ruling 2026-08-20). Twelve is
+// the widest column count that still delivers MIN_TAP_MAJORITY at the 360px
+// reference: 314px of width budget, 2px gaps, 24px a cell.
+//
+// The number stays written here because difficulty.js is a LEAF that the model
+// and the generators read without pulling in geometry, and boardFit.js (which
+// owns the width arithmetic) already imports this file. So the derivation
+// lives there as `maxRectColumns()` and test/boardFit.test.mjs asserts the two
+// agree, which is what stops this going stale a third time: it was 12, he cut
+// it to 11 on 2026-08-14 when the floor was 28px, and when he re-anchored the
+// floor at 24px on 2026-08-19 the 11 stayed behind and started refusing boards
+// that deliver exactly the tap target he had just ruled. Now moving the floor
+// or the reference phone reddens that test with the new number in the message.
+//
+// Rect cells are square, so the whole cell is tappable and the majority floor
+// is the right bar. Mines are rescaled to preserve density.
+export const BOARD_WIDTH_CAP = 12;
 
 export function applyWidthCap(rows, cols, mines) {
   if (cols <= BOARD_WIDTH_CAP) return { rows, cols, mines };

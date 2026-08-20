@@ -75,7 +75,7 @@
 // consults it at runtime, because chaos derives its dimensions from a target
 // cell count instead of authoring them.
 
-import { buildTiling, containerIsStorable } from './tilingGeometry.js';
+import { buildTiling, containerIsStorable, CANONICAL_MAX_DIM } from './tilingGeometry.js';
 // The rectangular WIDTH rule, kept in difficulty.js where the search reads it.
 import { BOARD_WIDTH_CAP } from './difficulty.js';
 
@@ -323,6 +323,91 @@ export function rectCellSizeAt(rows, cols, viewport = FIT_REFERENCE) {
   const widthFit = Math.floor((wb - (cols - 1) * RECT_GAP_PX) / cols);
   const heightFit = Math.floor((hb - (rows - 1) * RECT_GAP_PX) / rows);
   return Math.min(RECT_CELL_MAX, Math.max(RECT_CELL_MIN, Math.min(widthFit, heightFit)));
+}
+
+/**
+ * The widest a rect board may be: the largest column count that still delivers
+ * the majority tap floor at the reference phone.
+ *
+ * DERIVED, not chosen (his ruling 2026-08-20). The cap has been a hand-set
+ * number twice and gone stale both times: it was 12, he moved it to 11 on
+ * 2026-08-14 when the floor was 28px, and when he re-anchored the floor at
+ * 24px on 2026-08-19 (the pressing-circle ruling) the 11 stayed behind,
+ * refusing 12-column boards that deliver exactly the 24px he had just ruled.
+ * Reading it off the floor instead means the next time either the floor or the
+ * reference phone moves, this moves with them.
+ *
+ * Width only, deliberately: this is the WIDTH rule, and height is answered
+ * separately by rectFitsPhone against the comfort budget. Rect cells are
+ * square, so the whole cell is tappable and the majority floor is the right
+ * bar (the minority floor exists for the 4.8.8's interstitial diamonds and has
+ * no meaning here).
+ *
+ * @param {{width?: number}} [viewport]
+ * @returns {number} the largest legal column count
+ */
+export function maxRectColumns(viewport = FIT_REFERENCE) {
+  const wb = widthBudget(viewport.width ?? FIT_REFERENCE.width);
+  let best = 1;
+  for (let cols = 1; cols <= 40; cols++) {
+    const cell = Math.floor((wb - (cols - 1) * RECT_GAP_PX) / cols);
+    if (cell >= MIN_TAP_MAJORITY) best = cols;
+    else break;
+  }
+  return best;
+}
+
+/**
+ * The tallest a rect board of a given width may be before it runs past what a
+ * phone SHOWS. The height counterpart of maxRectColumns.
+ *
+ * It depends on the width, and not the way intuition suggests: a NARROW board
+ * is the one that gets too tall. Cells grow to fill the width budget, so at 8
+ * columns a cell is 37px and fourteen rows stand 502px, while at the full
+ * 12-column width the same fourteen rows are only 362px. That is why the
+ * weekly, whose draw reaches 14 rows and 8 columns, could produce a board 40px
+ * past the comfortable area while the daily never could.
+ *
+ * @param {number} cols
+ * @param {{width?: number, height?: number}} [viewport]
+ * @returns {number} the largest legal row count at that width, 0 if none
+ */
+export function maxRectRows(cols, viewport = FIT_REFERENCE) {
+  let best = 0;
+  for (let rows = 1; rows <= CANONICAL_MAX_DIM; rows++) {
+    if (rectFitsPhone(rows, cols, viewport)) best = rows;
+  }
+  return best;
+}
+
+/**
+ * Clamp a drawn (rows, cols) pair down to the nearest legal board.
+ *
+ * HIS RULING (2026-08-20): "No dailies should be scrolled", "or weeklies for
+ * that matter", "boards shouldn't be scrollable at 24 px in the dailies. If
+ * people use more zoomed in, then they may get a scroll board." So the floor
+ * is the promise: at the default cell size the daily and the weekly always
+ * fit, and a player who raises their own cell-size preference has chosen to
+ * scroll.
+ *
+ * The daily and weekly do not pick dimensions from a table, they DRAW them
+ * from a constant range, and before this nothing compared that range to the
+ * fit rules: the daily applied no width cap at all and neither looked at
+ * height. The daily's range happened to be safe and the weekly's did not.
+ *
+ * CLAMPING rather than redrawing is deliberate. It consumes no extra rng()
+ * call, so the seed streams every stored canonical was written under are
+ * untouched, and only a draw that was already illegal comes out different.
+ *
+ * @param {number} rows
+ * @param {number} cols
+ * @param {{width?: number, height?: number}} [viewport]
+ * @returns {{rows: number, cols: number}}
+ */
+export function clampRectDims(rows, cols, viewport = FIT_REFERENCE) {
+  const c = Math.max(1, Math.min(cols, maxRectColumns(viewport)));
+  const r = Math.max(1, Math.min(rows, maxRectRows(c, viewport) || rows));
+  return { rows: r, cols: c };
 }
 
 /**

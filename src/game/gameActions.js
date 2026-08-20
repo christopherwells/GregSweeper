@@ -57,6 +57,7 @@ import {
 import {
   playReveal, playFlag, playUnflag, playCascade, playShieldBreak,
 } from '../audio/sounds.js';
+import { clampRectDims } from '../logic/boardFit.js';
 
 let _lastInputTime = 0;
 
@@ -920,8 +921,16 @@ export async function newGame() {
       const dimRng1 = dailyRng();
       const dimRng2 = dailyRng();
       const dimRng3 = dailyRng();
-      state.rows = DAILY_MIN_SIZE + Math.floor(dimRng1 * DAILY_SIZE_RANGE);
-      state.cols = DAILY_MIN_SIZE + Math.floor(dimRng2 * DAILY_SIZE_RANGE);
+      // HIS RULING (2026-08-20): a daily must not scroll at the default cell
+      // size. A proven no-op on the daily's own draw range today
+      // (test/boardFit.test.mjs sweeps every reachable pair); it is here so a
+      // future edit to the range or the tap floor cannot quietly break it.
+      const dDims = clampRectDims(
+        DAILY_MIN_SIZE + Math.floor(dimRng1 * DAILY_SIZE_RANGE),
+        DAILY_MIN_SIZE + Math.floor(dimRng2 * DAILY_SIZE_RANGE),
+      );
+      state.rows = dDims.rows;
+      state.cols = dDims.cols;
       const density = DAILY_MIN_DENSITY + dimRng3 * DAILY_DENSITY_RANGE;
       state.totalMines = Math.max(5, Math.round(state.rows * state.cols * density));
 
@@ -1161,9 +1170,18 @@ export async function newGame() {
       const dim1 = wRng();
       const dim2 = wRng();
       const dim3 = wRng();
-      state.rows = WEEKLY_MIN_SIZE + Math.floor(dim1 * WEEKLY_SIZE_RANGE);
-      // Cap cols at BOARD_WIDTH_CAP (12). Rows can still grow up to 14.
-      state.cols = Math.min(WEEKLY_MIN_SIZE + Math.floor(dim2 * WEEKLY_SIZE_RANGE), BOARD_WIDTH_CAP);
+      // HIS RULING (2026-08-20): a weekly must not scroll at the default cell
+      // size. clampRectDims is the ONE rule, and it replaces the old cols-only
+      // cap: a NARROW board is the one that got too tall, because cells grow
+      // to fill the width, so 14x8 stood 502px against a 462px budget while
+      // 14x12 is 362px. Clamping consumes no extra rng() call, so every
+      // stored canonical's seed stream is untouched.
+      const wDims = clampRectDims(
+        WEEKLY_MIN_SIZE + Math.floor(dim1 * WEEKLY_SIZE_RANGE),
+        WEEKLY_MIN_SIZE + Math.floor(dim2 * WEEKLY_SIZE_RANGE),
+      );
+      state.rows = wDims.rows;
+      state.cols = wDims.cols;
       const density = DAILY_MIN_DENSITY + dim3 * DAILY_DENSITY_RANGE;
       state.totalMines = Math.max(5, Math.round(state.rows * state.cols * density));
 

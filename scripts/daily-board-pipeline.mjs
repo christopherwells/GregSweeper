@@ -24,6 +24,7 @@ import { chooseStartAnchor } from '../src/logic/startAnchor.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { clampRectDims } from '../src/logic/boardFit.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -81,8 +82,15 @@ export function candidateCountFor(spec) {
 export function buildOneCandidate(seed, forcedGimmick, singleOnly) {
   // Mirror gameActions.js daily branch + retry loop.
   const dRng = createDailyRNG(seed);
-  const rows = DAILY_MIN_SIZE + Math.floor(dRng() * DAILY_SIZE_RANGE);
-  const cols = DAILY_MIN_SIZE + Math.floor(dRng() * DAILY_SIZE_RANGE);
+    // HIS RULING (2026-08-20): a daily must not scroll at the default cell
+  // size. Today this clamp is a proven no-op on the daily's draw range
+  // (test/boardFit.test.mjs sweeps every reachable pair), and it is here so
+  // that a future edit to the range, the tap floor or the reference phone
+  // cannot quietly make one scroll.
+  const { rows, cols } = clampRectDims(
+    DAILY_MIN_SIZE + Math.floor(dRng() * DAILY_SIZE_RANGE),
+    DAILY_MIN_SIZE + Math.floor(dRng() * DAILY_SIZE_RANGE),
+  );
   const density = DAILY_MIN_DENSITY + dRng() * DAILY_DENSITY_RANGE;
   const totalMines = Math.max(5, Math.round(rows * cols * density));
   const fr = Math.floor(rows / 2), fc = Math.floor(cols / 2);

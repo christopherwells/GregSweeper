@@ -28,6 +28,7 @@ import {
   DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE,
 } from './difficulty.js';
 import { drawWeeklyTargetPar, WEEKLY_PAR_BAND, bandedArgmax } from './parBand.js';
+import { clampRectDims } from './boardFit.js';
 
 const CANDIDATE_COUNT = 10;
 
@@ -38,10 +39,16 @@ export function selectWeeklyRngSeed(weekStart) {
     const seed = `${weekStart}:trial${i}`;
 
     const dRng = createDailyRNG(seed);
-    const rows = WEEKLY_MIN_SIZE + Math.floor(dRng() * WEEKLY_SIZE_RANGE);
-    // Cap cols at BOARD_WIDTH_CAP (12). Rows can still sample up to 14;
-    // 12-wide boards fit any viewport without scrolling.
-    const cols = Math.min(WEEKLY_MIN_SIZE + Math.floor(dRng() * WEEKLY_SIZE_RANGE), BOARD_WIDTH_CAP);
+    // HIS RULING (2026-08-20): a weekly must not scroll at the default cell
+    // size. clampRectDims is the ONE rule, and it replaces the old cols-only
+    // cap: a NARROW board is the one that got too tall, because cells grow to
+    // fill the width, so 14x8 stood 502px against a 462px budget while 14x12
+    // is 362px. Clamping consumes no extra rng() call, so every stored
+    // canonical's seed stream is untouched and only an illegal draw moves.
+    const { rows, cols } = clampRectDims(
+      WEEKLY_MIN_SIZE + Math.floor(dRng() * WEEKLY_SIZE_RANGE),
+      WEEKLY_MIN_SIZE + Math.floor(dRng() * WEEKLY_SIZE_RANGE),
+    );
     const density = DAILY_MIN_DENSITY + dRng() * DAILY_DENSITY_RANGE;
     const mines = Math.max(5, Math.round(rows * cols * density));
     const fr = Math.floor(rows / 2);
