@@ -21,14 +21,17 @@ import { readFileSync } from 'node:fs';
 import {
   boardFitsPhone, maxExtentUnits, tapRatios, tapSizeAt, fittingDims,
   widthBudget, heightBudget, comfortHeightBudget, FIT_REFERENCE, MIN_TAP_MAJORITY, MIN_TAP_MINORITY,
-  maxRectColumns,
+  maxRectColumns, rectFitsPhone, clampRectDims,
 } from '../src/logic/boardFit.js';
 import { buildTiling, TILING_TYPES } from '../src/logic/tilingGeometry.js';
 import { TILING_BAND_CONFIGS } from '../src/logic/tilingBandConfigs.js';
 import { COASTLINE_BOARDS } from '../src/logic/coastlineLink.js';
 import { challengeSpecForLevel, ENDLESS_SPECS, CHALLENGE_MAX_LEVEL } from '../src/logic/challenge250.js';
 import { CHAOS_SHAPES, chaosTilingPlan, chaosTilingDims } from '../src/logic/chaosShape.js';
-import { getChaosDifficulty, BOARD_WIDTH_CAP } from '../src/logic/difficulty.js';
+import {
+  getChaosDifficulty, BOARD_WIDTH_CAP,
+  DAILY_MIN_SIZE, DAILY_SIZE_RANGE, WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE,
+} from '../src/logic/difficulty.js';
 import { PAR_LAB_BATTERY } from '../src/logic/parLab.js';
 
 function describe(type, M, N) {
@@ -114,6 +117,107 @@ test('every daily/weekly band config fits a phone', () => {
     }
   }
   assert.deepEqual(bad, [], `band configs too wide for a phone:\n  ${bad.join('\n  ')}`);
+});
+
+test('NO DAILY OR WEEKLY MAY SCROLL AT THE TAP FLOOR (his ruling 2026-08-20)', () => {
+  // "No dailies should be scrolled" / "or weeklies for that matter" / "boards
+  // shouldn't be scrollable at 24 px in the dailies. If people use more zoomed
+  // in, then they may get a scroll board."
+  //
+  // The rectangular daily and weekly do not choose dims from a table. They
+  // DRAW them, from a constant range, and until this test nothing anywhere
+  // compared that range against the fit rules: the daily applies no width cap
+  // at all, and neither path looks at height. Both happened to be safe, by
+  // luck of where the constants sit rather than by any rule, and the luck was
+  // load-bearing on a number that has moved twice.
+  //
+  // So the sweep is over every dimension pair the draw can REACH, not over
+  // any board it happened to produce, and it runs each pair through the clamp
+  // the producers now apply. A future edit to the ranges, the tap floor or the
+  // reference phone fails here rather than on his phone.
+  const bad = [];
+  const reach = (minSize, range) => {
+    const out = [];
+    for (let rows = minSize; rows < minSize + range; rows++) {
+      for (let cols = minSize; cols < minSize + range; cols++) out.push([rows, cols]);
+    }
+    return out;
+  };
+  const dailyReach = reach(DAILY_MIN_SIZE, DAILY_SIZE_RANGE);
+  const weeklyReach = reach(WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE);
+  for (const [label, pairs] of [['daily', dailyReach], ['weekly', weeklyReach]]) {
+    for (const [r, c] of pairs) {
+      const d = clampRectDims(r, c);
+      if (!rectFitsPhone(d.rows, d.cols)) bad.push(`${label} ${r}x${c} -> ${d.rows}x${d.cols}`);
+    }
+  }
+  assert.deepEqual(bad, [],
+    `these reachable daily/weekly boards would scroll at the ${MIN_TAP_MAJORITY}px floor: `
+    + `${bad.join(', ')}. `
+    + 'Remedy: narrow the draw range in difficulty.js, or move the floor.');
+
+  // THE DAILY CLAMP IS A NO-OP, and saying so is the point: every daily board
+  // the game has ever drawn is byte-identical under this change, so the clamp
+  // buys the guarantee without moving a single stored canonical.
+  const dailyMoved = dailyReach.filter(([r, c]) => {
+    const d = clampRectDims(r, c);
+    return d.rows !== r || d.cols !== c;
+  });
+  assert.deepEqual(dailyMoved, [],
+    `the daily clamp must not move any reachable draw, but moved ${dailyMoved.length}`);
+
+  // THE WEEKLY CLAMP DOES BITE, which is what makes the whole thing non-vacuous:
+  // if it moved nothing, the sweep above would prove only that the clamp is
+  // inert. These are the draws that stood past the visible area.
+  const weeklyMoved = weeklyReach.filter(([r, c]) => {
+    const d = clampRectDims(r, c);
+    return d.rows !== r || d.cols !== c;
+  });
+  assert.ok(weeklyMoved.length > 0,
+    'the weekly clamp moved nothing, so this test proves nothing about it');
+  for (const [r, c] of weeklyMoved) {
+    assert.ok(!rectFitsPhone(r, c),
+      `the clamp moved weekly ${r}x${c}, which was already legal; it must only touch illegal draws`);
+  }
+
+  // NON-VACUITY on the predicate itself, both axes.
+  const dailyMax = DAILY_MIN_SIZE + DAILY_SIZE_RANGE - 1;
+  assert.ok(!rectFitsPhone(dailyMax, BOARD_WIDTH_CAP + 1),
+    'one column past the cap must be refused, or the width half of this sweep proves nothing');
+  let tallest = 0;
+  for (let r = 1; r <= 40; r++) if (rectFitsPhone(r, BOARD_WIDTH_CAP)) tallest = r;
+  assert.ok(!rectFitsPhone(tallest + 1, BOARD_WIDTH_CAP),
+    'one row past the ceiling must be refused, or the height half proves nothing');
+  assert.ok(dailyMax <= tallest && DAILY_MIN_SIZE >= 5,
+    `the daily range must sit inside the legal envelope (draws up to ${dailyMax}, ceiling ${tallest})`);
+});
+
+test('every daily and weekly draw site routes through the clamp (mirror set)', () => {
+  // The dims formula is duplicated seven ways by design (three daily, four
+  // weekly), which the codebase calls a mirror set and which has drifted
+  // before. A source scan is the cheapest thing that can notice a new copy,
+  // or an old one quietly reverting to an unclamped draw.
+  const SITES = [
+    'src/logic/selectDailyRngSeed.js',
+    'src/logic/selectWeeklyRngSeed.js',
+    'src/game/gameActions.js',
+    'scripts/daily-board-pipeline.mjs',
+    'scripts/precompute-weekly-board.mjs',
+    'scripts/regenerate-weekly-board.mjs',
+  ];
+  for (const rel of SITES) {
+    const src = readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8');
+    assert.ok(src.includes('clampRectDims'),
+      `${rel} draws daily/weekly dimensions without clampRectDims`);
+    // And no site keeps a private width cap beside it: two rules is how the
+    // cap went stale in the first place.
+    assert.ok(!/Math\.min\([^)]*SIZE_RANGE\)[^)]*BOARD_WIDTH_CAP\)/.test(src),
+      `${rel} still applies its own column cap beside the clamp`);
+  }
+  // gameActions carries BOTH draws, so it needs both call sites.
+  const ga = readFileSync(new URL('../src/game/gameActions.js', import.meta.url), 'utf8');
+  assert.ok((ga.match(/clampRectDims\(/g) || []).length >= 2,
+    'gameActions must clamp the daily draw and the weekly draw separately');
 });
 
 test('every practice (?coastline=) board fits a phone', () => {
