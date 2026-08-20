@@ -575,7 +575,15 @@ function _paintStandings(el, node, names = {}, opts = {}) {
   const headerCells = cols.map((c) =>
     `<th class="match-grid-p${c.isMe ? ' match-grid-me' : ''}">${presenceDot(c)}${escapeHtml(nameOf(c))}</th>`).join('');
   const bodyRows = breakdown.map((r) => {
-    const label = `${r.index + 1} · ${escapeHtml(_shapeLabel(r.spec))}`;
+    // PAR RIDES THE BOARD LABEL (his observation 2026-08-20: "on the run
+    // report, there's no mention of par anywhere"). It belongs here because
+    // par is a property of the BOARD, and the grid's rows are boards while
+    // its columns are players. A row of its own would repeat one number
+    // across every column, and a column of its own would cost width the
+    // phone does not have.
+    const parBit = Number.isFinite(r.par) && r.par > 0
+      ? ` <span class="match-grid-par">par ${fmtClock(r.par, false)}</span>` : '';
+    const label = `${r.index + 1} · ${escapeHtml(_shapeLabel(r.spec))}${parBit}`;
     const best = r.fastestAdjusted;
     const cells = cols.map((c) => {
       const e = r.entries.find((x) => x.uid === c.uid);
