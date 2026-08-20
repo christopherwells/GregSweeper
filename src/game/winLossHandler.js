@@ -537,16 +537,6 @@ function _finishMatchRun() {
   const repaired = repairMatchResults(m);
   if (repaired.length > 0) {
     console.warn(`match: re-derived strike penalties on board(s) ${repaired.map((i) => i + 1).join(', ')}`);
-    // The node refused these results when they were first posted, so the
-    // standings are MISSING those boards, which reads as a partial run (and
-    // with a gap at index 0 the whole player reads as empty, Firebase
-    // returning sparse indices as an object). Re-post now that the numbers
-    // fit the rules, so the final report is whole.
-    if (m.id) {
-      import('../firebase/firebaseMatch.js')
-        .then((mod) => Promise.all(repaired.map((i) => mod.postMatchResult(m.id, i, m.results[i]))))
-        .catch((err) => reportCaughtError('match-result-repost', err));
-    }
   }
 
   const uid = getUid();
@@ -562,9 +552,44 @@ function _finishMatchRun() {
     submitMatchFitRows(rows, name, uid)
       .catch((err) => reportCaughtError('match-fit-submit', err));
   }
+  // RECONCILE BEFORE CLAIMING FINISHED (issue #396). Each board posts its
+  // result live and fire-and-forget, and a post that did not land was never
+  // sent again: the run still wrote `finishedAt`, so the standings read that
+  // player as FINISHED on a total missing a board. A short total is a SMALLER
+  // total, so they ranked ahead of everyone who banked all of theirs and the
+  // report named the wrong winner, permanently, with the real numbers living
+  // only on the device that played. The known-closed seven-day gate was the
+  // premise for shrugging a failed post off; an offline moment on a phone
+  // takes the same path and is not that.
+  //
+  // So the finish re-posts EVERY banked result (one update per index, the
+  // same values, idempotent) and writes `finishedAt` only once all of them
+  // land. A run that cannot reconcile stays UNFINISHED, which is the honest
+  // reading rather than a flattering one: its total really is incomplete on
+  // the node, and the standings rank finished players above unfinished ones
+  // for exactly this reason. This also subsumes the penalty repair's own
+  // re-post, which covered only the indices it had changed.
   if (m.id) {
     import('../firebase/firebaseMatch.js')
-      .then((mod) => mod.finishMatch(m.id))
+      .then(async (mod) => {
+        const idxs = [];
+        for (let i = 0; i < m.results.length; i++) if (m.results[i]) idxs.push(i);
+        const landed = await Promise.all(idxs.map((i) => Promise.resolve()
+          .then(() => mod.postMatchResult(m.id, i, m.results[i]))
+          .catch(() => false)));
+        const missing = idxs.filter((_, k) => !landed[k]);
+        if (missing.length > 0) {
+          // Recorded on the match so a later open can heal it, and said out
+          // loud rather than swallowed.
+          m.unposted = missing;
+          console.warn(`match: ${missing.length} result(s) did not reach the node (board(s) `
+            + `${missing.map((i) => i + 1).join(', ')}); leaving the run unfinished so the standings `
+            + 'cannot rank an incomplete total as a complete one');
+          return;
+        }
+        m.unposted = [];
+        await mod.finishMatch(m.id);
+      })
       .catch((err) => reportCaughtError('match-finish', err));
   }
 }

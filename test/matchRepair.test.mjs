@@ -179,3 +179,53 @@ test('the match-end path re-derives BEFORE filing, and re-posts what the node re
   assert.ok(finish.includes('postMatchResult'),
     'a repaired result must be re-posted; the node refused it the first time');
 });
+
+test('REGRESSION: a run whose result post failed does not claim to be finished (#396)', () => {
+  // Each board posts its result fire-and-forget. A post that did not land was
+  // never re-sent, and the run still wrote finishedAt, so the standings read
+  // that player as FINISHED on a total missing a board. A short total is a
+  // SMALLER total, so they outranked everyone who banked all of theirs and the
+  // report named the wrong winner, permanently.
+  //
+  // Pinned at the source, because the failure lives in an async import chain
+  // that a unit test cannot reach without standing up Firebase: the finish
+  // must re-post every banked index and must gate finishMatch on all of them
+  // landing.
+  const src = readFileSync(new URL('../src/game/winLossHandler.js', import.meta.url), 'utf8');
+  const finish = src.slice(src.indexOf('function _finishMatchRun'), src.indexOf('// ── Handle Win'));
+  assert.ok(finish.length > 200, 'the finish path was not found');
+
+  // Every banked result is re-posted, not just the ones the repair touched.
+  assert.ok(/for \(let i = 0; i < m\.results\.length; i\+\+\) if \(m\.results\[i\]\) idxs\.push\(i\)/.test(finish),
+    'the finish must collect EVERY banked result index, not a subset');
+  assert.ok(/postMatchResult\(m\.id, i, m\.results\[i\]\)/.test(finish),
+    'and re-post each of them');
+
+  // finishMatch is GATED: it must sit after the missing-check, not before it.
+  const missingAt = finish.indexOf('const missing = idxs.filter');
+  const finishAt = finish.indexOf('finishMatch(m.id)');
+  assert.ok(missingAt > 0 && finishAt > 0, 'both the reconcile and the finish must exist');
+  assert.ok(missingAt < finishAt,
+    'finishMatch must come AFTER the reconcile, or the run claims finished on an incomplete node');
+  assert.ok(/if \(missing\.length > 0\)[\s\S]{0,900}?return;/.test(finish),
+    'a failed reconcile must RETURN before finishMatch, leaving the run unfinished');
+
+  // The narrower repair-only re-post is gone, subsumed rather than duplicated.
+  assert.ok(!/repaired\.map\(\(i\) => mod\.postMatchResult/.test(src),
+    'the repair-only re-post should be subsumed by the full reconcile');
+});
+
+test('postMatchResult reports failure to its caller, on both paths', async () => {
+  // The reconcile can only gate on something it can see. Both early exits
+  // return false rather than throwing or resolving undefined: the offline
+  // path (no Firebase, no uid) and the refused-write path.
+  const src = readFileSync(new URL('../src/firebase/firebaseMatch.js', import.meta.url), 'utf8');
+  const fn = src.slice(src.indexOf('export async function postMatchResult'),
+    src.indexOf('export async function touchMatchPresence'));
+  assert.ok(fn.length > 100, 'postMatchResult was not found');
+  assert.ok(/if \(!ready \|\| !uid \|\| !matchId\) return false;/.test(fn),
+    'the offline path must report false, which is the branch a phone actually takes');
+  assert.ok(/return false;[\s\S]{0,40}\}\s*$/.test(fn.trim()) || (fn.match(/return false;/g) || []).length >= 2,
+    'the refused-write path must report false too');
+  assert.ok(/return true;/.test(fn), 'and success must be distinguishable');
+});
