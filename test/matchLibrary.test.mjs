@@ -50,6 +50,7 @@ import {
 } from '../scripts/topup-match-library.mjs';
 import { narrowHoles } from '../scripts/match-narrow-holes.mjs';
 import { rectFitsPhone } from '../src/logic/boardFit.js';
+import { BOARD_WIDTH_CAP } from '../src/logic/difficulty.js';
 
 const summary = JSON.parse(readFileSync(SUMMARY_FILE, 'utf8'));
 const pageNames = matchPageNames(OUT_DIR);
@@ -466,31 +467,41 @@ test('every oversized board is inside the lane region, and priced by the right r
 });
 
 test('specsForCorner: anchors join, illegal rects are refused, only quick leads small', () => {
+  // The illegal candidate is derived from the cap rather than typed, because
+  // the cap itself is derived from the tap floor (2026-08-20) and a fixture
+  // holding a remembered number stops testing anything the day it moves.
+  const tooWide = BOARD_WIDTH_CAP + 1;
   const pool = [
-    { shape: 'rect', rows: 12, cols: 12, cells: 144, mines: 30, gimmicks: [] },  // illegal width
+    { shape: 'rect', rows: 12, cols: tooWide, cells: 12 * tooWide, mines: 30, gimmicks: [] },
     { shape: 'rect', rows: 8, cols: 9, cells: 72, mines: 14, gimmicks: [] },
-    { shape: 'rect', rows: 13, cols: 11, cells: 143, mines: 30, gimmicks: [] },
+    { shape: 'rect', rows: 13, cols: BOARD_WIDTH_CAP - 1, cells: 13 * (BOARD_WIDTH_CAP - 1), mines: 30, gimmicks: [] },
   ];
   // His expandable rule: a board already in the cell, whatever it wears,
   // donates its geometry to this corner's candidates.
   const anchor = { shape: 'rect', rows: 10, cols: 10, cells: 100, mines: 12, gimmicks: ['sonar', 'walls'] };
   const short = specsForCorner(pool, 'rect', 'sonar', 'short', [anchor]);
   assert.ok(short.length > 0, 'non-vacuous: candidates must exist');
-  assert.ok(!short.some((s) => s.cols > 11), 'an illegal-width dim reached the candidates');
+  assert.ok(!short.some((s) => s.cols > BOARD_WIDTH_CAP), 'an illegal-width dim reached the candidates');
   assert.ok(short.every((s) => (s.gimmicks || []).join('+') === 'sonar'),
     'every candidate wears the corner\'s own modifier set');
   assert.ok(short.some((s) => s.cells === 100), 'the anchor geometry joined the candidates');
   // The big end leads for short (the census used to spend its budget on
   // boards that could only ever land quick), and the big end includes the
-  // SYNTHESIZED legal ceiling the pool never held (probe-proven: 17x11
-  // certifies long|standard plain and 16x11 short|sparse with one sonar).
-  assert.equal(short[0].cells, 187, 'the synthesized 17x11 ceiling must lead the short candidates');
+  // SYNTHESIZED legal ceiling the pool never held (probe-proven when the cap
+  // was 11: 17x11 certifies long|standard plain, 16x11 short|sparse with one
+  // sonar). The ceiling is re-derived here, not remembered, for the same
+  // reason the illegal width above is.
+  let ceilRows = 0;
+  for (let r = 1; r <= 40; r++) if (rectFitsPhone(r, BOARD_WIDTH_CAP)) ceilRows = r;
+  assert.equal(short[0].cells, ceilRows * BOARD_WIDTH_CAP,
+    'the synthesized legal ceiling must lead the short candidates');
   assert.ok(short.every((s) => s.shape !== 'rect' || rectFitsPhone(s.rows, s.cols)),
     'a synthesized dim must be phone-legal too');
   // Quick keeps its proven small dims and gains no synthesized giants.
   const quick = specsForCorner(pool, 'rect', '', 'quick', []);
   assert.equal(quick[0].cells, 72);
-  assert.ok(!quick.some((s) => s.cells > 143), 'quick must not carry synthesized big-end dims');
+  assert.ok(!quick.some((s) => s.cells > 13 * (BOARD_WIDTH_CAP - 1)),
+    'quick must not carry synthesized big-end dims');
 });
 
 test('narrowHoles: pooled supply cannot hide an empty narrow floor', () => {

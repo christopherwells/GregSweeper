@@ -61,7 +61,8 @@ import {
   MATCH_TIME_BANDS, MATCH_DENSITY_BANDS, MATCH_PAR_CEILING_SECONDS,
 } from '../src/logic/matchRules.js';
 import { rectFitsPhone, boardFitsPhone } from '../src/logic/boardFit.js';
-import { buildTiling, containerIsStorable } from '../src/logic/tilingGeometry.js';
+import { buildTiling, containerIsStorable, CANONICAL_MAX_DIM } from '../src/logic/tilingGeometry.js';
+import { BOARD_WIDTH_CAP } from '../src/logic/difficulty.js';
 import { OUT_DIR, writeMatchIndexFiles, matchPageFile, matchPageNames } from './match-index-files.mjs';
 
 const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
@@ -76,8 +77,10 @@ const TRIES_PER_DRAW = 3;
 const BACKOFF_CAP = 5;
 // The one column count the big-end rect synthesis uses: the width cap
 // itself, because every probe hit in the unsearched range stood at full
-// width (tall boards want the widest legal row).
-const BOARD_SYNTH_COLS = 11;
+// width (tall boards want the widest legal row). READ from the cap rather
+// than copied: this said 11 while its own comment said "the width cap
+// itself", and the two disagreed the moment the cap moved.
+const BOARD_SYNTH_COLS = BOARD_WIDTH_CAP;
 // How often a long run commits what it has. Ten minutes bounds the loss from a
 // crash without rewriting the index constantly.
 const FLUSH_EVERY_MS = 10 * 60000;
@@ -290,7 +293,14 @@ export function synthBigEnd(shape) {
   if (_synthCache.has(shape)) return _synthCache.get(shape);
   const out = [];
   if (shape === 'rect') {
-    for (let rows = 17; rows >= 12; rows--) {
+    // Walk down from the tallest legal board at that width rather than from a
+    // remembered ceiling, for the same reason the width itself is read: the
+    // ceiling is a consequence of the tap floor, which moves.
+    let tallest = 0;
+    for (let r = 1; r <= CANONICAL_MAX_DIM; r++) {
+      if (rectFitsPhone(r, BOARD_SYNTH_COLS)) tallest = r;
+    }
+    for (let rows = tallest; rows >= Math.max(2, tallest - 5); rows--) {
       if (rectFitsPhone(rows, BOARD_SYNTH_COLS)) {
         out.push({ shape, rows, cols: BOARD_SYNTH_COLS, cells: rows * BOARD_SYNTH_COLS });
       }

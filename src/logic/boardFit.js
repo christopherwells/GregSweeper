@@ -326,6 +326,38 @@ export function rectCellSizeAt(rows, cols, viewport = FIT_REFERENCE) {
 }
 
 /**
+ * The widest a rect board may be: the largest column count that still delivers
+ * the majority tap floor at the reference phone.
+ *
+ * DERIVED, not chosen (his ruling 2026-08-20). The cap has been a hand-set
+ * number twice and gone stale both times: it was 12, he moved it to 11 on
+ * 2026-08-14 when the floor was 28px, and when he re-anchored the floor at
+ * 24px on 2026-08-19 (the pressing-circle ruling) the 11 stayed behind,
+ * refusing 12-column boards that deliver exactly the 24px he had just ruled.
+ * Reading it off the floor instead means the next time either the floor or the
+ * reference phone moves, this moves with them.
+ *
+ * Width only, deliberately: this is the WIDTH rule, and height is answered
+ * separately by rectFitsPhone against the comfort budget. Rect cells are
+ * square, so the whole cell is tappable and the majority floor is the right
+ * bar (the minority floor exists for the 4.8.8's interstitial diamonds and has
+ * no meaning here).
+ *
+ * @param {{width?: number}} [viewport]
+ * @returns {number} the largest legal column count
+ */
+export function maxRectColumns(viewport = FIT_REFERENCE) {
+  const wb = widthBudget(viewport.width ?? FIT_REFERENCE.width);
+  let best = 1;
+  for (let cols = 1; cols <= 40; cols++) {
+    const cell = Math.floor((wb - (cols - 1) * RECT_GAP_PX) / cols);
+    if (cell >= MIN_TAP_MAJORITY) best = cols;
+    else break;
+  }
+  return best;
+}
+
+/**
  * Does a RECT board fit a phone, on the same terms boardFitsPhone holds the
  * lattices to?
  *

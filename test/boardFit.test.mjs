@@ -21,13 +21,14 @@ import { readFileSync } from 'node:fs';
 import {
   boardFitsPhone, maxExtentUnits, tapRatios, tapSizeAt, fittingDims,
   widthBudget, heightBudget, comfortHeightBudget, FIT_REFERENCE, MIN_TAP_MAJORITY, MIN_TAP_MINORITY,
+  maxRectColumns,
 } from '../src/logic/boardFit.js';
 import { buildTiling, TILING_TYPES } from '../src/logic/tilingGeometry.js';
 import { TILING_BAND_CONFIGS } from '../src/logic/tilingBandConfigs.js';
 import { COASTLINE_BOARDS } from '../src/logic/coastlineLink.js';
 import { challengeSpecForLevel, ENDLESS_SPECS, CHALLENGE_MAX_LEVEL } from '../src/logic/challenge250.js';
 import { CHAOS_SHAPES, chaosTilingPlan, chaosTilingDims } from '../src/logic/chaosShape.js';
-import { getChaosDifficulty } from '../src/logic/difficulty.js';
+import { getChaosDifficulty, BOARD_WIDTH_CAP } from '../src/logic/difficulty.js';
 import { PAR_LAB_BATTERY } from '../src/logic/parLab.js';
 
 function describe(type, M, N) {
@@ -238,4 +239,29 @@ test('the Par Lab battery is EXEMPT, and that is deliberate', () => {
     'the Par Lab battery no longer violates the cap — if it was re-dimensioned on purpose, '
     + 'the frozen prior centers in scripts/data/parlab-prior-centers.json no longer describe '
     + 'the boards that were played');
+});
+
+test('BOARD_WIDTH_CAP is the tap floor, derived rather than remembered', () => {
+  // The cap has gone stale twice by being a hand-picked number: it was 12, he
+  // cut it to 11 on 2026-08-14 under a 28px floor, and when he re-anchored the
+  // floor at 24px on 2026-08-19 the 11 stayed behind, refusing 12-column
+  // boards that deliver exactly the 24px tap target he had just ruled.
+  //
+  // difficulty.js stays a LEAF (the model and the generators read it without
+  // pulling in geometry), so the constant still lives there and this is what
+  // keeps the two honest. If the floor or the reference phone moves again,
+  // this fails and names the number to write.
+  const derived = maxRectColumns();
+  assert.equal(BOARD_WIDTH_CAP, derived,
+    `BOARD_WIDTH_CAP is ${BOARD_WIDTH_CAP} but the ${MIN_TAP_MAJORITY}px floor at the `
+    + `${FIT_REFERENCE.width}px reference allows ${derived}; set it to ${derived}`);
+
+  // Non-vacuity: the derivation must be a real measurement, so the cap column
+  // clears the floor and one more column does not.
+  const wb = widthBudget(FIT_REFERENCE.width);
+  const cellAt = (cols) => Math.floor((wb - (cols - 1) * 2) / cols);
+  assert.ok(cellAt(derived) >= MIN_TAP_MAJORITY,
+    `${derived} columns must deliver at least the floor (${cellAt(derived)}px)`);
+  assert.ok(cellAt(derived + 1) < MIN_TAP_MAJORITY,
+    `${derived + 1} columns must fall under it (${cellAt(derived + 1)}px), or the cap is not the edge`);
 });

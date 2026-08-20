@@ -15,17 +15,28 @@ import {
   MARATHON_MIN_SHORT_SIDE,
 } from '../src/logic/marathonFit.js';
 import { boardFitsPhone, rectFitsPhone } from '../src/logic/boardFit.js';
+import { BOARD_WIDTH_CAP } from '../src/logic/difficulty.js';
 import { buildTiling, containerIsStorable, TILING_TYPES } from '../src/logic/tilingGeometry.js';
 
-test('his worked example: Classic doubles 17x11 to 34x22, clipped to 30x22 = 660 cells', () => {
-  // The premise of his arithmetic, checked rather than assumed.
-  assert.ok(rectFitsPhone(17, 11), '17x11 must be the fit-legal ceiling he doubled');
-  assert.ok(!rectFitsPhone(18, 11), 'and 18 rows must not be');
+test('his worked example, re-derived: Classic doubles its fit ceiling and clips to the container', () => {
+  // He worked this out as 17x11 doubling to 34x22 and clipping to 30x22 = 660
+  // cells. The ARITHMETIC is unchanged; its inputs moved. On 2026-08-20 he
+  // ruled the width cap must be DERIVED from the tap floor rather than
+  // remembered, which took it from 11 to 12 (12 columns delivers exactly the
+  // 24px floor he had just set). Doubling 12 gives 24, so the widest rect the
+  // lane may hold is now 30x24 = 720 cells. Both numbers are read from the
+  // rules here rather than typed, so the next time the floor moves this test
+  // follows instead of arguing.
+  let tallest = 0;
+  for (let r = 1; r <= 40; r++) if (rectFitsPhone(r, BOARD_WIDTH_CAP)) tallest = r;
+  assert.ok(tallest >= 15, 'the fit-legal ceiling he doubled must be a real board');
+  assert.ok(!rectFitsPhone(tallest + 1, BOARD_WIDTH_CAP), 'and one row more must not be');
   const dims = marathonDims('rect');
   const biggest = dims[0];
-  assert.equal(biggest.cells, 660);
+  assert.equal(biggest.cols, Math.min(CANONICAL_MAX_DIM, 2 * BOARD_WIDTH_CAP),
+    'the widest rect is the doubled cap, clipped to the container');
   assert.equal(biggest.rows, 30);
-  assert.equal(biggest.cols, 22);
+  assert.equal(biggest.cells, biggest.rows * biggest.cols);
   // The clip is the canonical container's, not an invented number.
   assert.equal(CANONICAL_MAX_DIM, 30);
 });
@@ -46,12 +57,14 @@ test('the region is the UNION of doubled legal pairs, never a box over axis maxi
 });
 
 test('the doubled bound really bounds: past 2x either axis is refused', () => {
-  // Rect's fit-legal set has a single Pareto point (17x11), so its doubled
-  // region IS one box, and these are its edges. BOARD_WIDTH_CAP caps
-  // columns at 11, so 22 is the most any doubling can allow.
-  assert.ok(marathonFits('rect', 30, 22), 'the legal corner itself must pass');
-  assert.equal(marathonFits('rect', 6, 24), false, 'past 2x the column cap');
-  assert.equal(marathonFits('rect', 30, 23), false);
+  // Rect's fit-legal set has a single Pareto point, so its doubled region IS
+  // one box, and these are its edges. The column bound is twice
+  // BOARD_WIDTH_CAP, read rather than written down (it moved 11 -> 12 on
+  // 2026-08-20 when he ruled the cap derives from the tap floor).
+  const maxCols = 2 * BOARD_WIDTH_CAP;
+  assert.ok(marathonFits('rect', 30, maxCols), 'the legal corner itself must pass');
+  assert.equal(marathonFits('rect', 6, maxCols + 1), false, 'past 2x the column cap');
+  assert.equal(marathonFits('rect', 30, maxCols + 1), false);
   // 35 rows would be past 2x17, and it is also past the container cap; both
   // refusals are real, and the container one is checked in its own test.
   assert.equal(marathonFits('rect', 35, 22), false);
