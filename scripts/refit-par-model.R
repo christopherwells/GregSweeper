@@ -524,6 +524,35 @@ COEF_TO_PREDICTOR <- c(
 )
 BASE_MODEL_FEATURES <- unname(COEF_TO_PREDICTOR)
 
+# EVERY key that has ever been a shipped predictor, current and retired, with
+# the predictor each one MEANS. apply_par_model prices a PARSED block off this
+# union rather than off COEF_TO_PREDICTOR, and the difference matters on
+# exactly one run: the one that changes the model's form.
+#
+# The trap, met on 2026-08-20. apply_par_model looped COEF_TO_PREDICTOR (what
+# this script is about to FIT) while reading coefficients out of the shipped
+# difficulty.js (what was fitted LAST time). Its `%||% 0` fallback is correct
+# for an ADDED coefficient, which is the case its comment describes, and
+# silently wrong for a REPLACED one: on the rate-form transition the parsed
+# block had no rate keys at all, so the pre-fit outlier screen priced every
+# board with its three largest terms at zero and screened against a number
+# that meant nothing.
+#
+# A block only ever carries ONE form's keys, so the union is self-selecting:
+# the absent form contributes zero by construction, with no branch and no
+# marker to keep in step. Same reason applyParModel on the JS side needs no
+# branch either. A retired key must STAY here, or a block written before its
+# retirement stops pricing correctly.
+COEF_TO_PREDICTOR_ANY <- c(
+  COEF_TO_PREDICTOR,
+  # Retired 2026-08-20 by the rate form; still the correct reading of any
+  # block emitted before it.
+  secPerCell        = "cellCount",
+  secPerMineFlag    = "totalMines",
+  secPerPatternMove = "patternMoves",
+  secPerSearchMove  = "searchMoves"
+)
+
 # ── The size pair (his M1 ruling, 2026-08-18) ──────────────────────────
 # `logCells = log(cellCount)` beside the linear term, fitted as ONE concave
 # size curve: gamma ~ +0.9 on the log term with the linear term going
@@ -705,13 +734,16 @@ apply_par_model <- function(df, coefs, log_scale = TRUE, shape_devs = NULL) {
   if (!is.null(df$totalMines))   df$mineRate    <- df$totalMines / cells_safe
   if (!is.null(df$patternMoves)) df$patternRate <- df$patternMoves / cells_safe
   if (!is.null(df$searchMoves))  df$searchRate  <- df$searchMoves / cells_safe
-  # Data-driven off COEF_TO_PREDICTOR — the same table the emitter and the
-  # extraction read, so a coefficient cannot exist in the shipped block
-  # without being priced here. `%||% 0` keeps it correct against a parsed
-  # block predating any given coefficient.
+  # Data-driven off COEF_TO_PREDICTOR_ANY, the union of current and retired
+  # keys, so a PARSED block is priced in the form IT was written in. Looping
+  # the current table instead reads a pre-transition block as though its
+  # retired terms were zero; see the union's own comment for the run that
+  # caught it.
   lp <- rep(as.numeric(coefs$intercept), nrow(df))
-  for (k in names(COEF_TO_PREDICTOR)) {
-    lp <- lp + (coefs[[k]] %||% 0) * df[[COEF_TO_PREDICTOR[[k]]]]
+  for (k in names(COEF_TO_PREDICTOR_ANY)) {
+    pred <- COEF_TO_PREDICTOR_ANY[[k]]
+    if (is.null(df[[pred]])) next
+    lp <- lp + (coefs[[k]] %||% 0) * df[[pred]]
   }
   for (cn in names(shape_devs %||% list())) {
     lp <- lp + as.numeric(shape_devs[[cn]]) * df[[cn]]
