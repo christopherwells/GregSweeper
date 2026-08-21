@@ -168,3 +168,40 @@ test('the grace period refuses ONLY the reveal, and every view move stamps it', 
   assert.ok((rend.match(/markViewMoved\(\)/g) || []).length >= 3,
     'scroll, wheel and the centering glide must each stamp a view move');
 });
+
+test('REGRESSION: the overflow verdict is cached, so a tap cannot force layout (#the shape lag)', () => {
+  // The frame probe on his device caught it: revealing ONE cell cost 133ms on
+  // an Octagons board, the same as revealing sixteen. A per-TAP cost, not a
+  // per-cell one.
+  //
+  // needsZoom() reads boardEl.offsetWidth/offsetHeight, which forces a
+  // synchronous reflow, and it was called from _navTap on every tap and from
+  // the pinch branch of touchmove on every move event, both straight after the
+  // reveal had written classes and inline styles to cells. Write-then-read is
+  // the textbook layout thrash. Measured at 6x throttle on a settled board:
+  // 1.09ms a tap on classic and 1.35ms on Octagons against 0.01ms without the
+  // read, and Octagons is dearer with HALF the cells, which is the tiling
+  // signal that only appears once something forces layout.
+  const rend = readFileSync(new URL('../src/ui/boardRenderer.js', import.meta.url), 'utf8');
+
+  // The cache is consulted BEFORE the layout read, or it is not a cache.
+  const fn = rend.slice(rend.indexOf('function _boardOverflowsWrapper'),
+    rend.indexOf('export function needsZoom'));
+  assert.ok(fn.length > 50, '_boardOverflowsWrapper was not found');
+  const idxCache = fn.indexOf('_overflowCache !== null');
+  const idxRead = fn.indexOf('_boardLayoutSize()');
+  assert.ok(idxCache > 0, 'the overflow verdict must be cached');
+  assert.ok(idxRead > idxCache,
+    'the cache must be consulted before the layout read, not after it');
+
+  // And it is invalidated wherever the layout actually moves. A cache that is
+  // never cleared is a correctness bug pretending to be a fix: the camera
+  // controls would stop appearing on a board that grew.
+  for (const site of ['renderBoard', 'resizeCells', 'layoutTilingCells']) {
+    const at = rend.indexOf(`export function ${site}(`);
+    assert.ok(at > 0, `${site} was not found`);
+    const head = rend.slice(at, at + 260);
+    assert.ok(head.includes('invalidateBoardOverflow()'),
+      `${site} moves the layout and must invalidate the overflow cache`);
+  }
+});
