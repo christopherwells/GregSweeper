@@ -1,56 +1,51 @@
 {
-  "updatedAt": "2026-08-20T14:13:48Z",
-  "target": "wormLoad",
-  "reason": "highest posterior CV (0.470) excluding last 3 targets",
+  "updatedAt": "2026-08-20T23:54:15Z",
+  "target": "clueShare4",
+  "reason": "highest posterior CV (0.449) excluding last 3 targets",
   "lastRevalidationDate": "2026-08-15",
   "recentTargets": [
+    "clueShare4",
     "wormLoad",
-    "clueShare2",
-    "wormholePairCount"
+    "clueShare2"
   ],
   "candidates": [
     {
       "feature": "wormLoad",
-      "mean": 0.029,
-      "sd": 0.014,
-      "cv": 0.47
+      "mean": 0.027,
+      "sd": 0.013,
+      "cv": 0.469
+    },
+    {
+      "feature": "clueShare4",
+      "mean": 0.112,
+      "sd": 0.05,
+      "cv": 0.449
     },
     {
       "feature": "clueShare2",
       "mean": 0.046,
       "sd": 0.02,
-      "cv": 0.435
-    },
-    {
-      "feature": "clueShare4",
-      "mean": 0.113,
-      "sd": 0.049,
-      "cv": 0.432
+      "cv": 0.431
     },
     {
       "feature": "wormholePairCount",
-      "mean": 0.046,
-      "sd": 0.018,
-      "cv": 0.398
+      "mean": 0.047,
+      "sd": 0.019,
+      "cv": 0.402
     },
     {
       "feature": "compassCellCount",
       "mean": 0.051,
       "sd": 0.019,
-      "cv": 0.371
+      "cv": 0.368
     }
   ],
   "coverage_targets": [],
   "shape_coverage": [
     {
       "shape": "cairo",
-      "n_boards": 20,
-      "deficit_weight": 0.0476
-    },
-    {
-      "shape": "rhombille",
-      "n_boards": 25,
-      "deficit_weight": 0.0385
+      "n_boards": 22,
+      "deficit_weight": 0.0435
     },
     {
       "shape": "floret",
@@ -58,7 +53,7 @@
       "deficit_weight": 0.037
     },
     {
-      "shape": "deltoidal",
+      "shape": "rhombille",
       "n_boards": 26,
       "deficit_weight": 0.037
     },
@@ -66,6 +61,11 @@
       "shape": "4.8.8",
       "n_boards": 27,
       "deficit_weight": 0.0357
+    },
+    {
+      "shape": "deltoidal",
+      "n_boards": 30,
+      "deficit_weight": 0.0323
     },
     {
       "shape": "hex",
