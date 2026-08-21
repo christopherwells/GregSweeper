@@ -297,7 +297,12 @@ test('the endless bins carry all SEVEN shapes, Classic included', () => {
   // the 4.8.8 entry below it; likeliest road back is rhombille's own
   // logCells deviation earning out (15 of 20 rows the night this was
   // written) and moving the equation.
-  const MEASURED_CEILING = { '4.8.8': 7, rhombille: 13 };
+  // 4.8.8's entry is GONE (2026-08-20). The rate form prices a big board on
+  // its per-cell difficulty rather than on raw move counts, which lifted the
+  // shape's large end back over the 400s floor: it holds 34 boards against
+  // the 25 floor, so the exemption has done its job and retired itself
+  // exactly as its own failure message instructed.
+  const MEASURED_CEILING = { rhombille: 13 };
   // The floor counts the scrolling lane (his ruling 2026-08-18: "endless
   // can have scrolling boards"): under M1, rhombille's 400s+ region starts
   // past its fit-legal sizes, so the shape holds its floor THROUGH boards
