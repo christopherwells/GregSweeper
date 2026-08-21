@@ -16,7 +16,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, TIER_PPC,
+  CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, TIER_PPC, BRAID_PPC_END,
   ENDLESS_SPECS, endlessPpcFloor, endlessPpcAdmission, ENDLESS_START_LEVEL, ENDLESS_GEN_BUDGET_MS,
   ENDLESS_PAR_CEILING_SECONDS, GEN_CAP_MS, endlessPpcRange,
   ENDLESS_GEN_HEADROOM, endlessParCeiling, endlessGenCap, endlessGenBudget, ENDLESS_PPC_FLOOR,
@@ -222,7 +222,25 @@ test('the zone spans easy-for-a-summit to terribly hard, which is the point', ()
   const { lo, hi } = endlessPpcRange();
   assert.ok(hi / lo >= 1.5,
     `the pool spans only ${lo.toFixed(2)}-${hi.toFixed(2)} s/cell, which is not a range`);
-  assert.ok(hi >= 5, `nothing in the pool is terribly hard (hardest ${hi.toFixed(2)} s/cell)`);
+  // "Terribly hard" is now a MULTIPLE of the ladder's own summit rate rather
+  // than the absolute 5.0 this used to carry (his ruling 2026-08-21). The
+  // absolute was written when s/cell meant what the count-form model made it
+  // mean; the rate form re-scaled the quantity, and a bar that does not move
+  // with the scale it measures goes stale exactly the way the width cap did.
+  // Tying it to BRAID_PPC_END keeps the QUESTION ("is the zone meaningfully
+  // harder than anything the climb itself asks?") while letting the number
+  // follow the model.
+  //
+  // Stated plainly, because it is a real loss and not a re-labelling: the
+  // pool's hard end fell from 1.39x the summit to 1.27x under the rate form.
+  // The supply is not the binding constraint, the WINDOW is: clearing
+  // 5 s/cell and the 400s par floor together needs 80+ cells, staying under
+  // the shape ceiling needs 120 or fewer, and the rate form squeezed that
+  // into a sliver where nothing also clears the deduction floor. He accepted
+  // the softer top end rather than spend another hour of generation on it.
+  assert.ok(hi >= BRAID_PPC_END * 1.25,
+    `nothing in the pool is terribly hard: hardest ${hi.toFixed(2)} s/cell is `
+    + `${(hi / BRAID_PPC_END).toFixed(2)}x the ${BRAID_PPC_END} s/cell summit, under the 1.25x bar`);
 });
 
 test('a long run does not grind the same few boards', () => {
@@ -374,12 +392,18 @@ test('GOLDEN: the first endless block is fixed', () => {
   // write-challenge-pool.mjs --only endless): a different pool, so a
   // different five. All five entries changed, which is what a change to the
   // model's FORM should look like where a nightly re-price moves one.
+  // Moved WHOLESALE on 2026-08-21 by the rate-form refit and the pool rebuild
+  // it forced. The spec cache still carried pre-refit prices, so the endless
+  // table was re-emitted from a repriced cache, its 90 new faces measured, and
+  // the derived prices written back: a different pool, so a different five.
+  // All five changed, which is what a change to the model's FORM looks like
+  // where a nightly re-price moves one.
   assert.deepEqual(got, [
-    '4.8.8:72c:22m:[walls+locked+compass]',
-    'cairo:110c:41m:[liar+locked+sonar]',
-    'deltoidal:36c:7m:[walls+mystery+mirror]',
-    'floret:108c:27m:[locked+compass+worm]',
-    'hex:80c:28m:[]',
+    '4.8.8:85c:28m:[sonar+compass]',
+    'rect:25c:10m:[walls+compass]',
+    'rhombille:45c:17m:[locked+wormhole+worm]',
+    'cairo:112c:34m:[wormhole+compass]',
+    'hex:40c:15m:[walls+locked]',
   ]);
 
 
