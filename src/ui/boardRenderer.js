@@ -1,5 +1,6 @@
 import { state } from '../state/gameState.js';
-import { startFrameProbe, setFrameContext } from '../logic/frameProbe.js';
+import { startFrameProbe, setFrameContext, armFrameProbe } from '../logic/frameProbe.js';
+import { isTestEnvironment } from '../firebase/env.js';
 import { boardEl, zoomControls, boardScrollWrapper } from './domHelpers.js';
 import { THEME_UNLOCKS } from './themeManager.js';
 import { applyIcon, uiSpriteImgHTML } from './spriteLoader.js';
@@ -129,14 +130,19 @@ export function resizeCells() {
 }
 
 export function renderBoard() {
-  // Sample frame times while a board is on screen, so the lag he reports on
-  // his phone can be measured there instead of guessed at from a desktop.
-  startFrameProbe();
-  setFrameContext({
-    shape: (state.board && state.board._tiling && state.board._tiling.type) || 'rect',
-    cells: state.rows * state.cols,
-    action: 'render',
-  });
+  // TEST BUILDS ONLY (his ruling): an instrument for one investigation must
+  // not run for everyone. It is a permanent animation-frame loop on every
+  // board, so the cost is real even though nothing is drawn, and the /test/
+  // deploy is where the reproduction happens anyway.
+  if (isTestEnvironment()) {
+    armFrameProbe(true);
+    startFrameProbe();
+    setFrameContext({
+      shape: (state.board && state.board._tiling && state.board._tiling.type) || 'rect',
+      cells: state.rows * state.cols,
+      action: 'render',
+    });
+  }
   boardEl.innerHTML = '';
   // A rebuilt board is a fresh camera subject: the next updateZoom() places
   // the view on the marked opener at play scale, instead of wherever (and

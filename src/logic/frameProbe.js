@@ -33,6 +33,13 @@ let _running = false;
 let _rafId = 0;
 let _lastAt = 0;
 let _context = null;
+let _armed = false;
+
+/** Arm the probe. Nothing samples until this is called with true. */
+export function armFrameProbe(on) {
+  _armed = !!on;
+  if (!_armed) stopFrameProbe();
+}
 
 /**
  * What the player was doing, set by the caller so a slow frame can be
@@ -40,12 +47,21 @@ let _context = null;
  * @param {{shape?: string, cells?: number, action?: string}} ctx
  */
 export function setFrameContext(ctx) {
+  if (!_armed) return;
   _context = ctx || null;
 }
 
-/** Begin sampling. Idempotent. */
+/**
+ * Begin sampling. Idempotent.
+ *
+ * ARMING IS THE GATE (his ruling 2026-08-21: this belongs on the test branch
+ * so nobody else is bothered by it). The caller passes isTestEnvironment(), and
+ * until something arms it every other entry point here is inert: setContext
+ * does nothing, and the report says so rather than returning empty stats that
+ * would read as "no jank" on a build that never measured.
+ */
 export function startFrameProbe() {
-  if (_running) return;
+  if (!_armed || _running) return;
   _running = true;
   _lastAt = 0;
   const tick = (now) => {
@@ -85,8 +101,12 @@ export function stopFrameProbe() {
  * beside them so a single spike is not mistaken for a slow board.
  */
 export function frameProbeReport() {
+  // An UNARMED build says so. Returning empty stats would read as "no jank
+  // measured", which is a different and misleading claim.
+  if (!_armed) return { armed: false, note: 'frame probe runs on test builds only' };
   const worst = [..._worst].sort((a, b) => b.ms - a.ms).slice(0, RING);
   return {
+    armed: true,
     frames: _frames,
     meanMs: _frames ? Math.round((_sumMs / _frames) * 10) / 10 : 0,
     jankThresholdMs: JANK_MS,
