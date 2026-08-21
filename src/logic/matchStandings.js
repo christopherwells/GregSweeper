@@ -176,7 +176,18 @@ export function matchFitRows(entries, results) {
       // Banked per board at finish (winLossHandler): a match run can mix a
       // fit-legal board with a marathon one, so this is a property of the
       // BOARD as played, never of the run.
-      scrolled: res.scrolled === true,
+      // THE ENTRY IS THE FALLBACK, exactly as it is for par above, and for the
+      // same structural reason: the match node's results block stores only
+      // time, penalty and strikes, so a guest's measurement has nowhere to
+      // live and a cross-device resume loses it. His ruling 2026-08-20: a
+      // board larger than one screen that is not a daily IS scrolling, and
+      // `oversized` is a STORED per-row fact rather than a guess from
+      // container dims, so asserting from it is grounded.
+      //
+      // TRUE only, never false: an ordinary board scrolls whenever the player
+      // has raised their own cell-size preference, so a fit-legal board with
+      // no measurement stays honestly absent rather than being called flat.
+      scrolled: res.scrolled === true || entry.oversized === true,
       features: entry.features,
       bombHitEvents: events,
       wormEvents: Array.isArray(res.wormEvents) ? res.wormEvents : [],

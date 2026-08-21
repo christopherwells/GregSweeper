@@ -2,6 +2,22 @@
   "format": "journal-rewrite-v2",
   "date": "2026-08-20",
   "entries": {
+    "wormLoad": {
+      "sourceHash": 4233580373,
+      "paragraph": "Every fresh look at worm tiles gives the same reading, which my note marked with a question mark. The data answered with a real cost, estimating a real impact of about 3% per hundred worm moves, within a range of 2% to 4%. This range has narrowed by 27% since July 17, a change that, while not proof, does narrow the estimate."
+    },
+    "patternMoves": {
+      "sourceHash": 3027742570,
+      "paragraph": "I closed the pattern reasoning file, and it moved while I wasn’t looking. On July 13, this file read about 11% per ten pattern deductions; now it reads about 44%. The cost per ten pattern deductions runs about 44%, with a floor around 36% and a ceiling around 53%. I wrote that a practiced read should cost seconds, not tens of seconds, and the data agree: the effect is real but small. Closed is supposed to be a state, not a mood."
+    },
+    "sonarCellCount": {
+      "sourceHash": 1767991960,
+      "paragraph": "I closed the sonar file and found it had moved while I wasn't looking. My current estimate reads about 105% per ten sonar cells, likely between 70% and 147%. On study day 2, this file read about 37% per ten sonar cells. It now reads about 105%, which surprises me given its previous state."
+    },
+    "wormholePairCount": {
+      "sourceHash": 4292415865,
+      "paragraph": "The wormholes band is widening when it should be narrowing, with an estimate of about 59% per ten wormhole pairs, ranging between 32% and 91%. This widening is unexpected, as I predicted that splitting one number across two places would slow the reading down, yet it does not. Uncertainty has increased by 928% since July 2. The results that I did not expect receive the most attention in this notebook."
+    },
     "liarCellCount": {
       "sourceHash": 3835570526,
       "paragraph": "The liar cells case is closed. My note gave the data two doors: poison, or a rounding error. It picked the second. A liar barely moves the clock. The study ran ten study days from April 22 to June 28, and per ten liar cells, the cost reads as somewhere between 0% and about 3%. Closed files make room for open ones."
@@ -9,32 +25,8 @@
     "clueShare2": {
       "sourceHash": 3053902655,
       "paragraph": "In three study days, the answer for twos remains the same, aligning with my hypothesis that a two should read almost as fast as a one. The range slightly exceeds this expectation, but I have not yet managed to separate the twos from the boards they sit on. Uncertainty is down 28% since July 18. The estimate stands at about 5% per extra two in ten numbers, between 3% and 7%. A steady no is still valuable information."
-    },
-    "clueShare4": {
-      "sourceHash": 845475006,
-      "paragraph": "The fours numbers have stopped surprising me, though I keep checking anyway. My note asked how big the four costs, not whether it exists. The range has narrowed to about 12% per extra four in ten numbers, with a margin between 6% and 18%. The numbers have barely moved since the last check, and no verdict has been reached yet. Telling the fours apart from the boards around them is the next job. More boards will settle it, and the same answer came back again, so I’m listening."
-    },
-    "patternMoves": {
-      "sourceHash": 719689158,
-      "paragraph": "I closed the pattern reasoning file, and it moved while I wasn’t looking. On July 13, this file read about 11% per ten pattern deductions, but now it reads about 43%. The cost per ten pattern deductions runs about 43%, with a floor around 35% and a ceiling around 52%. I wrote that a practiced read should cost seconds, not tens of seconds. The data agree: the effect is real and small. Closed is supposed to be a state, not a mood."
-    },
-    "sonarCellCount": {
-      "sourceHash": 2351121885,
-      "paragraph": "I closed the sonar file, and it moved while I wasn’t looking. My current estimate reads about 106% per ten sonar cells, likely between 71% and 149%. On study day 2, this file read about 37% per ten sonar cells. It reads about 106% now, a significant increase from the previous measurement. I don’t like surprises in closed drawers."
-    },
-    "wormholePairCount": {
-      "sourceHash": 1857926582,
-      "paragraph": "The wormholes band is widening when it should be narrowing, with an estimate of about 60% per ten wormhole pairs, ranging between 33% and 94%. This widening stands in contrast to the expected narrowing trend. Uncertainty has increased by 956% since July 2. I predicted that splitting one number across two places would slow the reading down, and indeed, it does. The results that I did not expect receive the most attention in this notebook."
-    },
-    "mysteryCellCount": {
-      "sourceHash": 535961345,
-      "paragraph": "I opened the mystery cells file expecting progress, but found the opposite. More plays widened the range by about 57%, so the new boards disagree more than the earlier ones did. I wrote that missing information has a price, and my measurements show this effect to be close to free, landing somewhere between 0% and about 4% per ten mystery cells. Wider disagreement remains an answer, and I record it like any other."
-    },
-    "compassCellCount": {
-      "sourceHash": 3437495933,
-      "paragraph": "The compass question remains open, with the model estimating about 67% per ten compass cells, though the range of 38% to 102% shows no significant movement. I wrote that I couldn't tell whether players read the arrow fast or stopped to puzzle over it. The model still hasn't provided a clear answer. The next board might finally settle this."
     }
   },
   "model": "qwen2.5-7b-instruct-q4km-local",
-  "generatedAt": "2026-08-21T00:37:30.866Z"
+  "generatedAt": "2026-08-20T14:19:39.004Z"
 }

@@ -21,7 +21,7 @@ test('predictPar on an all-zero feature vector returns the rounded baseline', ()
 });
 
 test('predictPar is monotonic in a positive-coefficient feature', () => {
-  assert.ok(PAR_MODEL.secPerSearchMove > 0, 'precondition: search coef positive');
+  assert.ok(PAR_MODEL.secPerSearchRate > 0, 'precondition: search coef positive');
   // advancedLogicMoves feeds the derived `search` tier (searchMoves = advanced).
   //
   // The delta is measured on a REALISTIC board, not on an empty feature
@@ -40,10 +40,12 @@ test('predictPar is monotonic in a positive-coefficient feature', () => {
   if (PAR_MODEL.scale === 'log') {
     // Multiplicative: hi / lo IS exp(coef x delta), and on a board this size
     // it holds to about 2e-4, so the tolerance can say so.
-    const expectedRatio = Math.exp(PAR_MODEL.secPerSearchMove * 19);
+    // Under the rate form the delta is per CELL, so the ratio carries the
+    // board's own size: exp(coef x 19 / 144).
+    const expectedRatio = Math.exp(PAR_MODEL.secPerSearchRate * 19 / board.cellCount);
     assert.ok(Math.abs(hi / lo - expectedRatio) < 0.005, `ratio ${hi / lo} vs expected ${expectedRatio}`);
   } else {
-    const expected = PAR_MODEL.secPerSearchMove * 19;
+    const expected = PAR_MODEL.secPerSearchRate * 19 / board.cellCount;
     assert.ok(Math.abs((hi - lo) - expected) < 0.3, `delta ${hi - lo} vs expected ${expected}`);
   }
 });

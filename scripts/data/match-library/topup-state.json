@@ -1,5 +1,5 @@
 {
- "runs": 17,
+ "runs": 16,
  "corners": {
   "4.8.8||short|sparse": {
    "fails": 4,
@@ -8692,9 +8692,9 @@
    "lastRun": 3
   },
   "rhombille|mirror|short|dense": {
-   "fails": 1,
-   "attempts": 34,
-   "lastRun": 17
+   "fails": 0,
+   "attempts": 33,
+   "lastRun": 6
   },
   "deltoidal|compass|short|sparse": {
    "fails": 2,

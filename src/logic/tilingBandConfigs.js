@@ -127,7 +127,14 @@ export const TILING_BAND_CONFIGS = {
     // on a 4.8.8 day ships the closest board the lattice HAS.
   ],
   hex: [
-    { id: 'h49d18', M: 7, N: 7, mines: 9, features: { cellCount: 49, totalMines: 9, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },       // ~27s
+    // RETUNED 2026-08-20 after the rate-form refit. h49d18 (9 mines) priced
+    // 27s when it was frozen and 14.4s under the new equation, below the 20s
+    // daily floor: pricing per-cell difficulty rather than raw move counts
+    // made small sparse boards cheaper. Re-measured by
+    // calibrate-tiling-band-configs.mjs --shape=hex, which offered 12 mines at
+    // ~20s and 14 at ~26s for this size. Taking 14: admission needs HEADROOM
+    // above the bound, never a measurement that merely passes it.
+    { id: 'h49d29', M: 7, N: 7, mines: 14, features: { cellCount: 49, totalMines: 14, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2.5 } }, // ~26s
     { id: 'h110d14', M: 11, N: 10, mines: 15, features: { cellCount: 110, totalMines: 15, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 3.5 } }, // ~38s
     { id: 'h63d22', M: 9, N: 7, mines: 14, features: { cellCount: 63, totalMines: 14, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 4 } },     // ~43s
     { id: 'h63d25', M: 9, N: 7, mines: 16, fallback: true, features: { cellCount: 63, totalMines: 16, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 4 } }, // ~54s

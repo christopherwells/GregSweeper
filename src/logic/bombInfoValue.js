@@ -43,8 +43,13 @@ import { predictPar } from './dailyFeatures.js';
 // info-value for the hours between PR #32 and this fix because nothing
 // checked the names against the model.
 export const POOLED_TERMS = [
-  { coef: 'secPerPatternMove', moveKeys: ['canonicalSubsetMoves', 'genericSubsetMoves'] },
-  { coef: 'secPerSearchMove',  moveKeys: ['advancedLogicMoves'] },
+  // The COEF names track the rate form (2026-08-20). Only the de-wiring
+  // guard reads them: the price itself is a predictPar DIFFERENCE between two
+  // feature vectors, so the per-cell division happens inside the model and
+  // this file never converts anything. The moveKeys are stored FEATURE keys
+  // and do not move.
+  { coef: 'secPerPatternRate', moveKeys: ['canonicalSubsetMoves', 'genericSubsetMoves'] },
+  { coef: 'secPerSearchRate',  moveKeys: ['advancedLogicMoves'] },
 ];
 
 // All five raw solver counters, reported in `deltas` for diagnostics and

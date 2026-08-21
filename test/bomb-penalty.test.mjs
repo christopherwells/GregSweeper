@@ -241,8 +241,20 @@ test('REGRESSION: the rescale factor belongs to the BOARD, so a fit board is unt
   const huge = { ...features, cellCount: 660, totalMines: 185 };
   const rawBoardPar = predictPar(huge);
   const sane = 520;                       // an anchored lane par
-  assert.ok(rawBoardPar > sane * 2,
-    `precondition: the raw board read (${rawBoardPar}s) must dwarf the anchored par`);
+  // PRECONDITION, restated 2026-08-20. This used to demand the raw read
+  // DWARF the anchored par, which encoded the count form's absurdity: a
+  // 660-cell board read 113,367s there. Under the rate form the same board
+  // reads about 732s, which is the whole point of shipping it, so the old
+  // precondition now fails because the model got BETTER.
+  //
+  // What this test actually protects is unchanged and asserted below: the
+  // correction is CONSTANT across strikes, which the per-strike denominator
+  // destroyed. For that to be observable the two numbers only have to
+  // DIFFER, not to differ wildly, so the precondition asks for exactly that.
+  const ratio = sane / rawBoardPar;
+  assert.ok(Math.abs(ratio - 1) > 0.1,
+    `precondition: the raw board read (${rawBoardPar}s) and the anchored par `
+    + `(${sane}s) must differ enough for the correction to be visible`);
   const factors = [];
   for (const priors of [[], [prior]]) {
     const plain = bomb.computeBombInfoValue(

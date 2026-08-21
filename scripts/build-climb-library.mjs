@@ -298,14 +298,30 @@ function candidate(spec, seed) {
 // hundred deals before the global cycle can repeat one, and the library is
 // append-only by design, so growing it later is a --endless run, not a
 // project.
-const ENDLESS_TARGET_BOARDS = 500;
+// HIS RULING 2026-08-21: "I think we can drop endless to 100 boards. I'd
+// rather spend time working on other things." The rate-form re-price moved
+// boards out of the zone and refilling to 500 measured at roughly five hours
+// of generation.
+const ENDLESS_TARGET_BOARDS = 100;
 const ENDLESS_PAGE_SIZE = 16;          // ~150-250KB per page at endless payload sizes
 const ENDLESS_FACE_CAP = 2;            // dims/mines/stack variety, the ladder's own bar
 // His even-coverage ruling, as a number: no shape may hold fewer than this
 // many endless boards. Named here rather than in the test that enforces it,
 // because the nightly RE-BIN has to reserve against it, and a floor only the
 // test knows about is a floor the tool that has to satisfy it cannot see.
-export const ENDLESS_SHAPE_FLOOR = 25;
+//
+// DERIVED FROM THE TARGET, not hand-set (2026-08-21). The pair used to read
+// 500 and 25, where seven shapes x 25 guaranteed 35% of the library was spread
+// evenly and the rest could pile up wherever generation was cheap. When he
+// dropped the target to 100 that guarantee became arithmetically impossible,
+// since 7 x 25 is 175. Deriving keeps the GUARANTEE rather than the digit, so
+// the two can never contradict each other again. This is the width-cap lesson
+// from 2026-08-20 applied a day later: a remembered number beside the number
+// it depends on goes stale the first time either moves.
+const ENDLESS_EVEN_FRACTION = 0.35;    // what the original 500/25 pair encoded
+const ENDLESS_SHAPE_COUNT = TILING_TYPES.length + 1;   // + rect
+export const ENDLESS_SHAPE_FLOOR = Math.max(1, Math.round(
+  ENDLESS_EVEN_FRACTION * ENDLESS_TARGET_BOARDS / ENDLESS_SHAPE_COUNT));
 // And what the nightly re-bin RESERVES toward, which is deliberately above the
 // floor. Reserving exactly the floor leaves a shape one re-price from red: a
 // board that a refit prices under ENDLESS_PAR_FLOOR cannot be handed back to
