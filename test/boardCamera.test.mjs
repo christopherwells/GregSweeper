@@ -9,7 +9,9 @@ import assert from 'node:assert/strict';
 import {
   CELL_SIZE_PREFS, prefMinPx, cameraFitScale, clampedScroll,
   easeOutCubic, glideFrame, cameraTapPlan,
+  withinViewMoveGrace, VIEW_MOVE_GRACE_MS,
 } from '../src/logic/boardCamera.js';
+import { readFileSync } from 'node:fs';
 
 // A 1000x2000 board in a 320x480 view at scale 1: taller and wider than the
 // view, so both axes have real clamp ranges.
@@ -121,4 +123,48 @@ test('cameraTapPlan: dive, keep a deeper pinch, toggle out, dive back in', () =>
   assert.deepEqual(cameraTapPlan({ sameCell: true, scale: 1, fitScale: 0.4 }), { scale: 0.4, survey: true });
   // The centered cell while below natural size: dive back in on it.
   assert.deepEqual(cameraTapPlan({ sameCell: true, scale: 0.4, fitScale: 0.4 }), { scale: 1, survey: false });
+});
+
+test('REGRESSION: a reveal is refused while the view is still moving (his 2026-08-21 report)', () => {
+  // "I've hit several mines because I tripled clicked by accident, revealing a
+  // cell that was a mine. The first two clicks moved the view and the third
+  // revealed." That is the double-tap centering gesture working as designed:
+  // taps one and two pan, the cells slide under the finger, and tap three
+  // lands somewhere the player never aimed at.
+  assert.equal(VIEW_MOVE_GRACE_MS, 200, 'his number');
+  assert.equal(withinViewMoveGrace(1000, 1000), true, 'the instant it moves');
+  assert.equal(withinViewMoveGrace(1000, 1199), true, 'just inside');
+  assert.equal(withinViewMoveGrace(1000, 1200), false, 'exactly at the boundary is settled');
+  assert.equal(withinViewMoveGrace(1000, 5000), false, 'long settled');
+
+  // A view that has never moved is NOT in a grace period, or the first tap of
+  // every game would be swallowed.
+  assert.equal(withinViewMoveGrace(null, 1000), false, 'never moved');
+  assert.equal(withinViewMoveGrace(undefined, 1000), false, 'unset');
+  assert.equal(withinViewMoveGrace(NaN, 1000), false, 'unreadable stamp');
+
+  // A stamp in the FUTURE (a clock that jumped) reads as active rather than
+  // being ignored: the safe direction is to make the player tap again.
+  assert.equal(withinViewMoveGrace(2000, 1000), true, 'a future stamp errs toward refusing');
+});
+
+test('the grace period refuses ONLY the reveal, and every view move stamps it', () => {
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const rend = readFileSync(new URL('../src/ui/boardRenderer.js', import.meta.url), 'utf8');
+
+  // The refusal sits on the reveal branch, not above the whole handler: a pan
+  // that also flagged or chorded would be a worse bug than the one it fixes,
+  // and neither of those can lose a run.
+  assert.match(main, /viewMoveGraceActive\(\)/, 'the tap path must consult the grace');
+  const idxGrace = main.indexOf('viewMoveGraceActive()');
+  const idxReveal = main.indexOf('revealCell(row, col);', idxGrace);
+  assert.ok(idxReveal > idxGrace && idxReveal - idxGrace < 700,
+    'the guard must sit immediately before the reveal branch');
+  assert.match(main, /toggleFlag\(row, col\)/, 'flagging must still be reachable');
+  assert.match(main, /handleChordReveal\(row, col\)/, 'chording must still be reachable');
+
+  // Every path that shifts what sits under the finger stamps the clock. If one
+  // stops, the grace silently covers less than it claims.
+  assert.ok((rend.match(/markViewMoved\(\)/g) || []).length >= 3,
+    'scroll, wheel and the centering glide must each stamp a view move');
 });

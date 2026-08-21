@@ -8,7 +8,7 @@
 import { state, clearCoastlinePractice } from './state/gameState.js';
 import { PROD_SITE_BASE } from './config.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
-import { resizeCells, updateAllCells, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, renderWallOverlays, showGimmickRegion, clearGimmickRegion, cameraCenterOnCell, cameraMinZoom, snapFirstClick } from './ui/boardRenderer.js';
+import { resizeCells, updateAllCells, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, renderWallOverlays, showGimmickRegion, clearGimmickRegion, cameraCenterOnCell, cameraMinZoom, snapFirstClick, viewMoveGraceActive} from './ui/boardRenderer.js';
 import { chordHasWork } from './logic/boardSolver.js';
 import { CELL_SIZE_PREFS, prefMinPx } from './logic/boardCamera.js';
 import { renderWormOverlays } from './ui/wormRenderer.js';
@@ -537,6 +537,12 @@ boardEl.addEventListener('touchend', (e) => {
     handleChordReveal(row, col);
   } else if (state.flagMode && !cell?.isRevealed) {
     toggleFlag(row, col);
+  } else if (viewMoveGraceActive()) {
+    // THE VIEW JUST MOVED, so this tap did not choose this cell (his report,
+    // 2026-08-21: two taps panned and the third revealed a mine). Refuse the
+    // REVEAL only: the pan itself, flagging and chording all still work,
+    // because none of them can lose a run. Only the irreversible action waits
+    // for the board to stop sliding under the finger.
   } else {
     revealCell(row, col);
   }
