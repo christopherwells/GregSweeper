@@ -157,6 +157,118 @@ test('an already-honest result is left alone, byte for byte', () => {
   assert.deepEqual(repairMatchResults(match), [], 'and the batch reports nothing to re-post');
 });
 
+test('REGRESSION: an honest result is not re-priced from the opener (issue #410)', () => {
+  // The live handler prices a strike from the PLAYER'S board (resumeFromLiveState
+  // defaults on, his 2026-08-20 ruling). This module was written the day before
+  // that, when from-scratch was the shipped rule, and when the rule changed it
+  // was given { liveState: false } to keep working on stored payloads. That
+  // pinned it to the OLD basis while the live path moved on, and its premise
+  // (a no-op on an honest result) stopped holding: the opener answer is
+  // systematically LARGER, so ordinary honest boards were rewritten upward by
+  // tens of seconds and that number reached the shared standings and the fit.
+  //
+  // Measured on shipped library boards at the time: +8.9s to +57.7s PER STRIKE.
+  // A DENSER board than the shared fixture. On a plain 9x9 every mine prices
+  // 0 on both bases because the whole board cascades, so the gap this test
+  // exists to catch cannot appear there at all.
+  const rows = 14, cols = 14, mines = 45, fr = 7, fc = 7;
+  const board = generateBoard(rows, cols, mines, fr, fc, createDailyRNG('unit-410-dense'));
+  cleanSolverArtifacts(board);
+  const features = { cellCount: rows * cols, totalMines: mines, zeroClusterCount: 2 };
+  const payload = serializeBoard({
+    board, rows, cols, totalMines: mines, rngSeed: 'unit-410-dense',
+    activeGimmicks: [], firstClick: fr * cols + fc,
+  });
+  const fx = { board, rows, cols, fr, fc, features, payload };
+  const par = 600;
+
+  // THE BOARD MUST BE HALF-PLAYED, or this proves nothing: on an untouched
+  // board the live and opener readings are the SAME number, which is why a
+  // fresh-board fixture passes even against the broken code. The inflation
+  // only appears once the player has already done some of the deduction the
+  // opener basis then charges them for again.
+  const played = fx.board.map((row) => row.map((c) => ({ ...c })));
+  let revealed = 0;
+  outer: for (let r = 0; r < fx.rows; r++) {
+    for (let c = 0; c < fx.cols; c++) {
+      if (played[r][c].isMine) continue;
+      played[r][c].isRevealed = true;
+      if (++revealed >= Math.floor((rows * cols - mines) * 0.5)) break outer;
+    }
+  }
+
+  // Pick the mine with the biggest gap between the two bases, which is the
+  // strike the broken repair would inflate hardest. Scanning rather than
+  // assuming: most mines anchor no deduction at all and price 0 either way.
+  let target = null, live = null, fromOpener = null;
+  for (let r = 0; r < fx.rows; r++) {
+    for (let c = 0; c < fx.cols; c++) {
+      if (!fx.board[r][c].isMine) continue;
+      const l = computeBombInfoValue(played, fx.rows, fx.cols, fx.fr, fx.fc, r, c, [], fx.features, par);
+      const o = computeBombInfoValue(
+        fx.board, fx.rows, fx.cols, fx.fr, fx.fc, r, c, [], fx.features, par, { liveState: false });
+      if (!target || (o.infoValue - l.infoValue) > (fromOpener.infoValue - live.infoValue)) {
+        target = { row: r, col: c }; live = l; fromOpener = o;
+      }
+    }
+  }
+  assert.ok(target, 'the fixture must offer a mine to price');
+  // NON-VACUITY: the two bases must actually disagree here, and the opener
+  // must be the larger one, which is the overcharge the issue measured.
+  assert.ok(fromOpener.infoValue - live.infoValue > 1,
+    `the two bases must differ materially (live ${live.infoValue}, opener ${fromOpener.infoValue})`);
+  assert.ok(live.patternBefore != null && live.searchAfter != null,
+    'precondition: the live pricing must carry the counts this fix reads');
+
+  // The row as the game actually banked it: charged on the live basis, with
+  // the counts that measured that board state.
+  const honestPenalty = Math.round((live.infoValue + 3) * 10) / 10;
+  const res = {
+    seed: 'unit-repair-9',
+    time: Math.round((300 + honestPenalty) * 10) / 10,
+    penalty: honestPenalty,
+    strikes: 1,
+    par,
+    bombHitEvents: [{
+      t: 10, row: target.row, col: target.col,
+      penalty: honestPenalty, infoValue: Math.round(live.infoValue * 10) / 10,
+      patternBefore: live.patternBefore, searchBefore: live.searchBefore,
+      patternAfter: live.patternAfter, searchAfter: live.searchAfter,
+    }],
+    wormEvents: [],
+  };
+  assert.ok(res.time < 3600, 'precondition: this row is one both destinations accept');
+
+  const out = repairMatchResult({ payload: fx.payload, features: fx.features }, res);
+  assert.equal(out, null,
+    'an honest, in-range row priced from its own stored counts must be left alone');
+});
+
+test('REGRESSION: a legacy row with no counts is left alone unless the destinations refuse it (#410)', () => {
+  // Pre-2026-08-20 events carry no counts, so the only answer available is the
+  // opener basis, which is NOT the rule those boards were charged under.
+  // Applying it to an in-range row would rewrite a number the game accepted,
+  // so it fires only where the row is already refused by BOTH destinations
+  // (the match node validates <= 3600, matchFitRows refuses the same range).
+  const fx = fixture();
+  const ev = [{ t: 1, row: fx.strikes[0].row, col: fx.strikes[0].col, penalty: 40, infoValue: 37 }];
+
+  // In range: untouched, even though the opener basis would give a different
+  // number. This is the case the unconditional run was corrupting.
+  const inRange = { time: 340, penalty: 40, strikes: 1, par: 600, bombHitEvents: ev };
+  assert.equal(repairMatchResult({ payload: fx.payload, features: fx.features }, inRange), null,
+    'an in-range legacy row must not be re-priced on a basis that cannot reproduce it');
+
+  // Out of range: this is the cohort the module exists for, so it repairs.
+  const inflated = {
+    time: 9400, penalty: 9000, strikes: 1, par: 600,
+    bombHitEvents: [{ ...ev[0], penalty: 9000, infoValue: 8997 }],
+  };
+  const fixed = repairMatchResult({ payload: fx.payload, features: fx.features }, inflated);
+  assert.ok(fixed, 'a row both destinations would refuse must still be repaired');
+  assert.ok(fixed.time <= 3600, 'and the repaired row must now clear their range');
+});
+
 test('the repair refuses to guess: no board, no par, no events, no answer', () => {
   const fx = fixture();
   const ev = [{ t: 1, row: fx.strikes[0].row, col: fx.strikes[0].col, penalty: 9000, infoValue: 8997 }];

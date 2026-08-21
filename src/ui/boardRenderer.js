@@ -5,7 +5,7 @@ import { applyIcon, uiSpriteImgHTML } from './spriteLoader.js';
 import { applyThemeEffects } from './themeEffects.js';
 import { buildTiling, buildWireframe, cellOutline, SQ_BOX_FRAC } from '../logic/tilingGeometry.js';
 import { sonarScanCells, compassRayCells } from '../logic/adjacency.js';
-import { cameraFitScale, clampedScroll, glideFrame, cameraTapPlan } from '../logic/boardCamera.js';
+import { cameraFitScale, clampedScroll, glideFrame, cameraTapPlan, withinViewMoveGrace} from '../logic/boardCamera.js';
 
 // ── Board Rendering ────────────────────────────────────
 
@@ -988,6 +988,21 @@ let _glideRaf = 0;
 // event arrives AFTER the glide has ended; player scrolls are told apart by
 // time, not by a flag. Any scroll event later than this stamp is the player.
 let _glideSettleUntil = 0;
+// When the VIEW last moved, for the reveal grace period (his 2026-08-21
+// report: two taps panned and the third revealed a mine the player never
+// aimed at). Stamped by every path that shifts what sits under the finger:
+// the centering glide, wrapper scroll, and the wheel.
+let _viewMovedAt = 0;
+
+/** True while a reveal must be refused because the view just moved. */
+export function viewMoveGraceActive() {
+  return withinViewMoveGrace(_viewMovedAt, performance.now());
+}
+
+/** Stamp a view move. Exported so the camera buttons and pinch can mark it. */
+export function markViewMoved() {
+  _viewMovedAt = performance.now();
+}
 
 // Layout (untransformed) extent of #board, border box, in px.
 function _boardLayoutSize() {
@@ -1234,6 +1249,7 @@ export function cameraCenterOnCell(row, col) {
     // The scroll events these writes fire arrive asynchronously, after the
     // glide ends; the stamp keeps them from reading as player scrolling.
     _glideSettleUntil = performance.now() + 200;
+    markViewMoved();
     boardScrollWrapper.scrollLeft = t.left;
     boardScrollWrapper.scrollTop = t.top;
   };
@@ -1271,9 +1287,11 @@ export function cameraCenterOnCell(row, col) {
 // the latch.
 if (boardScrollWrapper) {
   boardScrollWrapper.addEventListener('scroll', () => {
+    markViewMoved();
     if (performance.now() > _glideSettleUntil) _cameraCenteredCell = null;
   }, { passive: true });
   boardScrollWrapper.addEventListener('wheel', () => {
+    markViewMoved();
     cancelCameraGlide();
     _cameraCenteredCell = null;
   }, { passive: true });

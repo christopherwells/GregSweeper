@@ -140,3 +140,37 @@ export function cameraTapPlan(p) {
   if (p.sameCell && p.scale >= 1) return { scale: p.fitScale, survey: true };
   return { scale: Math.max(1, p.scale), survey: false };
 }
+
+/**
+ * How long after the VIEW MOVES a tap may not reveal a cell.
+ *
+ * HIS REPORT, 2026-08-21: "I've hit several mines because I tripled clicked by
+ * accident, revealing a cell that was a mine. The first two clicks moved the
+ * view and the third revealed." That is the double-tap centering gesture doing
+ * exactly what it is meant to: taps one and two pan the board, the cells slide
+ * under the finger, and tap three lands on a cell that was somewhere else when
+ * the gesture began. The player never chose that cell.
+ *
+ * 200ms is his number. It is deliberately a REVEAL-only refusal: panning,
+ * flagging and chording are all still allowed, because none of them can lose a
+ * run. Only the irreversible action waits for the view to settle.
+ */
+export const VIEW_MOVE_GRACE_MS = 200;
+
+/**
+ * Is a reveal still inside the grace period after the view last moved?
+ *
+ * Pure so the rule is testable without a browser. A null or unset stamp means
+ * the view has never moved, which is not a grace period; a stamp in the future
+ * (a clock that jumped) is treated as active rather than ignored, because the
+ * safe direction here is to make the player tap again.
+ *
+ * @param {number|null} lastMoveAt  performance.now() when the view last moved
+ * @param {number} now              performance.now()
+ * @param {number} [graceMs]
+ */
+export function withinViewMoveGrace(lastMoveAt, now, graceMs = VIEW_MOVE_GRACE_MS) {
+  if (typeof lastMoveAt !== 'number' || !Number.isFinite(lastMoveAt)) return false;
+  if (!Number.isFinite(now)) return false;
+  return now - lastMoveAt < graceMs;
+}
