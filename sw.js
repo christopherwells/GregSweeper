@@ -134,11 +134,8 @@ const ASSETS = [
   './src/logic/boardCamera.js',
   './src/logic/frameProbe.js',
   './src/logic/boardFit.js',
-<<<<<<< HEAD
   './src/logic/tapFloor.js',
-=======
   './src/logic/chordRipple.js',
->>>>>>> origin/main
   './src/logic/deviceCapability.js',
   './src/logic/gameoverPlan.js',
   './src/logic/modeRules.js',
