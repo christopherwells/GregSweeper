@@ -1816,6 +1816,10 @@ export function revealCell(row, col) {
   setFrameContext({
     shape: (state.board && state.board._tiling && state.board._tiling.type) || 'rect',
     cells: state.rows * state.cols,
+    // How full the board already was. His report is that the lag arrives with
+    // use ("it doesn't lag on first reveal"), which is a claim about this
+    // number, and no earlier probe recorded it.
+    revealed: state.revealedCount || 0,
     action: `reveal:${newlyRevealed.length}`,
   });
 
