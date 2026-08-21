@@ -368,9 +368,15 @@ test('GOLDEN: the first endless block is fixed', () => {
   // 08-19 re-search re-emitted these pools proven-faces-only, and the
   // night's re-price then re-sorted which of them the deck deals. A
   // golden that moves when the model does is the point.
+  // Moved on 2026-08-21 by the nightly refit: ONE entry, cairo's 112-cell
+  // board, from 37 mines wearing locked+sonar+compass to 38 wearing
+  // mirror+sonar, AND it moved to the front of the block. The night's
+  // re-price re-sorted the deck around that shape, so both which cairo spec
+  // is dealt and where it falls changed together. The other four specs are
+  // unchanged, which is what a small model move should look like.
   assert.deepEqual(got, [
+    'cairo:112c:38m:[mirror+sonar]',
     '4.8.8:50c:18m:[liar+locked+compass]',
-    'cairo:112c:37m:[locked+sonar+compass]',
     'floret:72c:26m:[locked+wormhole+sonar]',
     'hex:30c:11m:[mystery+locked+sonar]',
     'rect:63c:28m:[]',
