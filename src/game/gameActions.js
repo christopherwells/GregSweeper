@@ -1,5 +1,6 @@
 import { state, getRevealedCells, recordPlayerAction, modifiersPreResolved } from '../state/gameState.js';
 import { setFrameContext } from '../logic/frameProbe.js';
+import { chordRippleSchedule, CHORD_BASE_MS } from '../logic/chordRipple.js';
 import { $, $$, boardEl, resetBtn } from '../ui/domHelpers.js';
 import {
   renderBoard, updateCell, updateAllCells, updateCells, getThemeEmoji,
@@ -2086,27 +2087,36 @@ export function handleChordReveal(row, col) {
   updateCells(result.revealed);
   updateHeader();
 
+  // ONE schedule drives both the ripple and the input lock (chordRipple.js).
+  // They used to be two copies of the same distance expression, and that
+  // expression measured CONTAINER indices, which are real geometry only on a
+  // rectangle. On a tiling it froze input for ~840ms per chord against
+  // classic's 480ms (his report, 2026-08-21; measured on a plain 98-cell
+  // 4.8.8), with no slow frame anywhere to give it away.
+  const ripple = (result.revealed && !result.hitMine)
+    ? chordRippleSchedule(state.board, state.rows, state.cols, row, col, result.revealed)
+    : null;
+
   // Lock input during chord animation
-  if (result.revealed && result.revealed.length > 1 && !result.hitMine) {
+  if (ripple && result.revealed.length > 1) {
     state.inputLocked = true;
-    const maxDist = Math.max(...result.revealed.map(c => Math.abs(c.row - row) + Math.abs(c.col - col)));
-    setTimeout(() => { state.inputLocked = false; }, 350 + maxDist * 40 + 50);
+    setTimeout(() => { state.inputLocked = false; }, ripple.lockMs);
   }
 
   // Chord ripple animation on revealed cells
-  if (result.revealed && !result.hitMine) {
+  if (ripple) {
     for (const c of result.revealed) {
       if (!c.isMine) {
         const idx = c.row * state.cols + c.col;
         const cellEl = boardEl.children[idx];
         if (cellEl) {
-          const dist = Math.abs(c.row - row) + Math.abs(c.col - col);
+          const delay = ripple.delays.get(idx) || 0;
           cellEl.classList.add('chord-ripple');
-          cellEl.style.animationDelay = `${dist * 40}ms`;
+          cellEl.style.animationDelay = `${delay}ms`;
           setTimeout(() => {
             cellEl.classList.remove('chord-ripple');
             cellEl.style.animationDelay = '';
-          }, 350 + dist * 40);
+          }, CHORD_BASE_MS + delay);
         }
       }
     }
