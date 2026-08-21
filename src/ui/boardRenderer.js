@@ -1,4 +1,5 @@
 import { state } from '../state/gameState.js';
+import { startFrameProbe, setFrameContext } from '../logic/frameProbe.js';
 import { boardEl, zoomControls, boardScrollWrapper } from './domHelpers.js';
 import { THEME_UNLOCKS } from './themeManager.js';
 import { applyIcon, uiSpriteImgHTML } from './spriteLoader.js';
@@ -128,6 +129,14 @@ export function resizeCells() {
 }
 
 export function renderBoard() {
+  // Sample frame times while a board is on screen, so the lag he reports on
+  // his phone can be measured there instead of guessed at from a desktop.
+  startFrameProbe();
+  setFrameContext({
+    shape: (state.board && state.board._tiling && state.board._tiling.type) || 'rect',
+    cells: state.rows * state.cols,
+    action: 'render',
+  });
   boardEl.innerHTML = '';
   // A rebuilt board is a fresh camera subject: the next updateZoom() places
   // the view on the marked opener at play scale, instead of wherever (and

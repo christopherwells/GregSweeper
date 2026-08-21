@@ -1,4 +1,5 @@
 import { state, getRevealedCells, recordPlayerAction, modifiersPreResolved } from '../state/gameState.js';
+import { setFrameContext } from '../logic/frameProbe.js';
 import { $, $$, boardEl, resetBtn } from '../ui/domHelpers.js';
 import {
   renderBoard, updateCell, updateAllCells, updateCells, getThemeEmoji,
@@ -1808,6 +1809,14 @@ export function revealCell(row, col) {
     newlyRevealed = [currentCell];
     playReveal();
   }
+
+  // Name what the next frames are paying for, so the probe's worst entries
+  // can be attributed to a cascade rather than to whatever came after it.
+  setFrameContext({
+    shape: (state.board && state.board._tiling && state.board._tiling.type) || 'rect',
+    cells: state.rows * state.cols,
+    action: `reveal:${newlyRevealed.length}`,
+  });
 
   // Wormhole: revealing one side reveals the paired cell too
   revealWormholePairs(newlyRevealed);
