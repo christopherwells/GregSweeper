@@ -126,6 +126,26 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     }
   }
 
+  // Optional: RESUME FROM THE PLAYER'S BOARD (`resumeFromLiveState`).
+  //
+  // Every other caller wants the from-scratch question ("is this board
+  // solvable from its opener"), and this solver has always answered that by
+  // starting with nothing revealed, deliberately ignoring live state. Strike
+  // PRICING wants the other question, his ruling 2026-08-20: "what is the par
+  // now that the mine is hit, given the live board". Answering it from
+  // scratch charged a player for deduction they had already done themselves,
+  // measured at 8-16s per strike on a board with every safe cell revealed and
+  // reported at ~90s on a big one.
+  //
+  // OPT-IN, and off by default, so certification, generation, par features and
+  // every stored contract are byte-identical: a caller that passes nothing
+  // gets exactly the solve it got before (pinned in test/boardSolver*.test.mjs).
+  // The pre-revealed set is read from the board's OWN `isRevealed`, so it can
+  // only ever contain cells the game legally revealed; mines and still-locked
+  // cells are refused here rather than trusted. FLAGS ARE IGNORED, the
+  // flags-blind doctrine every player-facing verdict follows: a player's
+  // wrong flag must never be able to talk the pricing into a cheaper answer.
+  //
   // Cache mine locations and player-visible adjacency counts.
   // liarBase[i] = displayed value for cells that contribute a {X-1, X+1}
   // disjunctive constraint (plain liar, possibly + locked); -1 otherwise.
@@ -281,6 +301,24 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
   function flagCell(i) {
     if (sim[i] !== 0) return;
     sim[i] = 2; // flagged
+  }
+
+  // Resume mode: seed the sim with what the player has already uncovered, so
+  // the counts this returns are the work REMAINING rather than the work the
+  // whole board ever needed. Cascades are not re-run for these: they already
+  // happened on the live board, and `isRevealed` records their result.
+  if (options && options.resumeFromLiveState) {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const i = idx(r, c);
+        if (sim[i] !== 0) continue;                 // a pre-flagged cell stays flagged
+        if (isMine[i] || isLocked[i]) continue;     // never assert a mine or a locked cell as seen
+        if (!board[r][c].isRevealed) continue;
+        sim[i] = 1;
+        revealedCount++;
+      }
+    }
+    if (revealedCount === totalSafe) return buildResult(true, 0);
   }
 
   // Step 1: Simulate first click, reveal safeRow, safeCol and flood-fill zeros
@@ -1110,6 +1148,28 @@ export function detectWrongFlags(board) {
 
 // ── Game-play reveal / chord functions ──────────────────────
 
+// THE CASCADE STAGGER IS BOUNDED IN TOTAL, not fixed per step.
+//
+// His report, 2026-08-21: "the lag one experiences when playing all of the
+// shape game modes... an odd reveal the cells lag which doesn't happen with
+// classic." It is not paint and it is not the device. gameActions locks input
+// for the length of the cascade animation (`maxDelay + 100`), and the delay was
+// a flat 30ms per BFS step, a constant tuned on the rectangular
+// 8-neighbourhood where diagonals keep a region shallow.
+//
+// A sparser lattice needs far more steps to cover the same area, so the same
+// constant draws a much longer animation and holds the board unresponsive for
+// all of it. Measured full-board depth against an equal-area rectangle: hex 14
+// vs 9 (420ms vs 270ms), 4.8.8 12 vs 8 (360 vs 240), deltoidal 17 vs 14 (510 vs
+// 420). Half a second of a board ignoring taps is the lag.
+//
+// Bounding the TOTAL makes the feel shape-independent, which is the property
+// the flat constant only ever had on rectangles. Short cascades are untouched
+// (they never reach the cap, so classic is byte-identical in the common case);
+// deep ones compress their step instead of running long.
+const CASCADE_STAGGER_STEP_MS = 30;
+export const CASCADE_STAGGER_MAX_MS = 300;
+
 export function floodFillReveal(board, startRow, startCol, preNeighborCache) {
   const rows = board.length;
   const cols = board[0].length;
@@ -1126,7 +1186,9 @@ export function floodFillReveal(board, startRow, startCol, preNeighborCache) {
     if (cell.isFlagged || cell.isMine || cell.isLocked) continue;
 
     cell.isRevealed = true;
-    cell.revealAnimDelay = distance * 30;
+    // Provisional: the depth is not known until the walk finishes, so the
+    // scale is applied in one pass below.
+    cell.revealAnimDelay = distance;
     revealed.push(cell);
 
     // Cascade on displayed value (mirror cells show swapped numbers)
@@ -1145,6 +1207,17 @@ export function floodFillReveal(board, startRow, startCol, preNeighborCache) {
       }
     }
   }
+
+  // Scale the recorded DEPTHS into milliseconds, bounding the total. A shallow
+  // cascade keeps the historic 30ms step exactly; a deep one compresses so the
+  // whole animation, and therefore the input lock that waits on it, never runs
+  // past CASCADE_STAGGER_MAX_MS.
+  let maxDepth = 0;
+  for (const c of revealed) if (c.revealAnimDelay > maxDepth) maxDepth = c.revealAnimDelay;
+  const step = maxDepth * CASCADE_STAGGER_STEP_MS > CASCADE_STAGGER_MAX_MS
+    ? CASCADE_STAGGER_MAX_MS / maxDepth
+    : CASCADE_STAGGER_STEP_MS;
+  for (const c of revealed) c.revealAnimDelay = Math.round(c.revealAnimDelay * step);
 
   return revealed;
 }
@@ -1308,6 +1381,37 @@ export function countAdjacentFlags(board, row, col, preNeighborCache) {
     if (board[(ni / cols) | 0][ni % cols].isFlagged) count++;
   }
   return count;
+}
+
+// Would chording this cell reveal anything? The read-only twin of chordReveal
+// below, and the marathon camera's navigability judge: his ruling (2026-08-17)
+// puts the double-tap-to-center gesture ONLY on unchordable cells ("already
+// chorded or not yet chordable"), i.e. exactly the cells where this returns
+// false, so a cell where the chord has work keeps chord semantics untouched
+// and the navigation gesture never costs an action. Mirrors chordReveal's
+// decision structure line for line (eligibility, the gimmick exclusions, the
+// strike-counts-as-flag rule, wall-aware neighbors, the locked-cell skip);
+// test/chordHasWork.test.mjs pins the two together differentially so they
+// cannot drift.
+export function chordHasWork(board, row, col, preNeighborCache) {
+  const cell = board[row]?.[col];
+  if (!cell || !cell.isRevealed) return false;
+  const effectiveCount = cell.displayedMines != null ? cell.displayedMines : cell.adjacentMines;
+  if (effectiveCount === 0) return false;
+  if (cell.isLiar || cell.isMystery || cell.isSonar || cell.isCompass || cell.isWormhole || cell.mirrorPair) return false;
+
+  const rows = board.length;
+  const cols = board[0].length;
+  const neighborCache = preNeighborCache || buildNeighborCache(board, rows, cols);
+  const nbrs = neighborCache[row * cols + col];
+  let flagCount = 0;
+  let revealable = 0;
+  for (const ni of nbrs) {
+    const n = board[(ni / cols) | 0][ni % cols];
+    if (n.isFlagged || n.isStrike) flagCount++;
+    else if (!n.isRevealed && !n.isLocked) revealable++;
+  }
+  return flagCount === effectiveCount && revealable > 0;
 }
 
 export function chordReveal(board, row, col) {

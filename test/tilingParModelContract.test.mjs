@@ -70,8 +70,8 @@ const LAB = JSON.parse(readFileSync(
   new URL('../scripts/data/parlab-prior-centers.json', import.meta.url), 'utf8'));
 const LAB_SEED_MIN_ROWS = 5;
 const PREDICTOR_TO_COEF = {
-  cellCount: 'secPerCell', totalMines: 'secPerMineFlag',
-  patternMoves: 'secPerPatternMove', searchMoves: 'secPerSearchMove',
+  logCells: 'secPerLogCell', mineRate: 'secPerMineRate',
+  patternRate: 'secPerPatternRate', searchRate: 'secPerSearchRate',
   wallEdgeCount: 'secPerWallEdge', zeroClusterCount: 'secPerZeroCluster',
   mysteryCellCount: 'secPerMysteryCell', liarCellCount: 'secPerLiarCell',
   lockedCellCount: 'secPerLockedCell', wormholePairCount: 'secPerWormholePair',
@@ -202,6 +202,18 @@ test('LAB SEED: every shape block = PAR_MODEL + its frozen lab deviation centers
       if (dev === 0) {
         assert.equal(block[key], PAR_MODEL[key],
           `${t}.${key}: unseeded coefficient must equal the base exactly`);
+      } else if (key === 'secPerWormLoad') {
+        // THE REALIZATION BRIDGE (2026-08-17): predictPar only knows the
+        // SCHEDULED worm dose, so every shipped wormLoad coefficient is the
+        // fitted per-realized-unit value times the play-weighted realization
+        // ratio, deviations included. The center therefore ships SCALED, and
+        // the honest pin is proportionality: the same shrinking ratio the
+        // base wears, never a ratio above one, never a sign flip. The fit
+        // does not yet record the ratio in modelHistory; when it does, this
+        // becomes an equality against center x recorded ratio again.
+        const r = gap / dev;
+        assert.ok(r > 0 && r <= 1 + TOL,
+          `${t}.${key}: bridged deviation ratio ${r} outside (0, 1]`);
       } else {
         assert.ok(Math.abs(gap - dev) <= TOL,
           `${t}.${key}: block - base = ${gap}, lab center = ${dev} (off by ${gap - dev})`);
@@ -434,10 +446,140 @@ test('path selection is ONE boolean at formula construction; the nl split has th
   // differs (empty selects the flat prior construction — same boolean fact).
   assert.ok(block.includes('deviation_names = dev_cols'),
     'the prior construction must key off the same condition as the formula');
-  // The dev nlpar's occupants are the shape deviations PLUS matchPlay, which
-  // is what makes the two sides of the split one decision rather than two.
-  assert.ok(/dev_cols <- c\(active_shape_cols, if \(add_match_term\) "matchPlay"/.test(R_SRC),
-    'dev_cols must be built from the shape deviations plus the match offset');
+  // The dev nlpar's occupants are the SIZE PAIR (unconditional, M1), the
+  // shape deviations, and matchPlay, which is what makes the two sides of
+  // the split one decision rather than two. With the pair leading
+  // unconditionally, dev_cols can never be empty and Path B is permanent
+  // for the primary fit; the flat branch survives as the specification
+  // anchor.
+  assert.ok(/dev_cols <- c\(SIZE_DEV_COLS, active_shape_cols,\s*\n?\s*if \(add_match_term\) "matchPlay"/.test(R_SRC),
+    'dev_cols must lead with the size pair, then shape deviations, then the match offset');
+});
+
+test('the SIZE TERM is signed end to end: dev routing, sn() extraction, derived predictor', () => {
+  // M1 shipped size as a PAIR (cellCount beside logCells) because the linear
+  // half measured negative and the two jointly described a concave curve. The
+  // rate form (2026-08-20) retired the linear half: every count that scales
+  // with area now enters divided by the board, so log(cells) carries size
+  // alone and its elasticity came out firmly positive (1.140 shipped, against
+  // 1.164 [1.060, 1.267] measured in par-model-move-rates.qmd).
+  //
+  // It stays on the SIGNED dev nlpar even so. The class-wide lb = 0 is a claim
+  // that par is monotonic non-decreasing in a feature, and leaving the one
+  // term the whole size question rides on unbounded keeps the data able to say
+  // otherwise. Keeping the column non-empty also keeps Path B permanent, which
+  // the dev_cols construction relies on.
+  const decl = R_SRC.match(/SIZE_DEV_COLS <- c\("logCells"\)/);
+  assert.ok(decl, 'SIZE_DEV_COLS must declare the size elasticity');
+  assert.ok(!/SIZE_DEV_COLS <- c\([^)]*"cellCount"/.test(R_SRC),
+    'the linear cell term is retired; it must not return to the size routing');
+  assert.ok(/SIZE_DEV_PRIOR_SD <- /.test(R_SRC),
+    'the pair must carry its own documented prior width');
+  // COEF_TO_PREDICTOR ships the elasticity; the R frame derives its column.
+  const coefTable = R_SRC.match(/COEF_TO_PREDICTOR\s*<-\s*c\(([\s\S]*?)\n\)/);
+  assert.match(coefTable[1], /secPerLogCell\s*=\s*"logCells"/,
+    'the elasticity must be a shipped coefficient (secPerLogCell -> logCells)');
+  assert.ok(/logCells\s*= log\(pmax\(1, cellCount\)\)/.test(R_SRC),
+    'the frame must derive logCells from the stored cellCount (never a stored feature)');
+  // The bounded formula is DERIVED from the coefficient table, not written
+  // out beside it, replacing a hand-written predictor list. The failure that
+  // closes was silent in the worst way: the list and the table were a mirror
+  // pair nothing held in lockstep, so adding a coefficient to the table alone
+  // meant the fit never estimated it, co[p] came back NA, and nn() shipped it
+  // at ZERO with no error. Measured 2026-08-20: all three rate coefficients
+  // emitted 0.00000 that way. Asserting the MECHANISM rather than the
+  // resulting list is deliberate; only the derivation makes a stray term
+  // impossible to add by accident.
+  assert.ok(/BOUNDED_BASE_TERMS <- setdiff\(BASE_MODEL_FEATURES/.test(R_SRC),
+    'the bounded formula must be derived from the coefficient table by exclusion');
+  assert.ok(/fit_formula_fixed <- as\.formula\(/.test(R_SRC),
+    'fit_formula_fixed must be built from BOUNDED_BASE_TERMS, never hand-written');
+  assert.ok(/orphans <- setdiff\(BASE_MODEL_FEATURES, routed\)/.test(R_SRC),
+    'an unrouted shipped coefficient must be caught before fitting');
+  assert.ok(/would ship at 0 silently/.test(R_SRC),
+    'the orphan guard must stop the run, not warn');
+  const coefTableAll = R_SRC.match(/COEF_TO_PREDICTOR\s*<-\s*c\(([\s\S]*?)\n\)/);
+  assert.ok(coefTableAll, 'COEF_TO_PREDICTOR literal not found; this scan is vacuous');
+  assert.ok(!/=\s*"cellCount"/.test(coefTableAll[1]),
+    'cellCount is retired and must not be a shipped predictor');
+  // The extraction must not clamp the pair: nn() zeroes negatives, so the
+  // size keys route through the signed sn() instead. A clamped linear half
+  // ships the refuted replace-form at its worst (log term alone).
+  assert.ok(/sn <- function\(x\) if \(is\.na\(x\)\) 0 else as\.numeric\(x\)/.test(R_SRC),
+    'the signed extraction helper must exist');
+  assert.ok(/if \(p %in% SIZE_DEV_COLS\) sn\(co\[p\]\) else nn\(co\[p\], k\)/.test(R_SRC),
+    'the size pair must extract through sn(), everything else through nn()');
+  // apply_par_model must DERIVE logCells rather than default it to 0: a
+  // frame built before the mutate (timed_df, ad-hoc predict frames) still
+  // carries cellCount, and a zero log term would misprice every board the
+  // moment the coefficient is nonzero.
+  const fn = R_SRC.slice(R_SRC.indexOf('apply_par_model <- function('),
+    R_SRC.indexOf('parse_par_model_shapes_devs <- function'));
+  assert.ok(/df\$logCells <- log\(pmax\(1, df\$cellCount\)\)/.test(fn),
+    'apply_par_model must recompute logCells from the frame’s own cellCount');
+  // PRIOR_SIGMAS must not regrow a cellCount entry: that list feeds the
+  // bounded lognormal machinery the pair is routed around. (Same shape as
+  // the matchPlay pin; archivePlay anchors non-vacuity there.)
+  const sigmas = R_SRC.slice(R_SRC.indexOf('PRIOR_SIGMAS <- list('),
+    R_SRC.indexOf('\n)', R_SRC.indexOf('PRIOR_SIGMAS <- list(')));
+  assert.ok(!/^\s*cellCount\s*=/m.test(sigmas),
+    'cellCount must have NO PRIOR_SIGMAS entry — it is signed now');
+  assert.ok(/^\s*totalMines\s*=/m.test(sigmas),
+    'the PRIOR_SIGMAS slice did not find totalMines — it is not reading the block');
+});
+
+test('the JS side derives the elasticity at predict time and every block carries the key', () => {
+  // The landing pin (key at exactly 0 in every block) EXPIRED BY DESIGN on
+  // 2026-08-18 when the first M1 refit emitted the fitted value the same
+  // evening (secPerLogCell 0.68293 beside a negative secPerCell). What
+  // remains pinned: the key exists as a number in every block, so the
+  // emitter's table and the shipped artifact cannot drift apart, and the
+  // TIMED block (whose own fit keeps the M0 formula over frozen rows)
+  // carries the key as a number too, 0 whenever its fit ran without it.
+  assert.equal(typeof PAR_MODEL.secPerLogCell, 'number', 'PAR_MODEL must carry the key');
+  assert.equal(typeof PAR_MODEL_TIMED.secPerLogCell, 'number', 'PAR_MODEL_TIMED must carry the key');
+  for (const t of TILING_TYPES) {
+    assert.equal(typeof PAR_MODEL_SHAPES[t].secPerLogCell, 'number', `${t} must carry the key`);
+  }
+  // The predictor is DERIVED from cellCount, so SHIFTING the elasticity by
+  // gamma moves par by exactly cells^gamma, whatever the shipped base value
+  // is (a replacement-style dope only worked while the key was 0).
+  const gamma = 0.5;
+  const doped = { ...PAR_MODEL, secPerLogCell: PAR_MODEL.secPerLogCell + gamma };
+  const f = { cellCount: 100, totalMines: 10 };
+  const ratio = applyParModel(f, doped) / applyParModel(f, PAR_MODEL);
+  assert.ok(Math.abs(ratio - Math.pow(100, gamma)) < 0.05 * Math.pow(100, gamma),
+    `doping the elasticity must scale par by cells^gamma (got ${ratio}, want ~${Math.pow(100, gamma)})`);
+  // The floor guard: cellCount 0/absent derives log(1) = 0, never -Infinity.
+  assert.ok(Number.isFinite(applyParModel({ totalMines: 5 }, doped)),
+    'a vector with no cellCount must still price finitely');
+});
+
+test('modelFingerprint ignores zero-valued keys, so a coefficient can land at 0 without invalidating library stamps', async () => {
+  // The landing pattern for every new coefficient (wormLoad, then
+  // secPerLogCell) ships the key at 0 in all blocks: predictively inert,
+  // since applyParModel reads a missing key as 0 too. The fingerprint must
+  // agree that nothing changed, or each landing would spuriously redden the
+  // three library LOCKSTEP tests and demand a stamp-only re-price. A key
+  // moving OFF zero is a real model change and must still move the hash.
+  const { modelFingerprint } = await import('../src/logic/parModelFingerprint.js');
+  const fp = modelFingerprint();
+  assert.match(fp, /^[0-9a-f]{8}$/, 'fingerprint shape');
+  // Behavioral pin of the property the skip encodes, on EXPLICIT
+  // constructions rather than the shipped values (the launch state, every
+  // block at 0, expired when the first M1 refit emitted the coefficient):
+  // a real coefficient key at exactly 0 prices identically to the key being
+  // absent, while a nonzero value moves par, so the fingerprint may skip
+  // zeros and only zeros.
+  const f = { cellCount: 80, totalMines: 12, zeroClusterCount: 1 };
+  const withZero = { ...PAR_MODEL, secPerWallEdge: 0 };
+  const { secPerWallEdge, ...withoutKey } = withZero;
+  assert.equal(applyParModel({ ...f, wallEdgeCount: 4 }, withZero),
+    applyParModel({ ...f, wallEdgeCount: 4 }, withoutKey),
+    'a zero-valued key must be predictively inert (the property the fingerprint skip encodes)');
+  assert.notEqual(applyParModel(f, { ...PAR_MODEL, secPerLogCell: PAR_MODEL.secPerLogCell + 0.5 }),
+    applyParModel(f, PAR_MODEL),
+    'a NONZERO shift must move par (so the fingerprint must move with it)');
 });
 
 test('REGRESSION: matchPlay is a SIGNED deviation, never a bounded slope', () => {
@@ -477,8 +619,15 @@ test('REGRESSION: matchPlay is a SIGNED deviation, never a bounded slope', () =>
   // contain under any edit, so it could not fail.)
   const coefTable = R_SRC.match(/COEF_TO_PREDICTOR\s*<-\s*c\(([\s\S]*?)\n\)/);
   assert.ok(coefTable, 'COEF_TO_PREDICTOR literal not found; this scan is vacuous');
-  assert.match(coefTable[1], /secPerCell\s*=\s*"cellCount"/,
+  assert.match(coefTable[1], /secPerLogCell\s*=\s*"logCells"/,
     'the table scan must be reading the real mapping');
+  // The RETIRED count predictors must be gone from the SHIPPED table, the way
+  // secPerShape* went: they survive only as controls in the secondary fits,
+  // and a shipped entry would put a count back in predictPar beside its rate.
+  for (const dead of ['secPerCell', 'secPerMineFlag', 'secPerPatternMove', 'secPerSearchMove']) {
+    assert.ok(!new RegExp(`${dead}\s*=`).test(coefTable[1]),
+      `${dead} is retired and must not be a shipped predictor`);
+  }
   assert.ok(!/=\s*"matchPlay"/.test(coefTable[1]),
     'matchPlay must never be a shipped predictor: no COEF_TO_PREDICTOR entry may map to it');
 });

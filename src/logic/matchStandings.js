@@ -8,7 +8,7 @@
 //   matchStandings  turns a fetched node into ranked rows for the panel
 //   matchFitRows    turns this player's finished boards into par-fit rows
 
-import { matchTotals } from './matchRules.js';
+import { matchTotals, matchBoardCountOf } from './matchRules.js';
 import { rankAdjusted } from './leaderboardViews.js';
 import { matchRowKey } from './matchCodes.js';
 
@@ -54,7 +54,7 @@ export function matchStandings(node, opts = {}) {
   const { handicaps = null, myUid = null } = opts;
   const players = (node && node.players && typeof node.players === 'object')
     ? node.players : {};
-  const of = Array.isArray(node && node.boards) ? node.boards.length : 0;
+  const of = matchBoardCountOf(node);
   const host = (node && node.host) || null;
 
   const base = Object.entries(players).map(([uid, p]) => {
@@ -126,12 +126,15 @@ export function columnLeader(rows, key) {
  *
  * @param {Array<object>} entries the dealt library entries, in play order
  * @param {Array<object>} results the banked per-board results, index-aligned
- * @returns {{rows: Array<object>, tooFast: number, unplayed: number}}
+ * @returns {{rows: Array<object>, tooFast: number, unplayed: number,
+ *   eventless: number}} `eventless` counts boards refused because they took
+ *   strikes whose per-hit events this device does not hold (issue #372).
  */
 export function matchFitRows(entries, results) {
   const rows = [];
   let tooFast = 0;
   let unplayed = 0;
+  let eventless = 0;
   const list = Array.isArray(entries) ? entries : [];
   for (let i = 0; i < list.length; i++) {
     const entry = list[i];
@@ -139,6 +142,20 @@ export function matchFitRows(entries, results) {
     if (!entry || !entry.seed || !entry.features || !res) { unplayed++; continue; }
     const time = Math.round((Number(res.time) || 0) * 10) / 10;
     if (!(time >= MATCH_FIT_MIN_TIME && time <= MATCH_FIT_MAX_TIME)) { tooFast++; continue; }
+    // A ROW THAT TOOK STRIKES BUT CARRIES NO EVENTS IS REFUSED, NOT FILED
+    // (issue #372). The payload writes `totalBombPenalty` only alongside
+    // events, and on the R side `bombHits > 0 && totalBombPenalty == 0` is
+    // the signature of the RETIRED +10s/re-fog cohort, so such a row is
+    // charged LEGACY_BOMB_RATE (15s a hit) against a true ramped cost of
+    // 3n + 0.75n(n-1): 45s removed from a three-strike board that cost 13.5s.
+    // The events are missing exactly when this device did not play the board
+    // (a cross-device resume rebuilt it from the node, which whitelists only
+    // time, penalty and strikes), so the honest answer is to file nothing
+    // rather than a row the fit will misread. A clean board needs no events
+    // and files normally.
+    const strikes = Number(res.strikes) || 0;
+    const events = Array.isArray(res.bombHitEvents) ? res.bombHitEvents : [];
+    if (strikes > 0 && events.length === 0) { eventless++; continue; }
     rows.push({
       key: matchRowKey(entry.seed),
       time,
@@ -146,12 +163,36 @@ export function matchFitRows(entries, results) {
       // The anti-cheat guard's denominator (isBombHitCheat): a run that found
       // most of a board's mines by stepping on them was probing it.
       totalMines: Number(entry.spec && entry.spec.mines) || Number(entry.features.totalMines) || 0,
-      par: Number(res.par) || 0,
+      // THE ENTRY IS THE FALLBACK, because the node never stores par: the
+      // results block whitelists time, penalty and strikes and ends
+      // $other: false. A cross-device resume rebuilds results from the node,
+      // so `res.par` is simply absent and the row filed a par of 0 (measured
+      // 2026-08-20: one of the ten marathon rows, on a board whose other
+      // player filed 1263.5). The dealt entry carries the board's own stored
+      // par and rides the node whole under `boards`, which is where
+      // state.matchPar came from at install, so this recovers the same number
+      // rather than inventing one.
+      par: Number(res.par) || Number(entry.par) || 0,
+      // Banked per board at finish (winLossHandler): a match run can mix a
+      // fit-legal board with a marathon one, so this is a property of the
+      // BOARD as played, never of the run.
+      // THE ENTRY IS THE FALLBACK, exactly as it is for par above, and for the
+      // same structural reason: the match node's results block stores only
+      // time, penalty and strikes, so a guest's measurement has nowhere to
+      // live and a cross-device resume loses it. His ruling 2026-08-20: a
+      // board larger than one screen that is not a daily IS scrolling, and
+      // `oversized` is a STORED per-row fact rather than a guess from
+      // container dims, so asserting from it is grounded.
+      //
+      // TRUE only, never false: an ordinary board scrolls whenever the player
+      // has raised their own cell-size preference, so a fit-legal board with
+      // no measurement stays honestly absent rather than being called flat.
+      scrolled: res.scrolled === true || entry.oversized === true,
       features: entry.features,
-      bombHitEvents: Array.isArray(res.bombHitEvents) ? res.bombHitEvents : [],
+      bombHitEvents: events,
       wormEvents: Array.isArray(res.wormEvents) ? res.wormEvents : [],
       seed: entry.seed,
     });
   }
-  return { rows, tooFast, unplayed };
+  return { rows, tooFast, unplayed, eventless };
 }

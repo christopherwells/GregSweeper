@@ -110,6 +110,24 @@ test('NO TRANSFER: the match deal never touches a Climb store or its progression
 
 // ── The shipped index against the files it came from ────────────────────
 
+test('the harvest can never reach the endless scrolling lane', () => {
+  // The lane's file class (endless-over-NNN.json, his 2026-08-18 ruling)
+  // holds oversized boards, and the match side gates those behind the
+  // rules.scroll opt-in with their own mxo- shard class. A harvest that
+  // swept them into cmx- shards would deal scrolling boards to Challenge
+  // hosts who never opted in. Today the harvest's file regex is blind to
+  // the class by construction; this pin makes that a contract instead of
+  // an accident of naming.
+  const src = readFileSync(new URL('../scripts/climb-match-index.mjs', import.meta.url), 'utf8');
+  const m = src.match(/BOARD_FILE_RE = (\/.+\/)/);
+  assert.ok(m, 'the harvest file regex moved; re-point this pin');
+  const re = new RegExp(m[1].slice(1, -1));
+  assert.ok(re.test('level-042.json') && re.test('endless-007.json'),
+    'the pin must still match the harvestable classes, or it proves nothing');
+  assert.ok(!re.test('endless-over-000.json'),
+    'the harvest regex matches the scrolling lane; those boards would deal to Challenge without the scroll opt-in');
+});
+
 test('the shipped harvest index is in lockstep with the Climb library', () => {
   const sumPath = LIB + 'climb-match-summary.json';
   assert.ok(existsSync(sumPath), 'the harvest summary ships with the library');

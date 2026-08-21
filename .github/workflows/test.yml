@@ -25,6 +25,10 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # The e2e job's 2026-08-19 lesson, applied to the other PR gate: a
+    # hung step would otherwise hold a merge for six hours. This suite
+    # runs in ~6 minutes.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 

@@ -710,7 +710,14 @@ body::before {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Zoom controls ride the bottom nav (Expert/Extreme Quick Play only).
+/* The camera glide drives #board's transform frame by frame (rAF); the base
+   rule's springy 0.5s transform transition would lag and overshoot every
+   frame of it, so the glide suppresses it for its own duration. */
+#board.camera-glide {
+  transition: none;
+}
+
+/* Zoom controls ride the bottom nav (any camera-engaged board).
    display:contents makes the two buttons direct flex items of the nav;
    the wrapper exists so updateZoom can show/hide the pair at once
    (the global .hidden !important wins over display:contents). The
@@ -2660,10 +2667,13 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   /* Matches leaderboard-modal-content: the two modals read as one design. */
   max-width: 600px;
 }
-.stats-body {
-  max-height: min(80vh, 900px);
-  overflow-y: auto;
-}
+/* .stats-body deliberately has NO max-height/overflow of its own: the one
+   scroller in this modal is .modal-content (85vh), the same contract every
+   other modal keeps. It used to carry min(80vh, 900px) + overflow-y: auto,
+   and because that cap sits just under the modal's own, any tab taller than
+   the window scrolled BOTH containers at once: a second scrollbar inside
+   the first, eating the right padding under it (his Challenge-tab report,
+   2026-08-18). Pinned by tests/e2e/statsScroll.spec.mjs. */
 
 .stats-tabs, .help-tabs, .settings-tabs {
   display: flex;
@@ -5309,6 +5319,42 @@ details[open] > .journal-ledger-summary::after { transform: rotate(225deg); }
 .cert-modal-content { max-width: 420px; }
 .cert-recheck { font-size: 0.85em; opacity: 0.75; }
 
+/* The live race chip (shared Challenge): the opponent furthest along,
+   position only. Quiet by design, the info bar's own secondary color,
+   no border pill; the Certified chip stays the row's one badge. */
+.match-race-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  max-width: 45%;
+  min-width: 0;
+}
+/* A 20-character rival name ellipsizes; the info bar has no rows to give. */
+.match-race-chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* "Playing right now": the lead green the match grid already uses, in a
+   non-color channel too (the dot is presence itself; absent means absent). */
+.match-race-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-num-2, #2e7d32);
+  flex: 0 0 auto;
+}
+th .match-race-dot { margin-right: 4px; }
+/* The between-boards gap lines reuse the daily standing line's type; the
+   container only spaces them. */
+#gameover-race { margin: 2px 0 0; }
+#gameover-race .gameover-standing { margin: 2px 0 0; }
+
 .chaos-run-summary {
   display: flex;
   gap: 16px;
@@ -6604,6 +6650,51 @@ button.weekly-archive-row:focus-visible {
   gap: 6px;
   flex-shrink: 0;
 }
+/* A finished run's whole row opens its report, so the row reads as a tap
+   target rather than only its button. */
+.match-review-run {
+  cursor: pointer;
+}
+.match-review-month {
+  margin: 10px 0 2px;
+  font-family: var(--font-family);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+.match-review-older {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+}
+.match-report-sub {
+  margin: 0 0 10px;
+}
+.match-report-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+/* The friends list's Challenge button sits between the name and the remove
+   cross; it must not stretch the row on a narrow phone. */
+.friends-row .friends-challenge {
+  flex-shrink: 0;
+  margin-left: auto;
+  margin-right: 8px;
+}
+/* With a button beside the name, a long name must give way, not wrap the
+   leaderboard row. Scoped to the leaderboard's list so the invite modal's
+   own rows keep their layout. */
+#friends-list .friends-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ── Skill Trainer ─────────────────────────────────── */
 
@@ -7453,19 +7544,147 @@ button.weekly-archive-row:focus-visible {
 }
 
 /* Settings toggle label */
+/* SETTINGS CONTROLS (2026-08-18 re-skin, his "frustratingly bad and doesn't
+   look good"). The modal was built from native OS widgets, five raw
+   checkboxes, two dropdowns and a slider, inside a game where every other
+   surface uses the theme-proof chip vocabulary. These rules restyle the SAME
+   elements rather than replacing them, so every existing handler, label
+   association and keyboard path keeps working.
+
+   The theme rules the app already lives by apply here too: the ON state is an
+   accent FILL on the knob and an accent BORDER on the track, never white text
+   on an accent (which measures 1.30:1 on chalkboard), and nothing uses
+   backdrop-filter. */
 .toggle-label {
   display: flex;
+  /* row-reverse, because the input comes FIRST in the DOM (the label wraps
+     it) while the reading order wants the name on the left and its state on
+     the right. Reversing here keeps the markup and the label association
+     exactly as they were. */
+  flex-direction: row-reverse;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 40px;
+  padding: 2px 0;
   font-size: 14px;
   color: var(--color-text, #eee);
   cursor: pointer;
 }
+/* The switch: a track the label pushes to the right, so a column of settings
+   reads as a column of states rather than a column of boxes. */
 .toggle-label input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  position: relative;
+  width: 46px;
+  height: 28px;
+  margin: 0;
+  border-radius: 999px;
+  border: 2px solid var(--color-border, #333);
+  background: var(--color-cell-hidden, #2a2a3e);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.toggle-label input[type="checkbox"]::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 3px;
   width: 18px;
   height: 18px;
-  accent-color: var(--color-accent, #e94560);
+  border-radius: 50%;
+  transform: translateY(-50%);
+  background: var(--color-text-secondary, #9aa);
+  transition: left 0.15s ease, background 0.15s ease;
 }
+.toggle-label input[type="checkbox"]:checked {
+  border-color: var(--color-accent, #e94560);
+  background: var(--color-cell-revealed, #1a1a2e);
+}
+.toggle-label input[type="checkbox"]:checked::after {
+  left: 21px;
+  background: var(--color-accent, #e94560);
+}
+.toggle-label input[type="checkbox"]:focus-visible {
+  outline: 3px solid var(--color-accent, #e94560);
+  outline-offset: 2px;
+}
+.toggle-label input[type="checkbox"]:disabled { opacity: 0.45; cursor: default; }
+
+/* A settings chip row: the match sheet's idiom, reused so a choice looks the
+   same wherever the game asks for one. */
+.setting-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+/* A sub-row whose control needs its own line (a chip row, a preview strip)
+   rather than sitting beside its label. */
+/* The 28px indent the inline sub-row carries exists to hang it under the
+   checkbox it qualifies. A block sub-row is a setting in its own right, so
+   it lines up with everything else in the group. */
+.setting-subrow-block { display: block; margin-left: 0; }
+.setting-subrow-block > label { display: block; margin-bottom: 6px; color: var(--color-text, #eee); }
+
+/* What's New: the current version reads on open, the back catalogue is one
+   tap away rather than eight screens of scroll. */
+.whatsnew-older { margin-top: 6px; }
+.whatsnew-older > summary {
+  cursor: pointer;
+  padding: 8px 0;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+.whatsnew-older > summary:focus-visible { outline: 3px solid var(--color-accent, #e94560); outline-offset: 2px; }
+.setting-chips .match-chip { padding: 6px 10px; min-height: 40px; border-radius: 12px; }
+
+/* The cell-size preview: real cells at the size the choice delivers, so the
+   setting shows its own answer instead of naming it (his ask). */
+.cell-size-preview {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--grid-gap, 2px);
+  margin-top: 8px;
+  min-height: 44px;
+}
+.cell-size-preview .cell-size-swatch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-cell-hidden, #2a2a3e);
+  border-radius: var(--cell-shape-radius, 4px);
+  border: 1px solid var(--color-cell-gap, transparent);
+  font-weight: 700;
+  color: var(--color-num-1, #6cf);
+}
+.cell-size-preview .cell-size-swatch.revealed {
+  background: var(--color-cell-revealed, #1a1a2e);
+}
+.cell-size-preview .cell-size-caption {
+  margin-left: 10px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  align-self: center;
+}
+
+/* The native dropdown and slider that stay native (24 hours will not fit a
+   chip row, and a volume is a continuum), themed so they stop looking like
+   somebody else's widgets. */
+.reminder-hour-select {
+  background: var(--color-cell-hidden, #2a2a3e);
+  color: var(--color-text, #eee);
+  border: 2px solid var(--color-border, #333);
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-family: var(--font-family, inherit);
+  font-size: 13px;
+  min-height: 40px;
+}
+.reminder-hour-select:focus-visible {
+  outline: 3px solid var(--color-accent, #e94560);
+  outline-offset: 2px;
+}
+.volume-label { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; font-size: 14px; }
+.volume-slider { flex: 1 1 auto; max-width: 190px; accent-color: var(--color-accent, #e94560); height: 28px; }
 
 /* Modal headers — unified */
 .modal-header h2 {
@@ -8240,6 +8459,9 @@ pre.diagnostics-pre {
 .match-grid { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
 .match-grid th, .match-grid td { padding: 4px 6px; text-align: right; white-space: nowrap; }
 .match-grid th.match-grid-board { text-align: left; font-weight: 500; color: var(--color-text-secondary, #888); padding-left: 0; max-width: 9em; overflow: hidden; text-overflow: ellipsis; }
+/* Par sits under the shape rather than beside it: the label cell is capped
+   at 9em and a wider one would eat a player column on a phone. */
+.match-grid th.match-grid-board .match-grid-par { display: block; font-size: 10px; opacity: 0.72; font-variant-numeric: tabular-nums; text-transform: none; letter-spacing: 0; }
 .match-grid thead th { font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--color-text-secondary, #888); }
 .match-grid thead th.match-grid-me { color: var(--color-text, #eee); }
 .match-grid tbody tr, .match-grid tfoot tr:first-child { border-top: 1px solid var(--color-border, #333); }
@@ -8279,16 +8501,62 @@ pre.diagnostics-pre {
    live field, one quiet line under the par comparison. */
 .gameover-standing { font-size: 13px; color: var(--color-text-secondary, #888); margin: 2px 0 0; }
 
-/* The compact setup sheet (his ask 2026-08-16). The four short groups put
-   their label beside the chips instead of above them, and the sheet's group
-   rhythm tightens; chip sizes and tap targets are untouched. Measured at
-   390x844 before the change: the New-run panel stood 944px against an
-   844px viewport. */
-#match-panel-new .setting-group { margin: 10px 0 0; padding: 0; }
-#match-panel-new .setting-inline { display: grid; grid-template-columns: 84px 1fr; gap: 0 8px; align-items: center; }
-#match-panel-new .setting-inline h3 { margin: 0; font-size: 13px; }
-#match-panel-new .setting-group h3 { margin-bottom: 6px; }
+/* The compact setup sheet, second pass (his report 2026-08-17: "the
+   compaction of the creating a challenge isn't complete"). The first pass
+   (2026-08-16, 944px to 841px at 390x844) tightened rhythm; this one goes
+   after the real weight, measured on a FULL-UNLOCK sheet at 360x630 (the
+   earlier "94px spare" reading was a low-unlock sheet: seven shape chips
+   and nine modifier chips are what a veteran's sheet holds). Before this
+   pass the New-run panel measured 958px against a ~440px visible budget.
+   Four moves, all scoped to this sheet so Settings keeps its own scale:
+   the sheet's own padding narrows (28px cost 56px of width and forced
+   every chip row to wrap), chips shrink toward their tap floor but never
+   under 38px, the three band groups run one full-width chip row each
+   (.setting-band: beside a 72px label column their four chips always
+   wrapped, and a two-row band costs more than the label column saves),
+   and the supply line + Start + share row become a sticky footer, so the
+   verdict and the action are readable while the rules scroll above them. */
+.match-setup-content { padding: 20px 16px 0; max-height: 92vh; }
+.match-setup-content .modal-header { margin-bottom: 10px; }
+#match-panel-new .setting-group { margin: 8px 0 0; padding: 0; }
+#match-panel-new .setting-inline { display: grid; grid-template-columns: 72px 1fr; gap: 0 8px; align-items: center; }
+#match-panel-new .setting-inline h3 { margin: 0; font-size: 12px; letter-spacing: 1px; }
+#match-panel-new .setting-group h3 { margin-bottom: 5px; font-size: 11px; letter-spacing: 1.5px; }
 #match-panel-new .setting-inline h3 { margin-bottom: 0; }
-#match-panel-new .match-supply { margin-top: 10px; }
-#match-panel-new .match-chips { gap: 6px; }
-#match-panel-new .match-readout { margin-top: 4px; }
+#match-panel-new .match-chips { gap: 5px; }
+#match-panel-new .match-readout { margin-top: 3px; min-height: 16px; }
+/* The board count and the Help Greg button share the row's second column.
+   The button sizes to its text and sits right of the stepper, so the row
+   keeps its 72px label column and gains no height. */
+#match-panel-new .match-count-row { display: flex; align-items: center; gap: 8px; }
+#match-panel-new .match-help-btn { margin: 0; padding: 6px 10px; font-size: 12px; min-height: 38px; white-space: nowrap; }
+#match-help-note:empty { display: none; }
+#match-panel-new .match-chip { padding: 5px 9px; min-height: 38px; border-radius: 11px; }
+/* Band rows must hold their four chips on ONE line at 360px width in every
+   theme font (chalkboard's runs wider than classic's at the same size):
+   measured 290px needed against 287 available at 9px side padding, so the
+   band chips alone trim to 7px sides and a 40px floor, about 20px of slack. */
+#match-panel-new .match-chips-band .match-chip { padding: 5px 7px; min-width: 40px; }
+#match-panel-new .match-chip-icon { padding: 6px; }
+#match-panel-new .match-chip-art { height: 22px; }
+#match-panel-new .match-chip-art svg,
+#match-panel-new .match-chip-art img { width: 22px; height: 22px; }
+#match-panel-new .match-chip-label { font-size: 10px; }
+#match-panel-new .match-chip-sub { font-size: 9px; }
+#match-panel-new .match-step-btn { width: 38px; height: 38px; border-radius: 10px; font-size: 18px; }
+#match-panel-new .match-step-value { font-size: 20px; }
+#match-panel-new .match-supply { margin: 0 0 6px; min-height: 16px; }
+.match-sheet-footer {
+  position: sticky;
+  bottom: 0;
+  background: var(--bg-modal-content);
+  padding: 8px 0 14px;
+  margin-top: 10px;
+  /* The rules scroll under this footer; the seam marks where they go,
+     so a half-clipped section header reads as scrolled-under rather
+     than broken. */
+  border-top: 1px solid var(--color-border, #333);
+}
+/* The sheet's bottom padding moved into the footer; the runs tab has no
+   footer, so it pays its own. */
+#match-panel-runs { padding-bottom: 16px; }

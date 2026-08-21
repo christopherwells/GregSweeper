@@ -42,13 +42,16 @@ async function wallAlignment(page) {
     const { state } = await import('/src/state/gameState.js');
     const boardEl = document.getElementById('board');
     const cols = state.cols;
-    const boardRect = boardEl.getBoundingClientRect();
-    const bx = boardEl.offsetLeft, by = boardEl.offsetTop;
+    // The overlay is a child of #board (the marathon-camera re-parent,
+    // 2026-08-17) and its lines are positioned from the cells' own offset
+    // geometry, so the expected positions are those offsets verbatim; the
+    // old wrapper-space re-basing (rect diffs + boardEl.offsetLeft) would
+    // read a constant deviation equal to the board's own offset.
     const pos = (r, c) => {
-      const rect = boardEl.children[r * cols + c].getBoundingClientRect();
-      return { left: rect.left - boardRect.left + bx, top: rect.top - boardRect.top + by,
-               right: rect.right - boardRect.left + bx, bottom: rect.bottom - boardRect.top + by,
-               width: rect.width, height: rect.height };
+      const el = boardEl.children[r * cols + c];
+      return { left: el.offsetLeft, top: el.offsetTop,
+               right: el.offsetLeft + el.offsetWidth, bottom: el.offsetTop + el.offsetHeight,
+               width: el.offsetWidth, height: el.offsetHeight };
     };
     const lines = [...document.querySelectorAll('.wall-line')];
     const edges = [...(state.board?._wallEdges ?? [])];

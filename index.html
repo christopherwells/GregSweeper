@@ -78,6 +78,19 @@
   (function () {
     try {
       var saved = localStorage.getItem('minesweeper_theme');
+      // THE THEME SHELF (2026-08-16): only the five live themes may apply
+      // at first paint on a production build; a saved shelved theme would
+      // otherwise style the boot overlay and then visibly flip to classic
+      // when main.js's own shelf guard runs. This list mirrors LIVE_THEMES
+      // in themeManager.js and test/themeUnlockLadder.test.mjs pins the
+      // two in lockstep. The preview door (localhost or /test/, plus
+      // ?previewthemes=1) mirrors isThemePreview for the same reason.
+      var LIVE = ['classic', 'dark', 'forest', 'matrix', 'nest'];
+      var h = location.hostname;
+      var preview = (h === 'localhost' || h === '127.0.0.1' || h === '' ||
+        location.pathname.indexOf('/test/') >= 0) &&
+        /[?&]previewthemes(=|&|$)/.test(location.search);
+      if (saved && LIVE.indexOf(saved) < 0 && !preview) saved = null;
       // First-time visitors: respect their system color-scheme preference.
       // Dark mode is the more common preference and the more visually distinct
       // theme; nudging dark-mode users into the light "classic" default loses
@@ -421,6 +434,11 @@
              spare, and on gimmick-free boards (timed, most dailies) a
              dedicated bar would cost the board real estate. -->
         <button id="cert-chip" class="cert-chip hidden" type="button" aria-label="This board is checked: solvable without guessing. Tap for details.">✓ Certified</button>
+        <!-- The live race chip (shared Challenge only): the opponent
+             furthest along, position only, never a time. Rides this
+             existing row the way the Certified chip does; phones have
+             no rows to spare. -->
+        <span id="match-race-chip" class="match-race-chip hidden" aria-live="off"></span>
         <!-- Mode switching handled by Home → title screen -->
       </div>
 
@@ -512,8 +530,10 @@
       <!-- Zoom rides the nav row instead of owning one under the board.
            display:contents makes the pair direct flex items; the
            wrapper only exists so updateZoom can show/hide both at once
-           (visible only on oversized Challenge boards). The %
-           readout is gone — the board itself shows the zoom level. -->
+           (visible whenever the camera is engaged: any board bigger
+           than the scroll wrapper, plus the legacy oversized-Challenge
+           gate). The % readout is gone — the board itself shows the
+           zoom level. -->
       <span id="zoom-controls" class="hidden">
         <button id="zoom-out" class="nav-btn zoom-btn" title="Zoom Out">−</button>
         <button id="zoom-in" class="nav-btn zoom-btn" title="Zoom In">+</button>
@@ -562,6 +582,10 @@
         <p id="gameover-encouragement" class="gameover-encouragement hidden"></p>
         <p id="gameover-par" class="gameover-par hidden"></p>
         <p id="gameover-standing" class="gameover-standing hidden"></p>
+        <!-- The shared match's between-boards lines: the standing through
+             the boards both players have banked, and what happened while
+             this board was played. Filled by ui/matchRace.renderMatchGap. -->
+        <div id="gameover-race" class="hidden"></div>
         <p id="gameover-par-breakdown" class="par-breakdown hidden"></p>
         <!-- Win receipt: the board's confession — crux + certified
              modifier contribution. Filled async by _renderWinReceipt. -->
@@ -1091,12 +1115,20 @@
         <div id="match-panel-new" class="match-panel hidden" role="tabpanel" aria-labelledby="match-tab-new">
         <div class="setting-group setting-inline">
           <h3>Boards</h3>
-          <div id="match-count" class="match-stepper">
-            <button type="button" class="match-step-btn" data-step="-1" aria-label="One fewer board">−</button>
-            <span class="match-step-value" id="match-count-value" aria-live="polite">3</span>
-            <button type="button" class="match-step-btn" data-step="1" aria-label="One more board">+</button>
+          <div class="match-count-row">
+            <div id="match-count" class="match-stepper">
+              <button type="button" class="match-step-btn" data-step="-1" aria-label="One fewer board">−</button>
+              <span class="match-step-value" id="match-count-value" aria-live="polite">3</span>
+              <button type="button" class="match-step-btn" data-step="1" aria-label="One more board">+</button>
+            </div>
+            <!-- Fills the sheet with what the fit is short of. Aims with the
+                 same mission list the deal steers on, and only ever proposes
+                 shapes and modifiers this player has unlocked. -->
+            <button id="match-help-greg" class="friends-btn match-help-btn" type="button"
+              title="Set the rules to the boards Greg has the least data on">Help Greg</button>
           </div>
         </div>
+        <p id="match-help-note" class="match-readout" aria-live="polite"></p>
 
         <div class="setting-group">
           <h3>Shapes</h3>
@@ -1109,21 +1141,31 @@
           <div id="match-mod-readout" class="match-readout" aria-live="polite"></div>
         </div>
 
-        <div class="setting-group setting-inline">
+        <div class="setting-group setting-band">
           <h3>Length</h3>
           <div id="match-time" class="match-chips match-chips-band"></div>
         </div>
 
-        <div class="setting-group setting-inline">
+        <div class="setting-group setting-band">
           <h3>Difficulty</h3>
           <div id="match-difficulty" class="match-chips match-chips-band"></div>
         </div>
 
-        <div class="setting-group setting-inline">
+        <div class="setting-group setting-band">
+          <h3>Scrolling boards</h3>
+          <div id="match-scroll" class="match-chips match-chips-band"></div>
+        </div>
+
+        <div class="setting-group setting-band">
           <h3>Mines</h3>
           <div id="match-density" class="match-chips match-chips-band"></div>
         </div>
 
+        <!-- The action footer sticks to the sheet's bottom edge while the
+             rules scroll above it: the supply verdict and Start are readable
+             the whole time, so a full-unlock sheet (seven shapes, nine
+             modifiers) never buries its own point. -->
+        <div class="match-sheet-footer">
         <div id="match-supply" class="match-supply" aria-live="polite"></div>
         <button id="match-start" class="match-start-btn" type="button">Start Challenge</button>
         <!-- His two invite routes: share a code, or invite a friend you
@@ -1133,6 +1175,7 @@
           <button id="match-invite-btn" class="friends-btn" type="button">Invite a friend</button>
           <button id="match-join-btn" class="friends-btn" type="button">Use a code</button>
         </div>
+        </div><!-- /.match-sheet-footer -->
         </div>
       </div>
     </div>
@@ -1165,6 +1208,18 @@
         <p id="match-join-status" class="friends-status hidden"></p>
         <div id="match-join-preview"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Challenge: the run report, one home for how any past run went (solo or
+       shared). The clean-compare grid paints inside its body. -->
+  <div id="match-report-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content match-setup-content">
+      <div class="modal-header">
+        <h2>Run report</h2>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
+      </div>
+      <div class="modal-body" id="match-report-body"></div>
     </div>
   </div>
 
@@ -1224,7 +1279,7 @@
           <label class="setting-label">Leaderboard Name
             <input type="text" id="player-name-input" maxlength="20" placeholder="Your name" class="player-name-input" autocomplete="off">
           </label>
-          <p class="reset-hint">Used for daily leaderboard submissions. Saves automatically.</p>
+          <p class="reset-hint">Shown on the leaderboards. Saves as you type.</p>
         </div>
         <div class="setting-group">
           <h3>Audio</h3>
@@ -1236,7 +1291,7 @@
             <input type="checkbox" id="colorblind-toggle">
             Colorblind-friendly mode
           </label>
-          <p class="reset-hint">Uses distinct colors and shape markers for numbers.</p>
+          <p class="reset-hint">Distinct colors, plus a shape marker on every number.</p>
         </div>
         <div class="setting-group">
           <h3>Appearance</h3>
@@ -1244,17 +1299,21 @@
             <input type="checkbox" id="classic-objects-toggle">
             Classic mines &amp; flags
           </label>
-          <p class="reset-hint">Use the original bomb and flag on every theme. Numbers, backgrounds, and Greg stay themed.</p>
+          <p class="reset-hint">The original bomb and flag on every theme. Numbers, backgrounds and Greg stay themed.</p>
+          <div class="setting-subrow setting-subrow-block">
+            <label id="cell-size-label">Cell size</label>
+            <div id="cell-size-chips" class="setting-chips" role="group" aria-labelledby="cell-size-label"></div>
+            <div id="cell-size-preview" class="cell-size-preview" aria-hidden="true"></div>
+          </div>
+          <p class="reset-hint">A bigger cell can put a board past the screen edge. Scroll it, or double-tap a number you have finished with to bring that part of the board to you.</p>
         </div>
         <div class="setting-group">
           <h3>Tutorial</h3>
           <button id="btn-replay-tutorial" class="clear-cache-btn"><img class="ui-icon-label" src="assets/sprites/ui-replay.svg" alt="" draggable="false" onerror="this.replaceWith('▶️')">Replay tutorial</button>
-          <p class="reset-hint">Walk through the basics again.</p>
         </div>
         <div class="setting-group">
           <h3>About</h3>
           <button id="btn-about" class="clear-cache-btn"><img class="ui-icon-label" src="assets/sprites/idle.png" alt="" draggable="false" onerror="this.replaceWith('ℹ️')">About GregSweeper</button>
-          <p class="reset-hint">Version and credits.</p>
         </div>
         </div>
         <div id="settings-panel-alerts" class="settings-panel hidden">
@@ -1387,7 +1446,9 @@
             <li><strong>Challenge a friend</strong>: Build a run of 1 to 10 boards, share a code or invite a friend directly, and race the same boards on your own clocks. Live standings, a clean end-of-run comparison, and rivalry records in Stats.</li>
           </ul>
         </div>
-        <div class="whatsnew-entry">
+        <details class="whatsnew-older">
+          <summary>Earlier versions</summary>
+<div class="whatsnew-entry">
           <h3>v1.10 &middot; August 4, 2026</h3>
           <ul>
             <li><strong>Six new shapes</strong>: About half the dailies now use one of six new shapes: Octagons, Honeycomb, Paving Stones, Petals, 3D Cubes and Kites. Still no guessing, ever. The first time you meet a shape, a card shows you what counts as a neighbor.</li>
@@ -1444,7 +1505,8 @@
             <li><strong>New modifiers</strong>: Mirror pairs swap two cells&rsquo; numbers, and redesigned pressure plates disarm when you clear their safe neighbors.</li>
           </ul>
         </div>
-      </div>
+              </details>
+</div>
     </div>
   </div>
 

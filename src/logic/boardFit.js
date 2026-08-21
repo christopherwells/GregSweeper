@@ -16,11 +16,12 @@
 // all four Laves tilings so a cell's INSCRIBED DIAMETER is exactly one pitch,
 // which makes the pitch directly comparable to --cell-size on a rectangle: it
 // IS the click target. The 4.8.8 is the one exception and keeps its own tuning,
-// so at OCT_CUT 0.42 its octagon is 0.820 pitch and its interstitial diamond
-// only 0.594. Those numbers are DERIVED here from the shipped geometry rather
-// than written down, because OCT_CUT is tuned by eye and has already moved once
-// (0.37 -> 0.42, 2026-07-28); a hardcoded ratio would have gone quietly wrong
-// that day, and would be wrong again for a seventh tiling nobody thought to add
+// so at OCT_CUT 0.38 its octagon is 0.877 pitch and its interstitial diamond
+// only 0.537. Those numbers are DERIVED here from the shipped geometry rather
+// than written down, because OCT_CUT is tuned by eye and has moved twice
+// (0.37 -> 0.42 on 2026-07-28, 0.42 -> 0.38 on 2026-08-17, his "the small
+// sides are too small"); a hardcoded ratio would have gone quietly wrong both
+// days, and would be wrong again for a seventh tiling nobody thought to add
 // to a table. clip-path gates pointer events, so the polygon really is the
 // target and its inscribed circle really is what you can be sure of hitting.
 //
@@ -28,22 +29,39 @@
 // too. The majority cell of a board must clear MIN_TAP_MAJORITY; a minority
 // cell class may go down to MIN_TAP_MINORITY. On the five isohedral tilings
 // there is only one cell class and both reduce to the majority floor. The split
-// exists for the 4.8.8, whose two cell sizes differ by 38% and whose diamonds
+// exists for the 4.8.8, whose two cell sizes differ by 39% and whose diamonds
 // are ~45% of the board, a single floor there either lets the diamonds shrink
-// to 21px (majority-only) or costs the shape its presence in the end game
+// to 21px (majority-only) or removes the shape from the end game
 // (28px on the diamond removes Octagons from the ladder above L50 and from the
 // endless pool entirely). 24px on the minority is the middle he chose.
 //
-// WHERE 28 CAME FROM. Scored by delivered tap diameter at 360px, the configs
-// shipping before this module cluster with a clean gap: everything is either
-// <= 25.5px or >= 28.5px, nothing in between. Honeycomb's worst board (which he
-// reports as fine) sits at 29.9 and Octagons' at 28.6; Paving Stones' worst
-// (which he reports as too wide) sits at 23.0. So any floor in [26, 28] sorts
-// the shipped boards identically, the bar is not balanced on a knife edge, and
-// it is calibrated to his own verdicts rather than to a guideline. For scale,
-// the rectangular game's own floor is --cell-min-size 18px, but that is a
-// last-resort clamp for Expert Quick Play, which has zoom controls as its
-// escape hatch; a tiling board has none.
+// WHERE 24 CAME FROM (his ruling 2026-08-19, superseding the 28). The floor
+// measures the PRESSING SURFACE: the diameter of the circle that fits inside
+// the cell polygon. That is not a proxy here, it is verified geometry: the
+// pitch normalization makes inscribed diameter exactly one pitch on every
+// isohedral lattice (measured 1.000 against the shipped vertices for the
+// hexagon, both pentagons, the rhombus, and the kite), and the 4.8.8's two
+// classes carry their own measured inscribed diameters (0.877 / 0.537 of
+// pitch). With the unit verified as the true press, he set the floor at the
+// pressing surface itself: 24px, every shape. The felt-experience data that
+// produced the old 28 still sorts identically under it (the one config he
+// reported as too wide measured 23.0px and is still refused), and the
+// Octagons are unmoved because their squares' 24px minority floor already
+// binds the shape (~45px pitch). The frontier growth this bought, measured
+// the night of the ruling: hex 170 -> 252 ceiling cells, cairo 172 -> 212,
+// floret 138 -> 216, rhombille 135 -> 180, deltoidal 90 -> 168; rect and
+// 4.8.8 unchanged.
+//
+// WHERE 28 CAME FROM, kept as history. Scored by delivered tap diameter at
+// 360px, the configs shipping before this module clustered with a clean gap:
+// everything either <= 25.5px or >= 28.5px. Honeycomb's worst board (which
+// he reported as fine) sat at 29.9 and Octagons' at 28.6; Paving Stones'
+// worst (too wide, his report) at 23.0. Any floor in [26, 28] sorted those
+// boards identically and 28 was the middle he chose; the 2026-08-19 ruling
+// re-anchored the number on the verified pressing-circle geometry instead.
+// For scale, the rectangular game's own floor is --cell-min-size 18px, but
+// that is a last-resort clamp for Expert Quick Play, which has zoom controls
+// as its escape hatch; a tiling board has none.
 //
 // WHAT CONSTRAINING COSTS: nothing in difficulty. The largest legal board of
 // every shape still prices far past the 240s daily band ceiling, so each
@@ -57,7 +75,7 @@
 // consults it at runtime, because chaos derives its dimensions from a target
 // cell count instead of authoring them.
 
-import { buildTiling, containerIsStorable } from './tilingGeometry.js';
+import { buildTiling, containerIsStorable, CANONICAL_MAX_DIM } from './tilingGeometry.js';
 // The rectangular WIDTH rule, kept in difficulty.js where the search reads it.
 import { BOARD_WIDTH_CAP } from './difficulty.js';
 
@@ -72,8 +90,10 @@ import { BOARD_WIDTH_CAP } from './difficulty.js';
  */
 export const FIT_REFERENCE = Object.freeze({ width: 360, height: 740 });
 
-/** Minimum tap diameter (px) for the board's majority cell class. */
-export const MIN_TAP_MAJORITY = 28;
+/** Minimum tap diameter (px) for the board's majority cell class: the
+ * diameter of the pressing circle (his 2026-08-19 ruling; the WHERE 24 CAME
+ * FROM block above). */
+export const MIN_TAP_MAJORITY = 24;
 
 /**
  * Minimum tap diameter (px) for a minority cell class. Only the 4.8.8 has one;
@@ -166,7 +186,7 @@ const _ratioMemo = new Map();
  * class) and the MIN (the smallest class present).
  *
  * Both are 1.000 for the hexagon and all four Laves tilings, by construction:
- * assembleTiling normalizes to exactly this. The 4.8.8 returns 0.820 / 0.594.
+ * assembleTiling normalizes to exactly this. The 4.8.8 returns 0.877 / 0.537.
  *
  * @param {string} type a TILING_TYPES entry
  * @returns {{median: number, min: number}}
@@ -306,13 +326,98 @@ export function rectCellSizeAt(rows, cols, viewport = FIT_REFERENCE) {
 }
 
 /**
+ * The widest a rect board may be: the largest column count that still delivers
+ * the majority tap floor at the reference phone.
+ *
+ * DERIVED, not chosen (his ruling 2026-08-20). The cap has been a hand-set
+ * number twice and gone stale both times: it was 12, he moved it to 11 on
+ * 2026-08-14 when the floor was 28px, and when he re-anchored the floor at
+ * 24px on 2026-08-19 (the pressing-circle ruling) the 11 stayed behind,
+ * refusing 12-column boards that deliver exactly the 24px he had just ruled.
+ * Reading it off the floor instead means the next time either the floor or the
+ * reference phone moves, this moves with them.
+ *
+ * Width only, deliberately: this is the WIDTH rule, and height is answered
+ * separately by rectFitsPhone against the comfort budget. Rect cells are
+ * square, so the whole cell is tappable and the majority floor is the right
+ * bar (the minority floor exists for the 4.8.8's interstitial diamonds and has
+ * no meaning here).
+ *
+ * @param {{width?: number}} [viewport]
+ * @returns {number} the largest legal column count
+ */
+export function maxRectColumns(viewport = FIT_REFERENCE) {
+  const wb = widthBudget(viewport.width ?? FIT_REFERENCE.width);
+  let best = 1;
+  for (let cols = 1; cols <= 40; cols++) {
+    const cell = Math.floor((wb - (cols - 1) * RECT_GAP_PX) / cols);
+    if (cell >= MIN_TAP_MAJORITY) best = cols;
+    else break;
+  }
+  return best;
+}
+
+/**
+ * The tallest a rect board of a given width may be before it runs past what a
+ * phone SHOWS. The height counterpart of maxRectColumns.
+ *
+ * It depends on the width, and not the way intuition suggests: a NARROW board
+ * is the one that gets too tall. Cells grow to fill the width budget, so at 8
+ * columns a cell is 37px and fourteen rows stand 502px, while at the full
+ * 12-column width the same fourteen rows are only 362px. That is why the
+ * weekly, whose draw reaches 14 rows and 8 columns, could produce a board 40px
+ * past the comfortable area while the daily never could.
+ *
+ * @param {number} cols
+ * @param {{width?: number, height?: number}} [viewport]
+ * @returns {number} the largest legal row count at that width, 0 if none
+ */
+export function maxRectRows(cols, viewport = FIT_REFERENCE) {
+  let best = 0;
+  for (let rows = 1; rows <= CANONICAL_MAX_DIM; rows++) {
+    if (rectFitsPhone(rows, cols, viewport)) best = rows;
+  }
+  return best;
+}
+
+/**
+ * Clamp a drawn (rows, cols) pair down to the nearest legal board.
+ *
+ * HIS RULING (2026-08-20): "No dailies should be scrolled", "or weeklies for
+ * that matter", "boards shouldn't be scrollable at 24 px in the dailies. If
+ * people use more zoomed in, then they may get a scroll board." So the floor
+ * is the promise: at the default cell size the daily and the weekly always
+ * fit, and a player who raises their own cell-size preference has chosen to
+ * scroll.
+ *
+ * The daily and weekly do not pick dimensions from a table, they DRAW them
+ * from a constant range, and before this nothing compared that range to the
+ * fit rules: the daily applied no width cap at all and neither looked at
+ * height. The daily's range happened to be safe and the weekly's did not.
+ *
+ * CLAMPING rather than redrawing is deliberate. It consumes no extra rng()
+ * call, so the seed streams every stored canonical was written under are
+ * untouched, and only a draw that was already illegal comes out different.
+ *
+ * @param {number} rows
+ * @param {number} cols
+ * @param {{width?: number, height?: number}} [viewport]
+ * @returns {{rows: number, cols: number}}
+ */
+export function clampRectDims(rows, cols, viewport = FIT_REFERENCE) {
+  const c = Math.max(1, Math.min(cols, maxRectColumns(viewport)));
+  const r = Math.max(1, Math.min(rows, maxRectRows(c, viewport) || rows));
+  return { rows: r, cols: c };
+}
+
+/**
  * Does a RECT board fit a phone, on the same terms boardFitsPhone holds the
  * lattices to?
  *
  * THIS DID NOT EXIST UNTIL 2026-08-14, and its absence is a bug players saw.
  * `BOARD_WIDTH_CAP` caps COLUMNS and nothing capped rows, so rect specs aimed
  * at nothing vertically. Two budgets are in play and the gap between them is
- * exactly where those boards landed: the renderer sizes cells to 70vh (502px
+ * exactly where those boards sat: the renderer sizes cells to 70vh (502px
  * at the reference) while a phone showing its own URL bar and toolbar displays
  * 462px. Measured on the shipped Climb library: 299 of 767 rect boards, 39%,
  * stood 1.1 to 1.6 cells taller than the visible area, which is his report
@@ -324,7 +429,7 @@ export function rectCellSizeAt(rows, cols, viewport = FIT_REFERENCE) {
  *
  * WIDTH is his column cap, not the tap floor (his ruling 2026-08-14: eleven
  * columns max). The two disagree and he chose: 314px of width over 11 columns
- * delivers 26px cells, under the 28px floor every lattice is held to. That
+ * delivers 26px cells, under the tap floor every lattice is held to. That
  * asymmetry is deliberate. Rect is the shape people know, its cells are square
  * so the whole 26px is tappable where a hexagon's inscribed circle is not, and
  * capping rect at the tap floor would mean 10 columns and a Classic board

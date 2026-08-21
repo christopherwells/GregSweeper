@@ -1,8 +1,10 @@
 import { state, getRevealedCells, recordPlayerAction, modifiersPreResolved } from '../state/gameState.js';
+import { setFrameContext } from '../logic/frameProbe.js';
 import { $, $$, boardEl, resetBtn } from '../ui/domHelpers.js';
 import {
   renderBoard, updateCell, updateAllCells, updateCells, getThemeEmoji,
   adjustCellSize, updateZoom, renderWallOverlays, setDailySuggestedCell,
+  cameraDiveFromSurvey,
 } from '../ui/boardRenderer.js';
 import {
   updateHeader, updateCheckpointDisplay, updateProgressBar,
@@ -41,6 +43,7 @@ import { getTargetGimmickName, getMissionForSeed, missionStamp, getCurrentTarget
 import { resolveDailyShape, buildTilingDailyBoard, getDailyShapeOverride } from '../logic/shapeRotation.js';
 import { buildParLabBoard } from '../logic/parLab.js';
 import { loadDailyBoard, saveDailyBoard, serializeBoard, deserializeBoard } from '../firebase/dailyBoardSync.js';
+import { legacyStartSearch, resolveStoredAnchor, chooseStartAnchor } from '../logic/startAnchor.js';
 import { loadWeeklyBoard, saveWeeklyBoard } from '../firebase/weeklyBoardSync.js';
 import { fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
 import { getUid, markWeeklyDayAttempted } from '../firebase/firebaseProgress.js';
@@ -55,6 +58,7 @@ import {
 import {
   playReveal, playFlag, playUnflag, playCascade, playShieldBreak,
 } from '../audio/sounds.js';
+import { clampRectDims } from '../logic/boardFit.js';
 
 let _lastInputTime = 0;
 
@@ -357,6 +361,8 @@ export async function newGame() {
   // itself was torn down by stopTimer above).
   state.worms = [];
   state.wormEvents = [];
+  // Fresh board, fresh traversal question: updateZoom re-answers it below.
+  state.boardScrolled = false;
   // inputLocked is set transiently during cascade/chord animations and cleared
   // by a setTimeout. Starting a new game between the lock and the timeout would
   // leave the new game with input frozen until the next interaction would
@@ -633,7 +639,11 @@ export async function newGame() {
       // be older or newer than the fetched JSON. Pricing the stored
       // features locally keeps the pace bar and expected-time line
       // coherent with every other par this client shows.
-      if (res.features) {
+      // A PROVISIONALLY PRICED BOARD KEEPS ITS STORED PAR (the match
+      // install's rule, verbatim): past a shape's fit ceiling predictPar
+      // extrapolates, and the endless scrolling lane deals exactly such
+      // boards; their stored par is re-anchored nightly by the repricer.
+      if (res.features && res.parProvisional !== true) {
         try { state.challengePar = predictPar(res.features); } catch { /* stored par stands */ }
       }
     }
@@ -718,7 +728,16 @@ export async function newGame() {
     // difficulty.js can be older or newer than the fetched JSON.
     state.matchFeatures = res.features;
     state.matchPar = res.par || 0;
-    if (res.features) {
+    // A PROVISIONALLY PRICED BOARD KEEPS ITS STORED PAR. The re-price exists
+    // because this client's difficulty.js can be older or newer than the
+    // fetched file, which is right for a board the model has data at. It is
+    // exactly wrong for an oversized one: past a shape's fit ceiling
+    // predictPar extrapolates, and running it here threw away the anchored
+    // number the lane computed and put a 178-MINUTE par on an 11-minute
+    // honeycomb board (his report, 2026-08-18). The stored par is already
+    // re-anchored under each night's model by the repricer, so it is the
+    // fresher number as well as the sane one.
+    if (res.features && res.parProvisional !== true) {
       try { state.matchPar = predictPar(res.features); } catch { /* stored par stands */ }
     }
 
@@ -883,6 +902,13 @@ export async function newGame() {
           firstClick: tilingBuilt.firstClick,
         });
         Object.assign(fallbackPayload, missionStamp(tilingBuilt.mission));
+        // The fallback is a real canonical writer, so it stores the anchor
+        // exactly as the precompute does (same policy, same bytes, the
+        // differential in test/shapeRotation.test.mjs holds the pair).
+        const tilingAnchor = chooseStartAnchor(state.board, state.rows, state.cols);
+        if (tilingAnchor) {
+          fallbackPayload.bestStart = tilingAnchor.r * state.cols + tilingAnchor.c;
+        }
         saveDailyBoard(state.dailySeed, fallbackPayload)
           .catch(err => reportCaughtError('daily-board-save', err));
       }
@@ -896,8 +922,16 @@ export async function newGame() {
       const dimRng1 = dailyRng();
       const dimRng2 = dailyRng();
       const dimRng3 = dailyRng();
-      state.rows = DAILY_MIN_SIZE + Math.floor(dimRng1 * DAILY_SIZE_RANGE);
-      state.cols = DAILY_MIN_SIZE + Math.floor(dimRng2 * DAILY_SIZE_RANGE);
+      // HIS RULING (2026-08-20): a daily must not scroll at the default cell
+      // size. A proven no-op on the daily's own draw range today
+      // (test/boardFit.test.mjs sweeps every reachable pair); it is here so a
+      // future edit to the range or the tap floor cannot quietly break it.
+      const dDims = clampRectDims(
+        DAILY_MIN_SIZE + Math.floor(dimRng1 * DAILY_SIZE_RANGE),
+        DAILY_MIN_SIZE + Math.floor(dimRng2 * DAILY_SIZE_RANGE),
+      );
+      state.rows = dDims.rows;
+      state.cols = dDims.cols;
       const density = DAILY_MIN_DENSITY + dimRng3 * DAILY_DENSITY_RANGE;
       state.totalMines = Math.max(5, Math.round(state.rows * state.cols * density));
 
@@ -999,6 +1033,12 @@ export async function newGame() {
         // Shared with the precompute's buildCanonicalPayload via missionStamp
         // so the two writers describe a board the same way.
         Object.assign(fallbackPayload, missionStamp(dailyMission));
+        // And the stored Start-here anchor, same policy as the precompute
+        // (whoever writes a canonical picks the anchor once).
+        const rectAnchor = chooseStartAnchor(state.board, state.rows, state.cols);
+        if (rectAnchor) {
+          fallbackPayload.bestStart = rectAnchor.r * state.cols + rectAnchor.c;
+        }
         saveDailyBoard(state.dailySeed, fallbackPayload)
           .catch(err => reportCaughtError('daily-board-save', err));
       }
@@ -1041,46 +1081,31 @@ export async function newGame() {
     state.dailyMoves = check.totalClicks;
     saveDailyPar(state.dailySeed, state.dailyPar, state.dailyMoves, state.dailyFeatures);
 
-    // Compute best starting cell for "Start here" indicator.
-    const nbrCache = buildNeighborCache(state.board, state.rows, state.cols);
-    const startCandidates = [];
-    for (let r = 0; r < state.rows; r++) {
-      for (let c = 0; c < state.cols; c++) {
-        if (!state.board[r][c].isMine && !state.board[r][c].isLocked) {
-          startCandidates.push({ r, c, adj: state.board[r][c].adjacentMines });
-        }
-      }
-    }
-    const zeroFirst = startCandidates.filter(c => c.adj === 0);
-    const nonZero = startCandidates.filter(c => c.adj > 0);
-    const ordered = [...zeroFirst, ...nonZero];
-
-    let bestStart = null;
-    let bestStartUnknowns = Infinity;
-    let bestStartCheck = null;
-    for (const cand of ordered) {
-      const result = isBoardSolvable(state.board, state.rows, state.cols, cand.r, cand.c, nbrCache);
-      if (result.solvable && result.remainingUnknowns === 0) {
-        bestStart = cand;
-        bestStartCheck = result;
-        break;
-      }
-      if (result.remainingUnknowns < bestStartUnknowns) {
-        bestStartUnknowns = result.remainingUnknowns;
-        bestStart = cand;
-      }
-    }
-    cleanSolverArtifacts(state.board);
+    // The "Start here" anchor. STORED-FIRST (his 2026-08-17 ruling: "This
+    // should definitely not be client-side ever"): the precompute chooses
+    // the friendliest certifying anchor and ships it in the canonical as
+    // `bestStart`; the client verifies it with ONE solve (bounds, not a
+    // mine, its own full solve certifies, the chip's witness) and renders
+    // it verbatim. The legacy zeros-first search survives ONLY for
+    // canonicals written before the field existed and for locally built
+    // fallback boards, as the one copy in startAnchor.js. The corner-start
+    // incident this replaces: the client loop broke at the FIRST certifying
+    // cell in reading order, which put the marker on (0,0) over a 9-cell
+    // opening whose next moves were four tank-class deductions.
+    const storedAnchor = reconstructed && reconstructed.bestStart != null
+      ? resolveStoredAnchor(state.board, state.rows, state.cols, reconstructed.bestStart)
+      : null;
+    const anchor = storedAnchor || legacyStartSearch(state.board, state.rows, state.cols);
     // The Certified chip's claim is "solvable without guessing from the
     // marked start", so the certificate is the marked start's OWN full
     // solve, not the center check above, which feeds features/par. A
     // board with no full-solve anchor stamps nothing (chip absent).
-    state.boardCertificate = certificateFromCheck(bestStartCheck);
+    state.boardCertificate = certificateFromCheck(anchor ? anchor.check : null);
     state.revealedCount = 0;
-    if (bestStart) {
-      state.board[bestStart.r][bestStart.c].suggestedStart = true;
+    if (anchor) {
+      state.board[anchor.r][anchor.c].suggestedStart = true;
     }
-    setDailySuggestedCell(bestStart);
+    setDailySuggestedCell(anchor ? { r: anchor.r, c: anchor.c } : null);
   }
 
   // Weekly mode: same canonical-board pattern as daily, but using
@@ -1146,9 +1171,18 @@ export async function newGame() {
       const dim1 = wRng();
       const dim2 = wRng();
       const dim3 = wRng();
-      state.rows = WEEKLY_MIN_SIZE + Math.floor(dim1 * WEEKLY_SIZE_RANGE);
-      // Cap cols at BOARD_WIDTH_CAP (12). Rows can still grow up to 14.
-      state.cols = Math.min(WEEKLY_MIN_SIZE + Math.floor(dim2 * WEEKLY_SIZE_RANGE), BOARD_WIDTH_CAP);
+      // HIS RULING (2026-08-20): a weekly must not scroll at the default cell
+      // size. clampRectDims is the ONE rule, and it replaces the old cols-only
+      // cap: a NARROW board is the one that got too tall, because cells grow
+      // to fill the width, so 14x8 stood 502px against a 462px budget while
+      // 14x12 is 362px. Clamping consumes no extra rng() call, so every
+      // stored canonical's seed stream is untouched.
+      const wDims = clampRectDims(
+        WEEKLY_MIN_SIZE + Math.floor(dim1 * WEEKLY_SIZE_RANGE),
+        WEEKLY_MIN_SIZE + Math.floor(dim2 * WEEKLY_SIZE_RANGE),
+      );
+      state.rows = wDims.rows;
+      state.cols = wDims.cols;
       const density = DAILY_MIN_DENSITY + dim3 * DAILY_DENSITY_RANGE;
       state.totalMines = Math.max(5, Math.round(state.rows * state.cols * density));
 
@@ -1231,12 +1265,24 @@ export async function newGame() {
       // leaves us where this code has always been, offline, or on a test build
       // whose writes are gated, and playing our own deterministic board is
       // still the best available answer there.
-      const wrote = await saveWeeklyBoard(state.weeklySeed, serializeBoard({
+      const fallbackWeeklyPayload = serializeBoard({
         board: state.board, rows: state.rows, cols: state.cols,
         totalMines: state.totalMines, rngSeed: state.weeklyRngSeed,
         activeGimmicks: state.activeGimmicks,
         codeVersion: state.codeVersion || 'unknown',
-      })).catch(err => { reportCaughtError('weekly-board-save', err); return false; });
+      });
+      // The first-client fallback is a real canonical writer, so it stores
+      // the anchor the same way the precompute does (his ruling: never
+      // client-side means never RE-DERIVED per client; whoever writes the
+      // board picks the anchor once and everyone renders it). Omitted
+      // rather than guessed when nothing certifies, which the legacy
+      // fallback covers.
+      const fallbackAnchor = chooseStartAnchor(state.board, state.rows, state.cols);
+      if (fallbackAnchor) {
+        fallbackWeeklyPayload.bestStart = fallbackAnchor.r * state.cols + fallbackAnchor.c;
+      }
+      const wrote = await saveWeeklyBoard(state.weeklySeed, fallbackWeeklyPayload)
+        .catch(err => { reportCaughtError('weekly-board-save', err); return false; });
       if (staleRun()) return; // a newer newGame superseded this run mid-write
 
       if (!wrote) {
@@ -1315,44 +1361,23 @@ export async function newGame() {
       }
     }
 
-    // Best-start cell for the Start-here label, same as daily.
-    const nbrCache = buildNeighborCache(state.board, state.rows, state.cols);
-    const startCandidates = [];
-    for (let r = 0; r < state.rows; r++) {
-      for (let c = 0; c < state.cols; c++) {
-        if (!state.board[r][c].isMine && !state.board[r][c].isLocked) {
-          startCandidates.push({ r, c, adj: state.board[r][c].adjacentMines });
-        }
-      }
-    }
-    const zeroFirst = startCandidates.filter(c => c.adj === 0);
-    const nonZero = startCandidates.filter(c => c.adj > 0);
-    const ordered = [...zeroFirst, ...nonZero];
-
-    let bestStart = null;
-    let bestStartUnknowns = Infinity;
-    let bestStartCheck = null;
-    for (const cand of ordered) {
-      const result = isBoardSolvable(state.board, state.rows, state.cols, cand.r, cand.c, nbrCache);
-      if (result.solvable && result.remainingUnknowns === 0) {
-        bestStart = cand;
-        bestStartCheck = result;
-        break;
-      }
-      if (result.remainingUnknowns < bestStartUnknowns) {
-        bestStartUnknowns = result.remainingUnknowns;
-        bestStart = cand;
-      }
-    }
-    cleanSolverArtifacts(state.board);
+    // The Start-here anchor, same stored-first contract as the daily (his
+    // 2026-08-17 ruling): the weekly precompute and the first-client
+    // fallback writer both store `bestStart`, the client verifies it with
+    // one solve and renders it verbatim, and the legacy search serves only
+    // canonicals that predate the field.
+    const weeklyStoredAnchor = reconstructed && reconstructed.bestStart != null
+      ? resolveStoredAnchor(state.board, state.rows, state.cols, reconstructed.bestStart)
+      : null;
+    const weeklyAnchor = weeklyStoredAnchor || legacyStartSearch(state.board, state.rows, state.cols);
     // Same contract as daily: the certificate is the marked start's own
     // full solve, or nothing.
-    state.boardCertificate = certificateFromCheck(bestStartCheck);
+    state.boardCertificate = certificateFromCheck(weeklyAnchor ? weeklyAnchor.check : null);
     state.revealedCount = 0;
-    if (bestStart) {
-      state.board[bestStart.r][bestStart.c].suggestedStart = true;
+    if (weeklyAnchor) {
+      state.board[weeklyAnchor.r][weeklyAnchor.c].suggestedStart = true;
     }
-    setDailySuggestedCell(bestStart);
+    setDailySuggestedCell(weeklyAnchor ? { r: weeklyAnchor.r, c: weeklyAnchor.c } : null);
   }
 
   // Load per-mode power-ups
@@ -1524,6 +1549,13 @@ export function revealCell(row, col) {
   // Past every intercept, this click is a real reveal action. Recorded
   // BEFORE processing so a bomb hit still logs the click that caused it.
   recordPlayerAction('r', row, col);
+
+  // The marathon camera's dive (his ruling): an oversized board opens with
+  // the WHOLE board in view, and the first real click animates down to the
+  // player's own cell size, centered where they opened. A no-op on every
+  // board that fits, and on any board whose player has already taken the
+  // camera somewhere themselves.
+  cameraDiveFromSurvey(row, col);
 
   // First click, generate board (chaos only). Climb, match, daily, weekly,
   // and coastline boards are FROZEN at newGame (their branches set
@@ -1777,6 +1809,14 @@ export function revealCell(row, col) {
     newlyRevealed = [currentCell];
     playReveal();
   }
+
+  // Name what the next frames are paying for, so the probe's worst entries
+  // can be attributed to a cascade rather than to whatever came after it.
+  setFrameContext({
+    shape: (state.board && state.board._tiling && state.board._tiling.type) || 'rect',
+    cells: state.rows * state.cols,
+    action: `reveal:${newlyRevealed.length}`,
+  });
 
   // Wormhole: revealing one side reveals the paired cell too
   revealWormholePairs(newlyRevealed);

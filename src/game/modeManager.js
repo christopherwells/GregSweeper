@@ -181,6 +181,10 @@ export function launchMatch(rawRules, pinnedEntries = null, shared = null) {
   clearCoastlinePractice();
   updateModeUI('match');
   newGame();
+  // The live race (chip, gap lines, presence heartbeat) follows the node
+  // from the first board. Dynamic import, the winLossHandler idiom for
+  // ui modules; a solo match starts nothing.
+  import('../ui/matchRace.js').then((m) => m.startMatchRace()).catch(() => {});
 }
 
 /** Resume a saved mid-board match from the setup sheet's Resume slot. */
@@ -206,6 +210,7 @@ export function resumeMatch() {
     return;
   }
   rearmPlateTimers();
+  import('../ui/matchRace.js').then((m) => m.startMatchRace()).catch(() => {});
 }
 
 /**

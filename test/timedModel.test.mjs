@@ -23,9 +23,13 @@ test('predictPar selects the timed model on modeTimed boards', () => {
   const daily = predictPar(base);
   const timed = predictPar({ ...base, modeTimed: 1 });
   // Hand-compute the timed linear predictor, then back-transform per scale.
+  // The RATE form (2026-08-20): size rides log(cells) and the board-scaling
+  // counts are divided by the board, so the hand computation divides too.
   const lp = PAR_MODEL_TIMED.intercept
-    + PAR_MODEL_TIMED.secPerCell * 100 + PAR_MODEL_TIMED.secPerMineFlag * 20
-    + PAR_MODEL_TIMED.secPerPatternMove * 3 + PAR_MODEL_TIMED.secPerSearchMove * 1
+    + PAR_MODEL_TIMED.secPerLogCell * Math.log(100)
+    + PAR_MODEL_TIMED.secPerMineRate * (20 / 100)
+    + PAR_MODEL_TIMED.secPerPatternRate * (3 / 100)
+    + PAR_MODEL_TIMED.secPerSearchRate * (1 / 100)
     + PAR_MODEL_TIMED.secPerZeroCluster * 3;
   const expect = PAR_MODEL_TIMED.scale === 'log' ? Math.exp(lp) : lp;
   assert.equal(timed, Math.round(expect * 10) / 10);

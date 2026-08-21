@@ -6,6 +6,7 @@
 // looks wrong.
 
 import { $ } from './domHelpers.js';
+import { frameProbeReport } from '../logic/frameProbe.js';
 import { uiSpriteImgHTML } from './spriteLoader.js';
 import { showModal } from './modalManager.js';
 import { showToast } from './toastManager.js';
@@ -88,6 +89,11 @@ async function collectSnapshot(currentVersion) {
   return {
     version: currentVersion,
     timestamp: new Date().toISOString(),
+    // Frame times measured on THIS device. Ten desktop investigations could
+    // not reproduce his shape-mode lag and several pointed the wrong way, so
+    // the worst frames are recorded where the lag is real, tagged with the
+    // shape, the cell count and what the player had just done.
+    frames: frameProbeReport(),
     uid: uid || null,
     firebaseOnline,
     auth: {

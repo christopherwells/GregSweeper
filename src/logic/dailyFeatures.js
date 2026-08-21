@@ -52,7 +52,7 @@ export const CLUE_SHARE_KEYS = ['clueShare2', 'clueShare3', 'clueShare4', 'clueS
 // deltoidal kite nine, so a 9 or a 10 was dropped from the numerator AND the
 // denominator and all four shares were computed over a smaller board than the
 // one that exists. Nothing would have thrown, the shares would still have summed
-// to at most ten, and the wrong number would have landed in a write-once
+// to at most ten, and we would have written the wrong number into a write-once
 // dailyMeta row (the zeroClusterCount precedent). Bucketing has no ceiling to
 // get wrong, so the next lattice cannot reintroduce one.
 export function clueShares(board, rows, cols) {
@@ -414,13 +414,49 @@ export function computeDailyFeatures(state, solverResult, opts = {}) {
 //
 // disjunctiveMoves remains unmodeled (dropped 2026-05-04, confounded with
 // liarCellCount). The solver still counts it for diagnostics.
+/**
+ * A count expressed per cell, the rate form's one arithmetic operation.
+ * The pmax guard mirrors the R derivation exactly (both divide by
+ * max(1, cellCount)), so a degenerate zero-cell vector prices as the count
+ * itself rather than as Infinity.
+ */
+function perCell(features, count) {
+  return (count || 0) / Math.max(1, features.cellCount || 1);
+}
+
+// THE RATE FORM (his ruling 2026-08-20, proven in
+// scripts/par-model-move-rates.qmd). Every count that grows with board AREA
+// enters divided by the board, and log(cells) carries size on its own.
+//
+// The defect it fixes: counts multiply on the log scale, so a board four
+// times larger carried four times the moves and par grew like e^(4*beta*n).
+// Measured, the count form priced a 660-cell board that two people finished
+// in twenty minutes at five to thirty-one hours. Trained on boards of 187
+// cells and under and asked to price 638-660 cell boards, the count form
+// missed by 23.9x typically and this one by 1.3x, which also beats the
+// marathon lane's own anchor pricing (1.5x) on boards built for exactly that
+// job. In sample the two are indistinguishable (residual SD 0.404 against
+// 0.399), so nothing is surrendered where people actually play.
+//
+// secPerCell, secPerMineFlag, secPerPatternMove and secPerSearchMove are
+// RETIRED, the way the per-shape indicator offsets were: gone from here,
+// gone from every emitted
+// block, and gone from COEF_TO_PREDICTOR in refit-par-model.R. A model doped
+// with one is inert, the same property tilingParModelContract already pins
+// for the retired shape indicators. Retiring rather than zeroing is
+// deliberate: a key at 0 reads as "not yet earned", and these are not coming
+// back.
 const COEF_TERMS = [
-  // Size / density, the baseline block.
-  { coef: 'secPerCell',        value: f => f.cellCount || 0,                                       displayGroup: 'baseline', baseline: true },
-  { coef: 'secPerMineFlag',    value: f => f.totalMines || 0,                                       displayGroup: 'baseline', baseline: true },
-  // Reasoning load, two earned tiers.
-  { coef: 'secPerPatternMove', value: f => (f.canonicalSubsetMoves || 0) + (f.genericSubsetMoves || 0), displayGroup: 'pattern moves' },
-  { coef: 'secPerSearchMove',  value: f => f.advancedLogicMoves || 0,                              displayGroup: 'search moves' },
+  // The SIZE ELASTICITY, now carrying size alone. Measured 1.164 [1.060,
+  // 1.267], so par scales close to proportionally with area and the intercept
+  // reads as log seconds per cell rather than as the 19s zero-feature board
+  // that prompted his "the intercept should be 0".
+  { coef: 'secPerLogCell',     value: f => Math.log(Math.max(1, f.cellCount || 1)),               displayGroup: 'baseline', baseline: true },
+  // Mine DENSITY, not mine count.
+  { coef: 'secPerMineRate',    value: f => perCell(f, f.totalMines),                              displayGroup: 'baseline', baseline: true },
+  // Reasoning load per cell, two earned tiers.
+  { coef: 'secPerPatternRate', value: f => perCell(f, (f.canonicalSubsetMoves || 0) + (f.genericSubsetMoves || 0)), displayGroup: 'pattern moves' },
+  { coef: 'secPerSearchRate',  value: f => perCell(f, f.advancedLogicMoves),                      displayGroup: 'search moves' },
   // Board structure.
   { coef: 'secPerWallEdge',    value: f => f.wallEdgeCount || 0,    displayGroup: 'walls' },
   { coef: 'secPerZeroCluster', value: f => f.zeroClusterCount || 0, displayGroup: 'structure' },

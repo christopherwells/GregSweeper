@@ -22,6 +22,13 @@ concurrency:
 jobs:
   e2e:
     runs-on: ubuntu-latest
+    # A HUNG STEP MUST FAIL, NOT SIT (2026-08-19). `playwright install
+    # --with-deps` stalled on a runner for the full six-hour GitHub
+    # default, twice in a row, while a merge waited behind it and every
+    # other job queued; the third attempt installed in seconds. This job
+    # runs in 2-3 minutes, so 20 never bites a real run and turns that
+    # silent stall into a re-runnable red.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 

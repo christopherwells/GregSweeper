@@ -61,7 +61,8 @@ import {
   MATCH_TIME_BANDS, MATCH_DENSITY_BANDS, MATCH_PAR_CEILING_SECONDS,
 } from '../src/logic/matchRules.js';
 import { rectFitsPhone, boardFitsPhone } from '../src/logic/boardFit.js';
-import { buildTiling, containerIsStorable } from '../src/logic/tilingGeometry.js';
+import { buildTiling, containerIsStorable, CANONICAL_MAX_DIM } from '../src/logic/tilingGeometry.js';
+import { BOARD_WIDTH_CAP } from '../src/logic/difficulty.js';
 import { OUT_DIR, writeMatchIndexFiles, matchPageFile, matchPageNames } from './match-index-files.mjs';
 
 const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
@@ -76,8 +77,10 @@ const TRIES_PER_DRAW = 3;
 const BACKOFF_CAP = 5;
 // The one column count the big-end rect synthesis uses: the width cap
 // itself, because every probe hit in the unsearched range stood at full
-// width (tall boards want the widest legal row).
-const BOARD_SYNTH_COLS = 11;
+// width (tall boards want the widest legal row). READ from the cap rather
+// than copied: this said 11 while its own comment said "the width cap
+// itself", and the two disagreed the moment the cap moved.
+const BOARD_SYNTH_COLS = BOARD_WIDTH_CAP;
 // How often a long run commits what it has. Ten minutes bounds the loss from a
 // crash without rewriting the index constantly.
 const FLUSH_EVERY_MS = 10 * 60000;
@@ -290,7 +293,14 @@ export function synthBigEnd(shape) {
   if (_synthCache.has(shape)) return _synthCache.get(shape);
   const out = [];
   if (shape === 'rect') {
-    for (let rows = 17; rows >= 12; rows--) {
+    // Walk down from the tallest legal board at that width rather than from a
+    // remembered ceiling, for the same reason the width itself is read: the
+    // ceiling is a consequence of the tap floor, which moves.
+    let tallest = 0;
+    for (let r = 1; r <= CANONICAL_MAX_DIM; r++) {
+      if (rectFitsPhone(r, BOARD_SYNTH_COLS)) tallest = r;
+    }
+    for (let rows = tallest; rows >= Math.max(2, tallest - 5); rows--) {
       if (rectFitsPhone(rows, BOARD_SYNTH_COLS)) {
         out.push({ shape, rows, cols: BOARD_SYNTH_COLS, cells: rows * BOARD_SYNTH_COLS });
       }
@@ -459,6 +469,13 @@ async function main() {
   // depth (or the corner would read full while dealing thin), and the
   // arity-scaled targets are what stop the trimmed surplus regrowing.
   const existing = pages.flat().filter((b) => b && !b.evicted);
+  // The FIT lane's census sees fit boards only. Oversized (marathon-lane)
+  // rows share pages and corners but serve a different legality: counting
+  // them toward a corner's depth would read the corner as full while every
+  // opted-out host deals thin, and an oversized spec offered as an in-cell
+  // anchor would hand marathon dims to a generator whose lattice candidates
+  // carry no fit re-check. The seed-duplicate guard still spans BOTH lanes.
+  const fitOnly = existing.filter((b) => b.oversized !== true);
   // A SEED THE LIBRARY ALREADY HOLDS IS DROPPED, NOT ADDED TWICE (the climb
   // re-bin's own rule, which this tool lacked until 2026-08-16). Draw seeds
   // derive from the run counter, and a TARGETED run leaves that counter
@@ -478,7 +495,7 @@ async function main() {
   // has been dug through stops earning new boards rather than earning more.
   const total = new Map();
   const playedIn = new Map();
-  for (const b of existing) {
+  for (const b of fitOnly) {
     const k = cornerOf(b);
     total.set(k, (total.get(k) || 0) + 1);
     if (played.set.has(matchRowKey(b.seed))) playedIn.set(k, (playedIn.get(k) || 0) + 1);
@@ -486,14 +503,14 @@ async function main() {
   /** Boards still owed in this corner: its target total, less what it holds. */
   const needOf = (k) => cornerTotalTarget(playedIn.get(k) || 0, arityOfKey(k)) - (total.get(k) || 0);
 
-  const space = featureSpace(existing);
-  const corpus = existing.map((b) => vecOf(space, b.features));
+  const space = featureSpace(fitOnly);
+  const corpus = fitOnly.map((b) => vecOf(space, b.features));
 
   // In-cell anchors for the census (his expandable rule): up to three
   // distinct geometries already proven in each (shape, time, density) cell
   // under ANY modifier set, offered to every corner of that cell.
   const cellAnchors = new Map();
-  for (const b of existing) {
+  for (const b of fitOnly) {
     const k = `${b.spec.shape}|${timeBandOf(b.par)}|${densityBandOf(b.spec.mines, b.spec.cells)}`;
     const list = cellAnchors.get(k) || [];
     if (list.length < 3 && !list.some((s) => s.cells === b.spec.cells)) list.push(b.spec);
@@ -540,7 +557,8 @@ async function main() {
   const due = targeted ? wanted : wanted.filter((w) => corner_isDue(state.corners[w.key], runNo));
 
   const bufferDesc = BUFFER_OVERRIDE != null ? `flat ${Number(BUFFER_OVERRIDE)}` : `${ARITY_BUFFERS.join('/')} by arity`;
-  console.log(`topup-match-library: ${existing.length} boards on ${pages.length} pages;`
+  console.log(`topup-match-library: ${fitOnly.length} fit boards on ${pages.length} pages`
+    + `${existing.length - fitOnly.length ? ` (+${existing.length - fitOnly.length} oversized, not this lane's)` : ''};`
     + ` ${total.size} corners occupied, ${wanted.length} below target (buffer ${bufferDesc}, ceiling ${CORNER_CEILING}),`
     + ` ${due.length} due this run (${targeted ? 'targeted' : `run #${runNo}`}); budget ${BUDGET_MS / 60000} min`);
   if (due.length === 0) {

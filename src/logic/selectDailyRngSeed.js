@@ -51,6 +51,7 @@ import {
   missionCandidateScore, selectMissionWinner,
 } from './experimentDesign.js';
 import { drawDailyTargetPar, DAILY_PAR_BAND } from './parBand.js';
+import { clampRectDims } from './boardFit.js';
 
 export function selectDailyRngSeed(dateString) {
   const scored = [];
@@ -69,8 +70,15 @@ export function selectDailyRngSeed(dateString) {
     // Derive dimensions from the first three RNG calls, matches the
     // gameActions.js `state.rows/cols/totalMines` block exactly.
     const dRng = createDailyRNG(seed);
-    const rows = DAILY_MIN_SIZE + Math.floor(dRng() * DAILY_SIZE_RANGE);
-    const cols = DAILY_MIN_SIZE + Math.floor(dRng() * DAILY_SIZE_RANGE);
+    // HIS RULING (2026-08-20): a daily must not scroll at the default cell
+    // size. Today this clamp is a proven no-op on the daily's draw range
+    // (test/boardFit.test.mjs sweeps every reachable pair), and it is here so
+    // that a future edit to the range, the tap floor or the reference phone
+    // cannot quietly make one scroll.
+    const { rows, cols } = clampRectDims(
+      DAILY_MIN_SIZE + Math.floor(dRng() * DAILY_SIZE_RANGE),
+      DAILY_MIN_SIZE + Math.floor(dRng() * DAILY_SIZE_RANGE),
+    );
     const density = DAILY_MIN_DENSITY + dRng() * DAILY_DENSITY_RANGE;
     const mines = Math.max(5, Math.round(rows * cols * density));
     const fr = Math.floor(rows / 2);

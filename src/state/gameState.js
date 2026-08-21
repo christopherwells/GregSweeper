@@ -94,7 +94,15 @@ export const state = {
   showParticles: false,
   theme: 'classic',
   hitMine: null,  // {row, col} of the mine that killed you
-  zoomLevel: 100,  // percentage (50-200)
+  zoomLevel: 100,  // camera scale, percent; ceiling 200, floor cameraMinZoom() (50, or the board's own fit scale below it)
+  // Did this board ever need the camera? True the moment the board overflows
+  // the scroll wrapper, whatever the cause: marathon dims, a wide board, or
+  // an ordinary board under a player's own cell-size preference. Submitted
+  // with the score row as `scrolled`, so the fit can eventually separate the
+  // TIME SPENT TRAVELLING a board from the time spent thinking about it, the
+  // one cost no row has ever carried (his ruling 2026-08-17: record it and
+  // lean on k meanwhile).
+  boardScrolled: false,
   checkpoint: 1,   // last checkpoint level (every 5 levels)
   flagMode: false, // flag-mode toggle for mobile
   dirtyCells: new Set(), // track changed cells for targeted updates
@@ -313,6 +321,37 @@ export function getActiveBombPenaltyTotal() {
     if (e && typeof e.penalty === 'number') sum += e.penalty;
   }
   return Math.round(sum * 10) / 10;
+}
+
+// The feature vector of the board a STRIKE is priced against, chosen by the
+// lane that is actually being played (issue #393).
+//
+// This was a first-non-null chain, `weeklyFeatures || dailyFeatures ||
+// matchFeatures || coastlineFeatures`, which is only correct while at most
+// one of them is populated. It is not: `newGame` clears weekly, match,
+// coastline and challenge vectors, but NEVER `dailyFeatures`, and nothing in
+// src/ ever assigns it null. So playing today's daily and then starting a
+// Challenge run in the same session, with no reload, priced every strike
+// against the DAILY board's vector, and since `modelFor` dispatches on
+// `tilingType` a rect daily also picked the wrong per-shape block. Measured
+// on a deltoidal match board with a plausible 121-cell rect daily left
+// behind: strikes priced 0.29x, 0.41x and 0.54x of their true value. The
+// direction is not fixed either, since it depends on which daily happened to
+// be left in state, and the numbers reach the permanent daily/match_* fit
+// rows. The Par Lab lane sat last in the chain and had the same exposure.
+//
+// Keyed on the lane rather than on populated-ness, the same shape
+// detectSkillFeats uses for the same reason. `parLab` leads because it is a
+// FLAG rather than a mode (mineIsStrike tests it separately for that
+// reason), so a lab board must not be read as whatever mode it runs under.
+// Returns null off the strike lanes, which is what the caller wants: the
+// pricing then carries no board baseline rather than a foreign one.
+export function getStrikeBoardFeatures() {
+  if (state.parLab) return state.coastlineFeatures || null;
+  if (state.gameMode === 'weekly') return state.weeklyFeatures || null;
+  if (state.gameMode === 'daily') return state.dailyFeatures || null;
+  if (state.gameMode === 'match') return state.matchFeatures || null;
+  return null;
 }
 
 // The number the LCD clock shows mid-game, capped at the LCD's three

@@ -58,6 +58,7 @@ import { steeredSlotCap, eligibleRows, pickMatchBoards } from './matchRules.js';
 import {
   resolveMissionForSlot, missionCandidateScore,
   getCurrentTarget, getCoverageTargets, getShapeCoverage, getDecorrelationMission,
+  getTargetGimmickName, isObservationalTarget,
 } from './experimentDesign.js';
 
 // A shape mission's synthetic target key. It exists only to give the shared
@@ -216,7 +217,13 @@ export function planMatchDeal(rows, rules, opts = {}) {
   const cap = Math.min(steeredSlotCap(count), count);
   if (cap === 0 || missions.length === 0 || eligible.length === 0) {
     const plain = pickMatchBoards(eligible, count, rand, seenKeys);
-    return { picks: plain.picks, cycled, eligible: eligible.length, steered: [] };
+    // `eligible` is the ROW ARRAY, on both return paths. It shipped as a
+    // count once, and the seam went untested: #359 taught dealMatchEntries
+    // to read the rows' keys for the per-space seen reset, every real deal
+    // crashed on `eligible.map`, and the sheet blamed the connection. The
+    // rows are what the name says and what the one consumer needs; a count
+    // is `.length` away.
+    return { picks: plain.picks, cycled, eligible, steered: [] };
   }
 
   // How many of this deal's slots must come from boards the player has already
@@ -283,5 +290,63 @@ export function planMatchDeal(rows, rules, opts = {}) {
   // equally likely at any position in the match, which is what keeps the
   // ~20% invisible; clustering them at the front would announce them.
   const picks = shuffle(claimed.concat(fill.picks), rand);
-  return { picks, cycled, eligible: eligible.length, steered };
+  return { picks, cycled, eligible, steered };
+}
+
+// ── "Help Greg": the whole run aimed at what the fit is short of ────────
+//
+// His idea (2026-08-18): a button beside the board count that fills the sheet
+// with the rules the model most needs, so a player who wants to can work the
+// frontier instead of the middle. Steering already does this for at most
+// floor(N/5) slots, deliberately, so a run never feels forced; this is the
+// player ASKING for the whole run to count, which is a different thing and
+// belongs in the rules rather than in the deal.
+//
+// It aims with the SAME mission list the deal steers on, so the button and
+// the steering can never disagree about what is short.
+//
+// THREE REFUSALS, each one load-bearing:
+//
+//   1. NOTHING REACHES OUTSIDE THE HOST'S UNLOCKS. His non-negotiable for the
+//      deal, and a proposal is no different: a shape the player has not met
+//      cannot be proposed however starved it is.
+//   2. DENSITY, LENGTH AND DIFFICULTY ARE LEFT ALONE. The tempting move is to
+//      chase the primary target, which today is a digit share, by setting a
+//      density band. experimentDesign refuses exactly that (isObservationalTarget,
+//      regression-tested): the digit shares are measured on every board, and
+//      chasing one deepens the density confound that is the reason the study is
+//      stuck. A button that quietly re-introduced it would undo a decision the
+//      daily made on purpose.
+//   3. NOTHING IS PROPOSED WHEN NOTHING IS SHORT. His "if no discovery can
+//      happen, that's fine": the caller gets null and says so, rather than
+//      shuffling the chips to look busy.
+//
+// @param {Array} missions      steerMissions() output (or currentSteerMissions())
+// @param {{shapes: string[], mods: string[]}} unlocks  this player's unlocks
+// @param {number} [shapeCap]   how many shapes to propose at once
+// @returns {{shapes: string[], mods: string[], shapeNames: string[],
+//   modNames: string[]}|null}
+export function helpGregRules(missions, unlocks, shapeCap = 3) {
+  const list = Array.isArray(missions) ? missions : [];
+  const okShapes = new Set((unlocks && unlocks.shapes) || []);
+  const okMods = new Set((unlocks && unlocks.mods) || []);
+
+  const shapes = list
+    .filter((m) => m && m.kind === 'shape' && okShapes.has(m.key))
+    .sort((a, b) => b.weight - a.weight)
+    .slice(0, Math.max(1, shapeCap))
+    .map((m) => m.key);
+
+  // A feature mission names a modifier only when one CARRIES it. A move-type
+  // or structural target maps to nothing, and proposing every modifier for it
+  // would be noise dressed as a plan.
+  const mods = [];
+  for (const m of list) {
+    if (!m || m.kind !== 'feature' || isObservationalTarget(m.key)) continue;
+    const gimmick = getTargetGimmickName(m.key);
+    if (gimmick && okMods.has(gimmick) && !mods.includes(gimmick)) mods.push(gimmick);
+  }
+
+  if (!shapes.length && !mods.length) return null;
+  return { shapes, mods, shapeNames: shapes.slice(), modNames: mods.slice() };
 }

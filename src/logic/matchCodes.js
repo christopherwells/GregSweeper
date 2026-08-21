@@ -141,9 +141,21 @@ export function planMatchJoin({ match, uid, now }) {
  * review list is documented as the only way back into a match, so the path
  * that loses the run was the only path there was.
  *
- * The node's own results are the truth, not the local save: a player resuming
- * on a second device has no save, and the whole point of the list is reaching
- * a match the save slot is not holding.
+ * The node's own results are the truth about WHICH boards are done and what
+ * they scored: a player resuming on a second device has no save, and the
+ * whole point of the list is reaching a match the save slot is not holding.
+ *
+ * It is NOT the truth about what HAPPENED on them (issue #372). The node
+ * whitelists exactly {time, penalty, strikes} and closes with `$other:
+ * false`, so a rebuild from it alone drops `par`, `bombHitEvents`,
+ * `wormEvents` and `scrolled`. A row that then reaches the fit carrying
+ * `bombHits > 0` and no events is, on the R side, the exact signature of the
+ * RETIRED +10s/re-fog cohort, so the refit charges it LEGACY_BOMB_RATE (15s
+ * a hit) instead of the true ramped base: 45s removed from a three-strike
+ * board that really cost 13.5s. So `localResults` may be handed in, and any
+ * index whose time AGREES with the node keeps its richer local object. A
+ * disagreement, or an index this device never played, keeps the node's three
+ * fields and is left for matchFitRows to refuse rather than misfile.
  *
  * `current` is the first index with no result rather than `results.length`,
  * so a run with a gap (a post that failed while the next one landed) resumes
@@ -152,7 +164,7 @@ export function planMatchJoin({ match, uid, now }) {
  * @returns {{results: Array, current: number}} safe defaults for an absent
  *   or malformed player entry, which resume as a fresh run.
  */
-export function matchResumePoint(node, uid) {
+export function matchResumePoint(node, uid, localResults = null) {
   const players = (node && node.players && typeof node.players === 'object')
     ? node.players : {};
   const mine = uid ? players[uid] : null;
@@ -164,11 +176,24 @@ export function matchResumePoint(node, uid) {
     const r = stored[i];
     const time = (r && typeof r.time === 'number' && Number.isFinite(r.time) && r.time >= 0)
       ? r.time : null;
-    results[i] = time === null ? undefined : {
+    if (time === null) { results[i] = undefined; continue; }
+    const row = {
       time,
       penalty: (typeof r.penalty === 'number' && Number.isFinite(r.penalty)) ? r.penalty : 0,
       strikes: (typeof r.strikes === 'number' && Number.isFinite(r.strikes)) ? r.strikes : 0,
     };
+    // The local object for the SAME board of the SAME run carries what the
+    // node cannot. Times are stored rounded to a tenth, so agreement is
+    // checked at that resolution rather than exactly.
+    const local = Array.isArray(localResults) ? localResults[i] : null;
+    if (local && typeof local.time === 'number' && Math.abs(local.time - time) < 0.05) {
+      if (typeof local.par === 'number') row.par = local.par;
+      if (Array.isArray(local.bombHitEvents)) row.bombHitEvents = local.bombHitEvents.slice();
+      if (Array.isArray(local.wormEvents)) row.wormEvents = local.wormEvents.slice();
+      if (typeof local.scrolled === 'boolean') row.scrolled = local.scrolled;
+      if (typeof local.seed === 'string') row.seed = local.seed;
+    }
+    results[i] = row;
   }
   let current = results.findIndex((r) => r === undefined);
   if (current < 0) current = of;
@@ -324,11 +349,25 @@ export function partitionInvites(invites, now) {
  * A match whose node could not be read is dropped rather than guessed at: an
  * unreadable run cannot be said to be finished OR waiting.
  *
- * @param {{invites: Array, matches: Array, uid: string|null, now: number}} args
- *   `matches` are fetchMyMatches rows, each with its live `node` attached.
+ * TWO LATER RULINGS this partition carries (2026-08-17):
+ *
+ *  - SOLO RUNS SIT IN FINISHED beside the shared ones, from this device's own
+ *    records (his ask: "it'd be nice if you could see your solo runs").
+ *    They interleave by date; every finished entry has an `at` stamp so the
+ *    list can group months without re-deriving which field each kind uses.
+ *  - AN EXPIRED UNFINISHED RUN IS FINISHED, NOT WAITING. Past the seven days
+ *    the rules refuse every result write, so "carry on with this" is an
+ *    intention the server no longer honors; the run rests in finished with
+ *    `ended` set so the row can say the run closed before the last board.
+ *    Reads stay open forever, which is exactly what the finished place is.
+ *
+ * @param {{invites: Array, matches: Array, uid: string|null, now: number,
+ *   solo?: Array}} args
+ *   `matches` are fetchMyMatches rows, each with its `node` attached;
+ *   `solo` are this device's stored solo-run records, newest first.
  * @returns {{active: Array, finished: Array, declined: Array, expired: Array}}
  */
-export function partitionMatchReview({ invites, matches, uid, now }) {
+export function partitionMatchReview({ invites, matches, uid, now, solo = [] }) {
   const parts = partitionInvites(invites, now);
   const expired = (invites || []).filter((inv) => inviteState(inv, now) === 'expired');
 
@@ -341,11 +380,18 @@ export function partitionMatchReview({ invites, matches, uid, now }) {
     const mine = uid ? players[uid] : null;
     const done = !!(mine && typeof mine.finishedAt === 'number'
       && Number.isFinite(mine.finishedAt) && mine.finishedAt > 0);
-    (done ? finished : active).push({ ...row, done });
+    const ended = !done && matchIsExpired(matchExpiresAt(row.node.createdAt), now);
+    const at = Number(row.joinedAt) || 0;
+    if (done || ended) finished.push({ kind: 'match', match: { ...row, done }, ended, at });
+    else active.push({ ...row, done });
+  }
+  for (const record of solo || []) {
+    if (!record) continue;
+    finished.push({ kind: 'solo', record, at: Number(record.finishedAt) || 0 });
   }
   const newestFirst = (a, b) => (Number(b.joinedAt) || 0) - (Number(a.joinedAt) || 0);
   active.sort(newestFirst);
-  finished.sort(newestFirst);
+  finished.sort((a, b) => b.at - a.at);
 
   return {
     // Invites first inside active: an unanswered ask is more urgent than a
@@ -355,7 +401,7 @@ export function partitionMatchReview({ invites, matches, uid, now }) {
       ...parts.snoozed.map((invite) => ({ kind: 'invite', invite, snoozed: true })),
       ...active.map((match) => ({ kind: 'match', match })),
     ],
-    finished: finished.map((match) => ({ kind: 'match', match })),
+    finished,
     declined: parts.declined.map((invite) => ({ kind: 'invite', invite })),
     expired,
   };

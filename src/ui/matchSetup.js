@@ -165,6 +165,20 @@ function renderBands() {
         + (phrases[b.key] ? `<span class="match-chip-sub">${phrases[b.key]}</span>` : ''),
         (_rules.difficulty || 'any') === b.key, b.label)).join('');
   }
+  const scrollEl = $('#match-scroll');
+  if (scrollEl) {
+    // The marathon opt-in (his phrase: "ok with scrolling boards"). Two
+    // chips, not a checkbox, so the row speaks the sheet's own language.
+    // Off is the default and today's behavior; Allow widens the deal to
+    // oversized boards the camera scrolls, it never requires them.
+    scrollEl.innerHTML = [
+      { key: 'off', label: 'Off', sub: 'fits the screen', on: false },
+      { key: 'on', label: 'Allow', sub: 'boards past the screen edge', on: true },
+    ].map((b) => chipHTML(b.key,
+      `<span class="match-chip-label">${b.label}</span>`
+      + `<span class="match-chip-sub">${b.sub}</span>`,
+      (_rules.scroll === true) === b.on, b.label)).join('');
+  }
 }
 
 function renderCount() {
@@ -184,6 +198,57 @@ function renderCount() {
 // first visit) is its own message, never a zero.
 function renderSupply() {
   const el = $('#match-supply');
+  // ── Help Greg ──────────────────────────────────────────────────────
+  // His idea (2026-08-18): fill the sheet with what the model is short of, so
+  // a player who wants to can work the frontier. Steering already does this
+  // for at most floor(N/5) slots so a run never feels forced; this is the
+  // player ASKING for the whole run to count, which belongs in the rules.
+  //
+  // It deliberately sets SHAPES and MODIFIERS only. Setting a density band to
+  // chase the primary target would re-introduce the confound experimentDesign
+  // refuses on purpose (isObservationalTarget): the digit shares are measured
+  // on every board, and chasing one deepens the density correlation that is
+  // the reason that study is stuck.
+  const helpBtn = $('#match-help-greg');
+  if (helpBtn) {
+    helpBtn.addEventListener('click', async () => {
+      const note = $('#match-help-note');
+      helpBtn.disabled = true;
+      try {
+        const [{ loadExperimentTarget }, steering] = await Promise.all([
+          import('../logic/experimentDesign.js'),
+          import('../logic/matchSteering.js'),
+        ]);
+        // The list is empty until the night's target is fetched, and a button
+        // that silently proposed nothing would read as broken.
+        await loadExperimentTarget();
+        const plan = steering.helpGregRules(steering.currentSteerMissions(), currentUnlocks());
+        if (!plan) {
+          if (note) note.textContent = 'Greg has what he needs right now. Any run helps.';
+          return;
+        }
+        if (plan.shapes.length) _rules.shapes = plan.shapes.slice();
+        if (plan.mods.length) _rules.mods = plan.mods.slice();
+        saveRules(_rules);
+        renderAll();
+        if (note) {
+          const shapeText = plan.shapeNames.map(shapeLabelOf).join(', ');
+          const defs = getGimmickDefs();
+          const modText = plan.modNames.map((m) => (defs[m] && defs[m].name) || m).join(', ');
+          const parts = [];
+          if (shapeText) parts.push(shapeText);
+          if (modText) parts.push(modText);
+          note.textContent = `Greg has the least data on ${parts.join(' with ')}. `
+            + 'Change anything you like.';
+        }
+      } catch {
+        if (note) note.textContent = 'Could not reach the notes just now.';
+      } finally {
+        helpBtn.disabled = false;
+      }
+    });
+  }
+
   const startBtn = $('#match-start');
   if (!el) return;
   if (!_corners) {
@@ -312,6 +377,20 @@ function wire() {
     });
   }
 
+  // The scroll opt-in is a BOOLEAN on the rules, so it gets its own handler
+  // rather than a row in the string-keyed loop above.
+  const scrollEl = $('#match-scroll');
+  if (scrollEl) {
+    scrollEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('.match-chip');
+      if (!btn || btn.disabled) return;
+      _rules.scroll = btn.dataset.key === 'on';
+      saveRules(_rules);
+      renderBands();
+      renderSupply();
+    });
+  }
+
   const startBtn = $('#match-start');
   if (startBtn) {
     startBtn.addEventListener('click', () => {
@@ -353,8 +432,14 @@ function wire() {
   }
 }
 
-/** Open the sheet from the title screen's Challenge card. */
-export function openMatchSetup() {
+/**
+ * Open the sheet from the title screen's Challenge card, or from a
+ * leaderboard Challenge button, which passes the friend to invite once a
+ * match is created plus the tab to land on. The friend is re-set or cleared
+ * on EVERY open, so a sheet visit that never creates a match cannot leave a
+ * name behind for an unrelated later one.
+ */
+export function openMatchSetup({ challengeFriend = null, tab = null } = {}) {
   wire();
   const unlocks = currentUnlocks();
   // Re-sanitized against the CURRENT unlocks every open, so a saved rule
@@ -367,7 +452,11 @@ export function openMatchSetup() {
   // Invites and matches you are already in, fetched after the sheet paints so
   // a slow network never delays the controls. Stays hidden when empty.
   import('./matchLobby.js')
-    .then((m) => m.renderMatchReview())
+    .then((m) => {
+      m.setChallengeFriend(challengeFriend);
+      if (tab) m.showMatchTab(tab);
+      m.renderMatchReview();
+    })
     .catch((err) => reportCaughtError('match-review-open', err));
   // The summary arrives after the sheet paints; the supply line says so
   // while it is in flight and never shows a zero it has not measured.

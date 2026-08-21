@@ -31,15 +31,23 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { signInAnonymously, deleteSelf } from './anon-auth-rest.mjs';
+import { clampRectDims } from '../src/logic/boardFit.js';
 
 const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function buildOneCandidate(seed) {
   const dRng = createDailyRNG(seed);
-  const rows = WEEKLY_MIN_SIZE + Math.floor(dRng() * WEEKLY_SIZE_RANGE);
-  // Cap cols at BOARD_WIDTH_CAP (12); rows can still sample 8-14.
-  const cols = Math.min(WEEKLY_MIN_SIZE + Math.floor(dRng() * WEEKLY_SIZE_RANGE), BOARD_WIDTH_CAP);
+  // HIS RULING (2026-08-20): a weekly must not scroll at the default cell
+  // size. clampRectDims is the ONE rule, and it replaces the old cols-only
+  // cap: a NARROW board is the one that got too tall, because cells grow to
+  // fill the width, so 14x8 stood 502px against a 462px budget while 14x12
+  // is 362px. Clamping consumes no extra rng() call, so every stored
+  // canonical's seed stream is untouched and only an illegal draw moves.
+  const { rows, cols } = clampRectDims(
+    WEEKLY_MIN_SIZE + Math.floor(dRng() * WEEKLY_SIZE_RANGE),
+    WEEKLY_MIN_SIZE + Math.floor(dRng() * WEEKLY_SIZE_RANGE),
+  );
   const density = DAILY_MIN_DENSITY + dRng() * DAILY_DENSITY_RANGE;
   const totalMines = Math.max(5, Math.round(rows * cols * density));
   const fr = Math.floor(rows / 2), fc = Math.floor(cols / 2);

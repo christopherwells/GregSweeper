@@ -35,6 +35,7 @@ export const GAMEOVER_ELEMENT_IDS = [
   'gameover-crux-challenge',
   'gameover-match-next',
   'gameover-match-again',
+  'gameover-race',
   'gameover-remind-tomorrow',
   'gameover-retry',
   'gameover-done',
@@ -83,7 +84,8 @@ export function gameoverModalPlan(outcome, mode) {
     // achievements, remind-tomorrow, share-card-preview, match-next,
     // match-again, match-summary, match-standings (and done doubles as the
     // match's last-board close). match-standings additionally needs a SHARED
-    // match: a solo run has no node and nobody to stand against.
+    // match: a solo run has no node and nobody to stand against; the same
+    // is true of gameover-race, the mid-match gap lines.
   } else if (outcome === 'loss') {
     plan['gameover-retry'] = true;
     plan['gameover-encouragement'] = true;

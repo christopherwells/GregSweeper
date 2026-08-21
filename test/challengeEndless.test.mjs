@@ -16,7 +16,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, TIER_PPC,
+  CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, TIER_PPC, BRAID_PPC_END,
   ENDLESS_SPECS, endlessPpcFloor, endlessPpcAdmission, ENDLESS_START_LEVEL, ENDLESS_GEN_BUDGET_MS,
   ENDLESS_PAR_CEILING_SECONDS, GEN_CAP_MS, endlessPpcRange,
   ENDLESS_GEN_HEADROOM, endlessParCeiling, endlessGenCap, endlessGenBudget, ENDLESS_PPC_FLOOR,
@@ -222,7 +222,25 @@ test('the zone spans easy-for-a-summit to terribly hard, which is the point', ()
   const { lo, hi } = endlessPpcRange();
   assert.ok(hi / lo >= 1.5,
     `the pool spans only ${lo.toFixed(2)}-${hi.toFixed(2)} s/cell, which is not a range`);
-  assert.ok(hi >= 5, `nothing in the pool is terribly hard (hardest ${hi.toFixed(2)} s/cell)`);
+  // "Terribly hard" is now a MULTIPLE of the ladder's own summit rate rather
+  // than the absolute 5.0 this used to carry (his ruling 2026-08-21). The
+  // absolute was written when s/cell meant what the count-form model made it
+  // mean; the rate form re-scaled the quantity, and a bar that does not move
+  // with the scale it measures goes stale exactly the way the width cap did.
+  // Tying it to BRAID_PPC_END keeps the QUESTION ("is the zone meaningfully
+  // harder than anything the climb itself asks?") while letting the number
+  // follow the model.
+  //
+  // Stated plainly, because it is a real loss and not a re-labelling: the
+  // pool's hard end fell from 1.39x the summit to 1.27x under the rate form.
+  // The supply is not the binding constraint, the WINDOW is: clearing
+  // 5 s/cell and the 400s par floor together needs 80+ cells, staying under
+  // the shape ceiling needs 120 or fewer, and the rate form squeezed that
+  // into a sliver where nothing also clears the deduction floor. He accepted
+  // the softer top end rather than spend another hour of generation on it.
+  assert.ok(hi >= BRAID_PPC_END * 1.25,
+    `nothing in the pool is terribly hard: hardest ${hi.toFixed(2)} s/cell is `
+    + `${(hi / BRAID_PPC_END).toFixed(2)}x the ${BRAID_PPC_END} s/cell summit, under the 1.25x bar`);
 });
 
 test('a long run does not grind the same few boards', () => {
@@ -343,12 +361,49 @@ test('GOLDEN: the first endless block is fixed', () => {
   // percent), measured deciles on current-model cache prices only (stale
   // rows overstate), and 4.8.8 took its own allowance (2.3). Seven shapes,
   // 96 entries, a different deck, a different five.
+  // Moved on 2026-08-17 by the correction fit's artifact wake: the targeted
+  // parameterization plays collapsed rhombille's totalMines deviation
+  // (-0.300 to -0.021) and moved every shape's surface, so the floors
+  // re-measured at current-model deciles (floret under the shared floor for
+  // the first time, at 2.6) and the convergence loop re-emitted the pool at
+  // 64 entries across all seven shapes. Different deck, different five.
+  // Moved on 2026-08-18 by the M1 size-term refit (his ruling: log(cells)
+  // joins the equation beside a signed linear term). The concave size curve
+  // re-priced the whole pool, big boards downward most, so which entries
+  // clear the 400s floor and where each shape's deciles sit both moved, and
+  // the re-priced deck deals a different five. The same night's re-price
+  // also fixed the zone-span red on its own (the morning's "hardest 4.99
+  // s/cell" reading was the OLD model's compression, not a supply gap).
+  // Moved on 2026-08-19 by the drawn-pool re-search under the settled M1
+  // term: both tables re-emitted from a cache the overnight sweeps doubled,
+  // shipping ONLY absorb-proven faces (16-seed builds, within-face spread
+  // gated at 2.0, the new band-stability acceptance), the per-shape floors
+  // re-measured at current-model deciles with deltoidal and floret taken
+  // from the SHIPPABLE population (stable material prices lower than the
+  // all-fresh decile; a floor set on the wider population priced deltoidal
+  // out of the zone entirely). Whole different pool, whole different five.
+  // Moved on 2026-08-20 by the nightly refit (N=826, Rhat 1.004): the
+  // 08-19 re-search re-emitted these pools proven-faces-only, and the
+  // night's re-price then re-sorted which of them the deck deals. A
+  // golden that moves when the model does is the point.
+  // Moved WHOLESALE on 2026-08-21 by the rate-form refit. The re-price left
+  // the spec cache carrying pre-refit prices, so the pool was re-emitted from
+  // a repriced cache (search-endless-specs.mjs --reprice-cache, then
+  // write-challenge-pool.mjs --only endless): a different pool, so a
+  // different five. All five entries changed, which is what a change to the
+  // model's FORM should look like where a nightly re-price moves one.
+  // Moved WHOLESALE on 2026-08-21 by the rate-form refit and the pool rebuild
+  // it forced. The spec cache still carried pre-refit prices, so the endless
+  // table was re-emitted from a repriced cache, its 90 new faces measured, and
+  // the derived prices written back: a different pool, so a different five.
+  // All five changed, which is what a change to the model's FORM looks like
+  // where a nightly re-price moves one.
   assert.deepEqual(got, [
-    'deltoidal:36c:13m:[sonar]',
-    'floret:84c:31m:[]',
-    'rhombille:48c:18m:[]',
-    'cairo:112c:36m:[locked+sonar+compass]',
-    'hex:104c:37m:[liar+locked+compass]',
+    '4.8.8:85c:28m:[sonar+compass]',
+    'rect:25c:10m:[walls+compass]',
+    'rhombille:45c:17m:[locked+wormhole+worm]',
+    'cairo:112c:34m:[wormhole+compass]',
+    'hex:40c:15m:[walls+locked]',
   ]);
 
 

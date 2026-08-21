@@ -1,4 +1,4 @@
-import { state, ENCOURAGEMENT_LINES, getActiveBombPenaltyTotal, ownsSaveSlot } from '../state/gameState.js';
+import { state, ENCOURAGEMENT_LINES, getActiveBombPenaltyTotal, getStrikeBoardFeatures, ownsSaveSlot } from '../state/gameState.js';
 import { $, $$, boardEl, resetBtn, scanToast, escapeHtml } from '../ui/domHelpers.js';
 import { getThemeEmoji, updateAllCells, announceGame } from '../ui/boardRenderer.js';
 import { applyIcon, spriteImgHTML, achievementSpriteImgHTML, uiSpriteImgHTML } from '../ui/spriteLoader.js';
@@ -40,6 +40,7 @@ import {
 } from '../logic/achievements.js';
 import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js';
 import { submitOnlineScore, submitArchiveScore, submitWeeklyScore, fetchWeeklyLeaderboard, fetchOnlineLeaderboard, submitMatchFitRows } from '../firebase/firebaseLeaderboard.js';
+import { repairMatchResults } from './matchRepair.js';
 import { dailyStanding } from '../logic/leaderboardViews.js';
 import { getHandicapRatioMap } from '../logic/handicaps.js';
 import { matchFitRows, MATCH_FIT_MIN_TIME } from '../logic/matchStandings.js';
@@ -382,6 +383,7 @@ export async function submitArchiveCompletion(dateStr, name, scoreTime) {
       rngSeed: state.dailyRngSeed || dateStr,
       totalMines: state.totalMines,
       cruxViewed,
+      scrolled: !!state.boardScrolled,
     });
   }
   // dailyHistory is durable (its own retry queue), so the completion and the
@@ -514,6 +516,29 @@ function _finishMatchRun() {
   m.filed = true;
   if (state.isLevelPractice) return;
 
+  // A SOLO run's record (his ask 2026-08-17: solo runs belong in the history
+  // list too). Shared runs already have their node; a solo run has none, so
+  // this device keeps a compact local row instead, the Quick Play precedent.
+  if (!m.id) {
+    import('../storage/matchHistoryStorage.js')
+      .then((mod) => mod.recordSoloRun(m))
+      .catch((err) => reportCaughtError('match-solo-record', err));
+  }
+
+  // RE-DERIVE BEFORE FILING (his 2026-08-19 recovery). A result banked by a
+  // build that priced strikes off the raw extrapolation carries a penalty in
+  // the thousands of seconds, which BOTH destinations refuse: the node
+  // validates time and penalty at <= 3600 (so the board never reached the
+  // standings) and matchFitRows refuses the same range (so it never reached
+  // the model). The repair replays each strike on the stored board under the
+  // fixed pricing and rebuilds the row exactly; it is a no-op on results that
+  // were already honest, so it runs unconditionally rather than sniffing for
+  // a bad build. Anything it cannot derive exactly it leaves alone.
+  const repaired = repairMatchResults(m);
+  if (repaired.length > 0) {
+    console.warn(`match: re-derived strike penalties on board(s) ${repaired.map((i) => i + 1).join(', ')}`);
+  }
+
   const uid = getUid();
   const name = (getPlayerName() || '').slice(0, 20).trim();
   const { rows, tooFast } = matchFitRows(m.entries, m.results);
@@ -527,9 +552,44 @@ function _finishMatchRun() {
     submitMatchFitRows(rows, name, uid)
       .catch((err) => reportCaughtError('match-fit-submit', err));
   }
+  // RECONCILE BEFORE CLAIMING FINISHED (issue #396). Each board posts its
+  // result live and fire-and-forget, and a post that did not land was never
+  // sent again: the run still wrote `finishedAt`, so the standings read that
+  // player as FINISHED on a total missing a board. A short total is a SMALLER
+  // total, so they ranked ahead of everyone who banked all of theirs and the
+  // report named the wrong winner, permanently, with the real numbers living
+  // only on the device that played. The known-closed seven-day gate was the
+  // premise for shrugging a failed post off; an offline moment on a phone
+  // takes the same path and is not that.
+  //
+  // So the finish re-posts EVERY banked result (one update per index, the
+  // same values, idempotent) and writes `finishedAt` only once all of them
+  // land. A run that cannot reconcile stays UNFINISHED, which is the honest
+  // reading rather than a flattering one: its total really is incomplete on
+  // the node, and the standings rank finished players above unfinished ones
+  // for exactly this reason. This also subsumes the penalty repair's own
+  // re-post, which covered only the indices it had changed.
   if (m.id) {
     import('../firebase/firebaseMatch.js')
-      .then((mod) => mod.finishMatch(m.id))
+      .then(async (mod) => {
+        const idxs = [];
+        for (let i = 0; i < m.results.length; i++) if (m.results[i]) idxs.push(i);
+        const landed = await Promise.all(idxs.map((i) => Promise.resolve()
+          .then(() => mod.postMatchResult(m.id, i, m.results[i]))
+          .catch(() => false)));
+        const missing = idxs.filter((_, k) => !landed[k]);
+        if (missing.length > 0) {
+          // Recorded on the match so a later open can heal it, and said out
+          // loud rather than swallowed.
+          m.unposted = missing;
+          console.warn(`match: ${missing.length} result(s) did not reach the node (board(s) `
+            + `${missing.map((i) => i + 1).join(', ')}); leaving the run unfinished so the standings `
+            + 'cannot rank an incomplete total as a complete one');
+          return;
+        }
+        m.unposted = [];
+        await mod.finishMatch(m.id);
+      })
       .catch((err) => reportCaughtError('match-finish', err));
   }
 }
@@ -860,6 +920,7 @@ export async function handleWin() {
       par: state.matchPar || 0,
       bombHitEvents: (state.dailyBombHitEvents || []).slice(),
       wormEvents: (state.wormEvents || []).slice(),
+      scrolled: !!state.boardScrolled,
     };
     // Post it live (his ruling: times appear as they land, for everyone,
     // finished or not). Fire-and-forget: a refused post is almost always the
@@ -889,10 +950,27 @@ export async function handleWin() {
         nextBtn.textContent = `Next board (${state.match.current + 2} of ${n})`;
         nextBtn.classList.remove('hidden');
       }
+      // The gap lines (his rulings 2026-08-17): the standing through the
+      // boards both players have banked, and what rivals did while this
+      // board was played. Shared matches only; the module renders nothing
+      // and stays hidden for a solo run. Live while the card is open: the
+      // race subscription repaints an unhidden #gameover-race on every
+      // node update.
+      if (state.match.id && !state.isLevelPractice) {
+        import('../ui/matchRace.js')
+          .then((m) => m.renderMatchGap())
+          .catch((err) => reportCaughtError('match-race-gap', err));
+      }
     } else {
       gameoverTitle.textContent = 'Match complete!';
       _renderMatchSummary();
       _finishMatchRun();
+      // The run is over: the heartbeat stops (a finished player is not
+      // "playing right now") and the chip goes with it. The end board's
+      // standings panel keeps its own per-surface subscription.
+      import('../ui/matchRace.js')
+        .then((m) => m.stopMatchRace())
+        .catch(() => { /* never raced */ });
       const doneBtn = document.getElementById('gameover-done');
       if (doneBtn) doneBtn.classList.remove('hidden');
       const againBtn = document.getElementById('gameover-match-again');
@@ -1628,16 +1706,27 @@ export function handleDailyBombHit(mineRow, mineCol, extraMines = []) {
   // feature vector sets the par baseline the info-value is priced against
   // under the log-scale model, a lab board's own features live in
   // coastlineFeatures.
-  const boardFeatures = state.weeklyFeatures || state.dailyFeatures
-    || state.matchFeatures || state.coastlineFeatures || null;
+  const boardFeatures = getStrikeBoardFeatures();
+  // The SANE par the info-value's move share is priced against (the
+  // oversized rescale in bombInfoValue.js, his 10-hours-over-par report,
+  // 2026-08-19). On a match board state.matchPar holds the anchored number
+  // for an oversized deal and the client re-price for a fit one, so the
+  // rescale is exact where it matters and a no-op everywhere else; daily
+  // and weekly boards pass nothing and price exactly as before.
+  const parBaseline = state.gameMode === 'match' ? (state.matchPar || null) : null;
   let totalPenalty = 0;
   let firstInfoValueRounded = 0;
   for (let i = 0; i < mines.length; i++) {
     const m = mines[i];
     let infoValue = 0;
+    let strikeCounts = null;
     try {
-      const result = computeBombInfoValue(state.board, state.rows, state.cols, fr, fc, m.row, m.col, priorStrikes, boardFeatures);
+      const result = computeBombInfoValue(state.board, state.rows, state.cols, fr, fc, m.row, m.col, priorStrikes, boardFeatures, parBaseline);
       infoValue = result.infoValue;
+      strikeCounts = {
+        patternBefore: result.patternBefore, searchBefore: result.searchBefore,
+        patternAfter: result.patternAfter, searchAfter: result.searchAfter,
+      };
     } catch (err) {
       // The solver is robust on well-formed daily/weekly boards; if it
       // ever does throw we'd rather charge the base penalty than crash
@@ -1656,7 +1745,19 @@ export function handleDailyBombHit(mineRow, mineCol, extraMines = []) {
     // in this mechanic; legacy events (under the old +10s/re-fog
     // mechanic) lack it, and the R refit treats `bombHits > 0 && no
     // penalty` as the legacy cohort.
+    // The four pooled remaining-move counts ride along so this strike can be
+    // RE-PRICED under any future model without the board state that produced
+    // it (his 2026-08-20 requirement; repriceStoredStrike is the reader). They
+    // are a measurement of the board, not of the model, so a refit cannot
+    // invalidate them. A strike whose solve was refused carries none, and the
+    // reader treats their absence as "keep the stored seconds".
     const event = { t: tClean, row: m.row, col: m.col, penalty, infoValue: infoValueRounded };
+    if (strikeCounts) {
+      event.patternBefore = strikeCounts.patternBefore;
+      event.searchBefore = strikeCounts.searchBefore;
+      event.patternAfter = strikeCounts.patternAfter;
+      event.searchAfter = strikeCounts.searchAfter;
+    }
     if (isWeekly) {
       state.weeklyBombHits = priorHits + i + 1;
       if (!Array.isArray(state.weeklyBombHitEvents)) state.weeklyBombHitEvents = [];

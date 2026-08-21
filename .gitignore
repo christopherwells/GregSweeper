@@ -46,3 +46,14 @@ scripts/data/endless-build*.log
 scripts/data/match-build-cache.json
 scripts/intercept-sensitivity.html
 scripts/intercept-sensitivity_files/
+
+# Rendered decision documents and their sampler caches. The .qmd is the
+# artifact worth keeping; the HTML is a re-render away and a brms cache is
+# hundreds of megabytes of fitted chains.
+scripts/par-model-move-rates.rmarkdown
+scripts/par-model-move-rates.html
+scripts/par-model-move-rates_files/
+scripts/par-model-move-rates_cache/
+scripts/par-model-size-offset.html
+scripts/par-model-size-offset_files/
+scripts/par-model-size-offset_cache/

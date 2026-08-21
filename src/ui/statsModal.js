@@ -440,17 +440,30 @@ async function _renderMatchHeadToHead() {
 
   let nodes = null;
   try {
-    const [{ fetchMyMatches }, { matchRecord, matchBoardBreakdown, rivalries, rankedSplits }, { getHandicapRatioMap }] =
+    const [{ fetchMyMatchRefs, fetchMatchSummaries }, { matchRecord, matchBoardBreakdown, rivalries, rankedSplits }, { getHandicapRatioMap }] =
       await Promise.all([
         import('../firebase/firebaseMatch.js'),
         import('../logic/matchRecord.js'),
         import('../logic/handicaps.js'),
       ]);
-    const rows = await fetchMyMatches(30);
-    if (!rows) {
+    // Refs first, so the panel knows how many runs exist beyond what it
+    // reads; then summaries WITH SPECS, because the shape, density and
+    // modifier splits bucket by each board's spec and a spec-less summary
+    // starves them (the #357 regression: summary rows fed matchRecord and
+    // the whole record read zero).
+    const refs = await fetchMyMatchRefs();
+    if (!refs) {
       el.innerHTML = '<p class="stats-blurb">Could not reach your runs right now.</p>';
       return;
     }
+    const RECORD_WINDOW = 30;
+    const rows = await fetchMatchSummaries(refs.slice(0, RECORD_WINDOW), { withSpecs: true });
+    // The record is a WINDOW once the list outgrows the fetch, and it says
+    // so rather than reading as all-time (a partial pass that reads as
+    // complete is worse than no pass).
+    const windowNote = refs.length > RECORD_WINDOW
+      ? `<p class="friends-code-hint">Counted over your newest ${RECORD_WINDOW} runs.</p>`
+      : '';
     nodes = rows.map((r) => r.node);
     const rec = matchRecord(nodes, { myUid: getUid(), handicaps: getHandicapRatioMap() });
 
@@ -519,7 +532,20 @@ async function _renderMatchHeadToHead() {
           ${shapes[shapes.length - 1].wonAdjusted}-${shapes[shapes.length - 1].contested - shapes[shapes.length - 1].wonAdjusted}.</p>`
       : '';
 
-    const solo = rec.boardsPlayed - rec.contested;
+    // Two different quiet numbers, named apart: shared boards nobody raced
+    // (in the nodes, cross-device) and solo runs (device-local rows, his
+    // 2026-08-17 ask; they appear in the finished list and have no
+    // head-to-head by construction).
+    const unraced = rec.boardsPlayed - rec.contested;
+    let soloNote = '';
+    try {
+      const { loadSoloRuns } = await import('../storage/matchHistoryStorage.js');
+      const soloRuns = loadSoloRuns();
+      if (soloRuns.length > 0) {
+        soloNote = `<p class="friends-code-hint">Plus ${soloRuns.length} solo
+          run${soloRuns.length === 1 ? '' : 's'} on this device, in your finished list.</p>`;
+      }
+    } catch { /* the record reads fine without the solo count */ }
     const ties = riv.field.ties;
     el.innerHTML = `
       <h4 class="stat-h2h-heading">Your rivalries</h4>
@@ -527,9 +553,9 @@ async function _renderMatchHeadToHead() {
       <p class="stats-blurb">${rec.contested} board${rec.contested === 1 ? '' : 's'} raced.
         You took ${rec.wonAdjusted} adjusted, ${rec.wonRaw} raw${ties
   ? `; ${ties} tie${ties === 1 ? '' : 's'} counted for nobody` : ''}.</p>
-      ${ground}
-      ${solo > 0 ? `<p class="friends-code-hint">You played ${solo} more board${solo === 1 ? '' : 's'} in
-        solo runs. With nobody else on them, they have no head-to-head.</p>` : ''}`;
+      ${ground}${windowNote}
+      ${unraced > 0 ? `<p class="friends-code-hint">You played ${unraced} more board${unraced === 1 ? '' : 's'}
+        nobody raced you on. They have no head-to-head.</p>` : ''}${soloNote}`;
   } catch (err) {
     reportCaughtError('match-h2h', err);
     el.innerHTML = '<p class="stats-blurb">Could not work out your record right now.</p>';

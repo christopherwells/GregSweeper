@@ -60,6 +60,17 @@ export function endlessPageUrl(page) {
   return `scripts/data/climb-library/endless-${String(page).padStart(3, '0')}.json`;
 }
 
+// The SCROLLING lane's own file class (his ruling 2026-08-18: "endless can
+// have scrolling boards"). A separate class rather than more endless-NNN
+// pages because the index's `counts` array is an old client's WHOLE reach:
+// oversized rows appended there would deal to builds that predate the
+// camera. The lane instead rides `overCounts` in the index, a field a
+// pre-scroll client never reads, so it can never deal a byte of it (the
+// match library's mxo- doctrine, translated).
+export function endlessOverPageUrl(page) {
+  return `scripts/data/climb-library/endless-over-${String(page).padStart(3, '0')}.json`;
+}
+
 /**
  * Which PAGE the global endless seen-cycle deals from next.
  *
@@ -96,6 +107,46 @@ export function pickEndlessPage(counts, seenMap, rand = Math.random) {
     if (roll < 0) return { page: p, cycled };
   }
   return { page: weights.length - 1, cycled };
+}
+
+/**
+ * The lane-union page pick (the scrolling lane, 2026-08-18): one draw,
+ * uniform over unseen boards across the fit pages AND the oversized pages
+ * together, under the SAME single global cycle. Over pages key into the
+ * seen map as `o<page>` so the two page numberings can never collide, and
+ * an absent/empty `overCounts` reduces this to pickEndlessPage exactly,
+ * which is what keeps the fit-only behavior byte-identical for a library
+ * that has no lane yet.
+ *
+ * @param {number[]} counts      fit-page board counts from the index
+ * @param {number[]} overCounts  oversized-page board counts (may be absent)
+ * @param {Object<string, string[]>} seenMap page-key -> seen seeds
+ * @returns {{page: number|null, over: boolean, cycled: boolean}}
+ */
+export function pickEndlessLane(counts, overCounts, seenMap, rand = Math.random) {
+  const fit = Array.isArray(counts) ? counts : [];
+  const over = Array.isArray(overCounts) ? overCounts : [];
+  const lanes = [
+    ...fit.map((n, p) => ({ key: String(p), page: p, over: false, n: Math.max(0, n || 0) })),
+    ...over.map((n, p) => ({ key: `o${p}`, page: p, over: true, n: Math.max(0, n || 0) })),
+  ];
+  if (lanes.length === 0) return { page: null, over: false, cycled: false };
+  const seenOf = (k) => (seenMap && Array.isArray(seenMap[k]) ? seenMap[k].length : 0);
+  let weights = lanes.map((l) => Math.max(0, l.n - seenOf(l.key)));
+  let total = weights.reduce((a, b) => a + b, 0);
+  const cycled = total === 0;
+  if (cycled) {
+    weights = lanes.map((l) => l.n);
+    total = weights.reduce((a, b) => a + b, 0);
+    if (total === 0) return { page: null, over: false, cycled: false };
+  }
+  let roll = rand() * total;
+  for (let i = 0; i < lanes.length; i++) {
+    roll -= weights[i];
+    if (roll < 0) return { page: lanes[i].page, over: lanes[i].over, cycled };
+  }
+  const last = lanes[lanes.length - 1];
+  return { page: last.page, over: last.over, cycled };
 }
 
 /**

@@ -179,6 +179,35 @@ export function endlessGenBudget(shape) {
 // which boards may enter the pool it draws from.
 export const ENDLESS_PPC_FLOOR = 3.5;
 
+// THE STRICT WORK FLOOR on endless-library admission (his ruling 2026-08-17:
+// "I think we should have a strict lower boundary for endless. Some shapes
+// like honeycomb are just too easy"). The 400s par floor admits boards that
+// are LONG without being DEEP: measured that morning, hex cleared it at a
+// median of 7 hard deductions (a tenth of its stock at 3 or fewer) against
+// a median of 25 on Classic, so a 477-second hex board could be a chore of
+// pattern sweeping with three real decisions in it. The bar counts
+// the deductions that need real reasoning, the same four move classes the
+// builder's own hardOf sums, and it is SHAPE-BLIND and STRICT: no per-shape
+// relief, no relax-to-ship. A shape whose phone-legal boards cannot reach it
+// thins out of the zone and rides the measured-ceiling exception pattern
+// (test/climbLibrary.test.mjs) until a refit prices it back.
+// He chose 10 over the builder's MIN_WORK precedent of 8 because half of
+// hex's admitted stock sat at 8-9 deductions, still inside the complaint.
+export const ENDLESS_MIN_HARD = 10;
+
+/**
+ * The one definition of a board's hard-work count, usable on a generation
+ * candidate or a stored board's feature vector alike (both carry the four
+ * move-class fields under the same names). The builder's candidate hardOf
+ * and every admission site read THIS, so the bar cannot mean two things.
+ * @param {object} f - features-like object with the four move-class counts
+ * @returns {number}
+ */
+export function endlessHardOf(f) {
+  return (f.canonicalSubsetMoves || 0) + (f.genericSubsetMoves || 0)
+    + (f.advancedLogicMoves || 0) + (f.disjunctiveMoves || 0);
+}
+
 // Per-shape floor, where a lattice cannot reach the shared one on a board a
 // phone can hold. His ruling 2026-08-07: every tiling must be available in
 // the endless zone, and "without sufficient data, I think it's fine to put
@@ -197,11 +226,18 @@ export const ENDLESS_PPC_FLOOR = 3.5;
 // the drawn endless held ONE 4.8.8 and THREE rhombille. Each entry below
 // is now its shape's p90 divided by the margin, rounded down to 0.05, so
 // the bar the emit actually applies lands ON the decile the ruling names.
-// Tonight's p90s: 4.8.8 2.64, hex 2.28, rect 1.43, rhombille 2.16, cairo
-// 2.56 (deltoidal 4.31 and floret 5.75 clear the shared floor and carry
-// no entry).
+// Re-derived 2026-08-19 under the settled M1 size term, on current-model
+// cache prices only (the overnight lattice sweeps put every sample past
+// 700): 4.8.8 1.55 (n=4145), hex 0.99 (n=12604), rect 1.26 (n=16775),
+// rhombille 2.80 (n=4308), cairo 2.29 (n=4625), floret 3.47 (n=3798),
+// deltoidal 2.88 (n=764). The concave size curve prices every shape's
+// deep end lower, so floret and deltoidal no longer clear the shared
+// floor and take entries of their own. Where p90/margin lands within
+// half a cent ABOVE a two-decimal stored price (the rounding trap rect's
+// note below describes), the floor takes the next 0.05 notch down.
 export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
-  cairo: 2.45,
+  // Re-measured 2026-08-19 (M1 settled): p90 2.29 over n=4625.
+  cairo: 2.2,
   // 3D Cubes joined on 2026-08-08 for exactly cairo's reason, and it is the
   // clearest case of it. Over 2,486 measured rhombille specs the whole shape
   // reaches ppc 3.58 at its very best, one board, and one that does not hold
@@ -219,7 +255,9 @@ export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
   // Same provisional reading as cairo's: these rates are fit on play that is
   // still learning the lattice. When 3D Cubes' per-cell rate rises on real
   // data this entry should shrink toward the shared floor and eventually go.
-  rhombille: 2.05,
+  // Re-measured 2026-08-19 (M1 settled): p90 2.80 over n=4308. 2.70 puts
+  // the admission bar at 2.781, inside the rounding trap, so 2.65.
+  rhombille: 2.65,
   // HONEYCOMB joined on 2026-08-16, his top-decile ruling extended to any
   // shape the model prices below the shared floor. The first fit with match
   // rows pooled cheapened hex 10.5% in one night, and its restored endless
@@ -230,7 +268,10 @@ export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
   // the top decile, the same bar the two entries above were set at. Same
   // provisional reading: when hex's rate rises on real data this entry
   // should shrink toward the shared floor.
-  hex: 2.2,
+  // Re-measured 2026-08-17 after the correction fit (the three-player
+  // targeted rows): current-model p90 fell to 1.37. Same method, new night.
+  // Re-measured 2026-08-19 (M1 settled): p90 0.99 over n=12604.
+  hex: 0.95,
   // OCTAGONS joined on 2026-08-16 evening, the third application of the
   // top-decile ruling in one day and the cleanest sign yet that the trigger
   // is fit volatility, not any one shape: the evening refit took THREE new
@@ -248,7 +289,10 @@ export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
   // stale-tail optimism. Over current-model prices only (n=158) the p90
   // reads 2.41 and the max 3.02; the floor sits under the margin as the
   // block note requires. Measure deciles on current-model prices only.
-  '4.8.8': 2.3,
+  // Re-measured 2026-08-17 after the correction fit: current-model p90 1.59.
+  // Re-measured 2026-08-19 (M1 settled): p90 1.55 over n=4145; 1.5 already
+  // sits on the decile and stays.
+  '4.8.8': 1.5,
   // CLASSIC joined on 2026-08-10, and it is the one case that is not about a
   // shape being under-priced while players learn it. Rect's constraints just
   // conflict: it prices so gently that reaching 3.5 s/cell takes 130-156
@@ -279,7 +323,41 @@ export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
   // prices admitted a 1.39, which sits ON the bar and fails the margin
   // re-check by rounding. One notch down gives stored prices real
   // headroom; 1.30 x 1.03 = 1.339, still under rect's 1.43 decile.
-  rect: 1.3,
+  // Re-measured 2026-08-19 (M1 settled): p90 1.26 over n=16775.
+  rect: 1.2,
+  // PETALS joined on 2026-08-17, the correction fit's own doing: with
+  // rhombille and hex re-priced sane, floret's current-model p90 reads
+  // 2.68 against the shared 3.5 floor, under it for the first time. The
+  // top-decile ruling covers any shape the model prices below the shared
+  // floor, so the same method applies: p90 over current-model prices,
+  // divided by the margin, rounded down.
+  // Re-measured 2026-08-19 (M1 settled): p90 3.47 over n=3798, the one
+  // decile that ROSE tonight. 3.35 puts the admission bar at 3.4505, half
+  // a cent over a stored 3.45 (the rounding trap), so 3.30.
+  // Re-derived the same night on the SHIPPABLE population: the emit ships
+  // only band-stable faces (spread <= 2.0 at absorb grade; see the search
+  // tool), and stable floret prices lower than the all-fresh decile the
+  // 3.30 came from, so that floor left the zone four entries. p90 over the
+  // 200 proven floret faces reads 2.94; 2.94/1.03 rounds down to 2.85.
+  floret: 2.85,
+  // KITES joined on 2026-08-19, the M1 size term's own doing: the concave
+  // size curve prices deltoidal's deep end lower (its old 6-7 s/cell
+  // readings were the linear model's compression of big stacked boards),
+  // and its current-model p90 reads 2.88 over n=764 against the shared
+  // 3.5 floor, under it for the first time. Same top-decile method, same
+  // provisional reading as every entry above: as real deltoidal play
+  // accumulates this entry should shrink toward the shared floor. 2.75
+  // and 2.70 both land the admission bar in the rounding trap (2.8325,
+  // 2.781), so 2.65, the rect one-notch precedent applied twice.
+  // Re-derived the same night on the SHIPPABLE population, which is the
+  // sharper correction here: deltoidal's high end is exactly the small
+  // dense stacked class whose within-face spread the band-stability gate
+  // refuses, so the stable subset tops out at 2.38 and a 2.65 floor
+  // priced the shape out of the zone entirely, which the every-tiling
+  // ruling forbids. p90 over the 183 proven deltoidal faces reads 1.82;
+  // 1.82/1.03 = 1.77, and 1.75 and 1.70 both land the admission bar in
+  // the rounding trap (1.8025, 1.751), so 1.65.
+  deltoidal: 1.65,
 });
 
 /** The admission floor a shape is held to. */

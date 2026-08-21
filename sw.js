@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.11.0';
+const CACHE_NAME = 'gregsweeper-v1.11.32';
 const ASSETS = [
   './',
   './index.html',
@@ -19,6 +19,7 @@ const ASSETS = [
   './src/game/matchDeal.js',
   './src/game/gameActions.js',
   './src/game/winLossHandler.js',
+  './src/game/matchRepair.js',
   './src/game/powerUpActions.js',
   './src/game/modeManager.js',
   './src/game/gamePersistence.js',
@@ -71,6 +72,7 @@ const ASSETS = [
   './src/logic/achievements.js',
   './src/storage/storageAdapter.js',
   './src/storage/statsStorage.js',
+  './src/storage/matchHistoryStorage.js',
   './src/styles/global.css',
   './src/styles/animations.css',
   './src/styles/themes/classic.css',
@@ -119,6 +121,8 @@ const ASSETS = [
   './src/logic/matchRecord.js',
   './src/logic/matchCodes.js',
   './src/logic/matchStandings.js',
+  './src/logic/matchRace.js',
+  './src/logic/matchHistory.js',
   './src/logic/challengeRules.js',
   './src/logic/challengePool.js',
   './src/logic/challenge250Builder.js',
@@ -127,6 +131,8 @@ const ASSETS = [
   './src/logic/shapeIntro.js',
   './src/logic/modifierExample.js',
   './src/logic/chaosShape.js',
+  './src/logic/boardCamera.js',
+  './src/logic/frameProbe.js',
   './src/logic/boardFit.js',
   './src/logic/deviceCapability.js',
   './src/logic/gameoverPlan.js',
@@ -142,6 +148,7 @@ const ASSETS = [
   './src/logic/submitGate.js',
   './src/logic/weeklyCanonical.js',
   './src/logic/shapeRotation.js',
+  './src/logic/startAnchor.js',
   './src/logic/shareCard.js',
   './src/logic/shouldPromptForName.js',
   './src/logic/skillFeatDetection.js',
@@ -162,6 +169,7 @@ const ASSETS = [
   // precached so an offline resume of a shared match can still paint its
   // standings and file its rows when the connection returns.
   './src/ui/matchLobby.js',
+  './src/ui/matchRace.js',
   './src/firebase/firebaseMatch.js',
   './src/ui/statsModal.js',
   './src/ui/titleScreen.js',

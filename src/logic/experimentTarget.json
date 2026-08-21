@@ -1,81 +1,81 @@
 {
-  "updatedAt": "2026-08-16T07:17:42Z",
-  "target": "clueShare4",
-  "reason": "highest posterior CV (0.510) excluding last 3 targets",
+  "updatedAt": "2026-08-20T20:31:04Z",
+  "target": "mysteryCellCount",
+  "reason": "highest posterior CV (0.711) excluding last 3 targets",
   "lastRevalidationDate": "2026-08-15",
   "recentTargets": [
-    "clueShare4",
+    "mysteryCellCount",
     "wormLoad",
-    "mysteryCellCount"
+    "clueShare2"
   ],
   "candidates": [
     {
-      "feature": "clueShare4",
-      "mean": 0.084,
-      "sd": 0.043,
-      "cv": 0.51
+      "feature": "mysteryCellCount",
+      "mean": 0.019,
+      "sd": 0.013,
+      "cv": 0.711
+    },
+    {
+      "feature": "clueShare5plus",
+      "mean": 0.057,
+      "sd": 0.039,
+      "cv": 0.682
+    },
+    {
+      "feature": "zeroClusterCount",
+      "mean": 0.013,
+      "sd": 0.008,
+      "cv": 0.591
     },
     {
       "feature": "wormLoad",
       "mean": 0.026,
-      "sd": 0.013,
-      "cv": 0.493
+      "sd": 0.012,
+      "cv": 0.465
     },
     {
-      "feature": "wormholePairCount",
-      "mean": 0.035,
-      "sd": 0.017,
-      "cv": 0.478
-    },
-    {
-      "feature": "clueShare2",
-      "mean": 0.048,
-      "sd": 0.02,
-      "cv": 0.41
-    },
-    {
-      "feature": "searchMoves",
-      "mean": 0.011,
+      "feature": "wallEdgeCount",
+      "mean": 0.003,
       "sd": 0.004,
-      "cv": 0.38
+      "cv": 0.379
     }
   ],
   "coverage_targets": [],
   "shape_coverage": [
     {
-      "shape": "deltoidal",
-      "n_boards": 5,
-      "deficit_weight": 0.1667
+      "shape": "4.8.8",
+      "n_boards": 18,
+      "deficit_weight": 0.0526
     },
     {
       "shape": "rhombille",
-      "n_boards": 7,
-      "deficit_weight": 0.125
-    },
-    {
-      "shape": "floret",
-      "n_boards": 11,
-      "deficit_weight": 0.0833
-    },
-    {
-      "shape": "4.8.8",
-      "n_boards": 17,
-      "deficit_weight": 0.0556
+      "n_boards": 21,
+      "deficit_weight": 0.0455
     },
     {
       "shape": "cairo",
-      "n_boards": 19,
-      "deficit_weight": 0.05
+      "n_boards": 24,
+      "deficit_weight": 0.04
     },
     {
-      "shape": "hex",
+      "shape": "floret",
+      "n_boards": 26,
+      "deficit_weight": 0.037
+    },
+    {
+      "shape": "deltoidal",
       "n_boards": 31,
       "deficit_weight": 0.0312
     },
     {
+      "shape": "hex",
+      "n_boards": 37,
+      "deficit_weight": 0.0263
+    },
+    {
       "shape": "rect",
-      "n_boards": 197,
-      "deficit_weight": 0.0051
+      "n_boards": 213,
+      "deficit_weight": 0.0047
     }
   ],
   "lastDecorrelationDate": "2026-08-16"

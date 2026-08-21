@@ -494,6 +494,42 @@ test('finished is decided by the same rule the join verdict uses', () => {
   assert.equal(planMatchJoin({ match: done.node, uid: 'me', now: REVIEW_NOW }), 'finished');
 });
 
+test('an EXPIRED unfinished run rests in finished, marked ended (PR 6)', () => {
+  // Past the seven days the rules refuse every result write, so "carry on
+  // with this" is an intention the server no longer honors. The run moves to
+  // the finished place with `ended` set, where the row can say the run
+  // closed at board N; an unexpired unfinished run stays under active.
+  const old = {
+    matchId: 'm-stale', joinedAt: 5, code: 'ABC234',
+    node: nodeWith({ me: { name: 'Me', joinedAt: 1, results: [{ time: 30 }] } },
+      REVIEW_NOW - MATCH_TTL_MS - 1),
+  };
+  const live = myMatch('m-live');
+  const v = partitionMatchReview({ invites: [], matches: [old, live], uid: 'me', now: REVIEW_NOW });
+  assert.deepEqual(v.active.map((e) => e.match.matchId), ['m-live']);
+  assert.deepEqual(v.finished.map((e) => [e.match.matchId, e.ended]), [['m-stale', true]]);
+});
+
+test('solo records interleave into finished by date, every entry stamped `at` (PR 6)', () => {
+  const shared = myMatch('m-done', {
+    joinedAt: 2000,
+    players: { me: { name: 'Me', joinedAt: 1, finishedAt: 1750000050000 } },
+  });
+  const soloNew = { finishedAt: 3000, rules: { count: 1 }, boards: [{ seed: 's' }], results: [{ time: 9 }] };
+  const soloOld = { finishedAt: 1000, rules: { count: 1 }, boards: [{ seed: 't' }], results: [{ time: 9 }] };
+  const v = partitionMatchReview({
+    invites: [], matches: [shared], uid: 'me', now: REVIEW_NOW,
+    solo: [soloNew, soloOld],
+  });
+  assert.deepEqual(v.finished.map((e) => e.kind), ['solo', 'match', 'solo'],
+    'newest first across BOTH kinds, by the shared `at` stamp');
+  assert.ok(v.finished.every((e) => Number.isFinite(e.at)),
+    'every finished entry must be groupable by its own at');
+  // Solo records never reach the other places.
+  assert.deepEqual(v.active, []);
+  assert.deepEqual(v.declined, []);
+});
+
 test('an unreadable match is dropped, never guessed at', () => {
   const v = partitionMatchReview({
     invites: [],
@@ -580,4 +616,97 @@ test('a fully played run reports current past the last board', () => {
   const n = nodeWith({ me: { name: 'Me', joinedAt: 1,
     results: [{ time: 1 }, { time: 2 }, { time: 3 }] } });
   assert.equal(matchResumePoint(n, 'me').current, 3);
+});
+
+// ── Issue #372: the node knows WHICH, the save knows WHAT ───────────────
+//
+// Re-entering an unfinished shared run from Your runs rebuilds the results
+// from the match NODE, which whitelists exactly {time, penalty, strikes} and
+// closes with $other: false. Everything the par fit needs beyond that (par,
+// bombHitEvents, wormEvents, scrolled) lives only in the local result object,
+// and the rebuild used to discard it. A row then reaching the fit with
+// bombHits > 0 and no events is, on the R side, the exact signature of the
+// retired +10s/re-fog cohort, so it is charged LEGACY_BOMB_RATE (15s a hit)
+// against a true ramped cost of 3n + 0.75n(n-1).
+
+test('REGRESSION #372: a resume keeps the local detail for boards this device played', () => {
+  const node = {
+    boards: [{}, {}, {}],
+    players: {
+      u1: {
+        results: [
+          { time: 40.5, penalty: 0, strikes: 0 },
+          { time: 70.2, penalty: 6.75, strikes: 3 },
+        ],
+      },
+    },
+  };
+  const local = [
+    { time: 40.5, par: 55, bombHitEvents: [], wormEvents: [], scrolled: false, seed: 's0' },
+    { time: 70.2, par: 88, bombHitEvents: [{ t: 5, row: 1, col: 2, penalty: 3 }], wormEvents: [], scrolled: true, seed: 's1' },
+  ];
+  const { results, current } = matchResumePoint(node, 'u1', local);
+  assert.equal(current, 2, 'the node still decides where the run resumes');
+  // The node's three fields stay authoritative...
+  assert.equal(results[1].time, 70.2);
+  assert.equal(results[1].strikes, 3);
+  assert.equal(results[1].penalty, 6.75);
+  // ...and the local detail rides along, which is what stops the misfile.
+  assert.equal(results[1].par, 88);
+  assert.equal(results[1].bombHitEvents.length, 1);
+  assert.equal(results[1].scrolled, true);
+  assert.equal(results[1].seed, 's1');
+  assert.equal(results[0].scrolled, false, 'a measured false survives too');
+});
+
+test('#372: a save for a DIFFERENT run, or a disagreeing time, donates nothing', () => {
+  const node = {
+    boards: [{}, {}],
+    players: { u1: { results: [{ time: 40.5, penalty: 0, strikes: 2 }] } },
+  };
+  // Same index, different board: the time disagrees, so the detail is refused.
+  const wrongRun = [{ time: 99.9, par: 70, bombHitEvents: [{ t: 1 }] }];
+  const r = matchResumePoint(node, 'u1', wrongRun);
+  assert.equal(r.results[0].time, 40.5);
+  assert.equal(r.results[0].par, undefined, 'a mismatched time must not donate its detail');
+  assert.equal(r.results[0].bombHitEvents, undefined);
+  // And no local results at all is the cross-device case: the three fields.
+  const none = matchResumePoint(node, 'u1', null);
+  assert.deepEqual(Object.keys(none.results[0]).sort(), ['penalty', 'strikes', 'time']);
+});
+
+test('REGRESSION: a match fit row carries whether the board scrolled, all the way to the payload', () => {
+  // matchFitRows has stamped `scrolled` per board since the marathon lane
+  // shipped, and submitMatchFitRows dropped it while building `extras`: the
+  // payload writes the field only when extras carries it, and this one path
+  // never passed it on. The daily and archive paths always did.
+  //
+  // Measured on the first ten marathon rows ever played (his five and Kate's,
+  // 2026-08-20): every one reached the fit with NO flag, so the lane produced
+  // zero usable rows for the one signal it exists to collect, the time spent
+  // travelling a board rather than thinking about it. Nothing failed loudly,
+  // which is why this is pinned at both ends.
+  const lead = readFileSync(new URL('../src/firebase/firebaseLeaderboard.js', import.meta.url), 'utf8');
+
+  // 1. The row builder still stamps it.
+  const stand = readFileSync(new URL('../src/logic/matchStandings.js', import.meta.url), 'utf8');
+  assert.match(stand, /scrolled: res\.scrolled === true/,
+    'matchFitRows must stamp the board-as-played flag');
+
+  // 2. The match submitter passes it into extras.
+  const submit = lead.slice(lead.indexOf('export async function submitMatchFitRows'),
+    lead.indexOf('* Submit a timed-mode run'));
+  assert.ok(submit.length > 200, 'submitMatchFitRows was not found');
+  assert.match(submit, /scrolled: row\.scrolled === true/,
+    'the match submitter must pass scrolled through, or the lane collects nothing');
+
+  // 3. And the payload writer still honours it, stated even when false (the
+  //    ruling that makes ABSENT mean "a client too old to measure").
+  assert.match(lead, /if \(typeof extras\.scrolled === 'boolean'\) payload\.scrolled = extras\.scrolled;/,
+    'the payload must write the flag whenever the caller states it');
+
+  // 4. Non-vacuity: the daily path, which was always correct, still passes it.
+  const wl = readFileSync(new URL('../src/game/winLossHandler.js', import.meta.url), 'utf8');
+  assert.ok((wl.match(/scrolled: !!state\.boardScrolled/g) || []).length >= 2,
+    'the daily and archive submits must still state it, or this pin is reading the wrong thing');
 });

@@ -46,13 +46,23 @@ export function plateSeconds(est) {
 // "one cell too long, maybe 2"). `rectFitsPhone` in boardFit.js is the rule
 // now, and it reads the cap below rather than keeping a second copy.
 //
-// ELEVEN, not twelve (his ruling 2026-08-14). Twelve columns delivers 24px
-// cells at the 360px reference and eleven delivers 26px, both under the 28px
-// tap floor the lattices honor; he chose eleven knowing that, because rect's
-// cells are square so the whole width is tappable, and capping at the floor
-// would mean ten columns and a Classic board smaller than the game shipped
-// with. Mines are rescaled to preserve density.
-export const BOARD_WIDTH_CAP = 11;
+// DERIVED FROM THE TAP FLOOR, not chosen (his ruling 2026-08-20). Twelve is
+// the widest column count that still delivers MIN_TAP_MAJORITY at the 360px
+// reference: 314px of width budget, 2px gaps, 24px a cell.
+//
+// The number stays written here because difficulty.js is a LEAF that the model
+// and the generators read without pulling in geometry, and boardFit.js (which
+// owns the width arithmetic) already imports this file. So the derivation
+// lives there as `maxRectColumns()` and test/boardFit.test.mjs asserts the two
+// agree, which is what stops this going stale a third time: it was 12, he cut
+// it to 11 on 2026-08-14 when the floor was 28px, and when he re-anchored the
+// floor at 24px on 2026-08-19 the 11 stayed behind and started refusing boards
+// that deliver exactly the tap target he had just ruled. Now moving the floor
+// or the reference phone reddens that test with the new number in the message.
+//
+// Rect cells are square, so the whole cell is tappable and the majority floor
+// is the right bar. Mines are rescaled to preserve density.
+export const BOARD_WIDTH_CAP = 12;
 
 export function applyWidthCap(rows, cols, mines) {
   if (cols <= BOARD_WIDTH_CAP) return { rows, cols, mines };
@@ -77,25 +87,25 @@ export function applyWidthCap(rows, cols, mines) {
 // scripts/refit-par-model.R.
 // PAR_MODEL:START
 export const PAR_MODEL = {
-  // Last refit: 2026-08-16 | brms (5 users · max Rhat = 1.003, min ESS = 1335, divergent = 0/4000) | N=655 scores, 287 dates, 6 players | R²=0.563 (log scale)
+  // Last refit: 2026-08-20 | brms (5 users · max Rhat = 1.003, min ESS = 899, divergent = 4/4000) | N=822 scores, 370 dates, 6 players | R²=0.389 (log scale)
   // scale:"log" => par = exp(intercept + Σ coef·feature): multiplicative,
   // lognormal MEDIAN. Coefficients are LOG-MULTIPLIERS per unit, NOT seconds.
   scale: 'log',
-  intercept: 2.9497,
-  secPerCell: 0.00069,
-  secPerMineFlag: 0.04814,
-  secPerPatternMove: 0.03376,
-  secPerSearchMove: 0.01112,
-  secPerWallEdge: 0.00233,
-  secPerZeroCluster: 0.00205,
-  secPerMysteryCell: 0.00147,
-  secPerLiarCell: 0.00135,
-  secPerLockedCell: 0.04302,
-  secPerWormholePair: 0.03528,
-  secPerMirrorPair: 0.06149,
-  secPerSonarCell: 0.06764,
-  secPerCompassCell: 0.04771,
-  secPerWormLoad: 0.00835,
+  intercept: -2.2206,
+  secPerLogCell: 1.14000,
+  secPerMineRate: 4.59017,
+  secPerPatternRate: 4.57611,
+  secPerSearchRate: 1.31542,
+  secPerWallEdge: 0.00332,
+  secPerZeroCluster: 0.01326,
+  secPerMysteryCell: 0.01888,
+  secPerLiarCell: 0.00142,
+  secPerLockedCell: 0.04753,
+  secPerWormholePair: 0.05474,
+  secPerMirrorPair: 0.06773,
+  secPerSonarCell: 0.06267,
+  secPerCompassCell: 0.05349,
+  secPerWormLoad: 0.01017,
 };
 // PAR_MODEL:END
 
@@ -111,26 +121,26 @@ export const PAR_MODEL = {
 // between the markers is refit-owned, same contract as PAR_MODEL.
 // TIMED_PAR_MODEL:START
 export const PAR_MODEL_TIMED = {
-  // Last refit: 2026-08-16 | brms-timed (n=145)
+  // Last refit: 2026-08-20 | brms-timed (n=145)
   // scale:"log" => par = exp(intercept + Σ coef·feature): multiplicative,
   // lognormal MEDIAN. Coefficients are LOG-MULTIPLIERS per unit, NOT seconds.
   // Below the activation threshold this is a verbatim copy of the daily model.
   scale: 'log',
-  intercept: 2.6700,
-  secPerCell: 0.00140,
-  secPerMineFlag: 0.04743,
-  secPerPatternMove: 0.05248,
-  secPerSearchMove: 0.01803,
-  secPerWallEdge: 0.00291,
-  secPerZeroCluster: 0.00314,
-  secPerMysteryCell: 0.00189,
-  secPerLiarCell: 0.00173,
-  secPerLockedCell: 0.05467,
-  secPerWormholePair: 0.04655,
-  secPerMirrorPair: 0.07920,
-  secPerSonarCell: 0.08653,
-  secPerCompassCell: 0.06065,
-  secPerWormLoad: 0.01045,
+  intercept: 1.5897,
+  secPerLogCell: 0.00000,
+  secPerMineRate: 0.00000,
+  secPerPatternRate: 0.00000,
+  secPerSearchRate: 0.00000,
+  secPerWallEdge: 0.00421,
+  secPerZeroCluster: 0.02964,
+  secPerMysteryCell: 0.02469,
+  secPerLiarCell: 0.00182,
+  secPerLockedCell: 0.06090,
+  secPerWormholePair: 0.06918,
+  secPerMirrorPair: 0.08659,
+  secPerSonarCell: 0.07922,
+  secPerCompassCell: 0.06794,
+  secPerWormLoad: 0.01308,
 };
 // TIMED_PAR_MODEL:END
 
@@ -167,118 +177,118 @@ export const PAR_MODEL_TIMED = {
 // The block between the markers is refit-owned, same contract as PAR_MODEL.
 // PAR_MODEL_SHAPES:START
 export const PAR_MODEL_SHAPES = {
-  // Last refit: 2026-08-16 | composed: PAR_MODEL base + per-shape deviations
+  // Last refit: 2026-08-20 | composed: PAR_MODEL base + per-shape deviations
   // Deviations: the Par Lab center (scripts/data/parlab-prior-centers.json,
   // the 2026-08-03 seeding ruling) until a term's own column carries 20
   // nonzero fit rows (NEW_FEATURE_DATA_THRESHOLD), then its fitted posterior;
   // 0 for unseeded terms until the same threshold earns them.
   '4.8.8': {
     scale: 'log',
-    intercept: 3.3403,
-    secPerCell: -0.00173,
-    secPerMineFlag: 0.05679,
-    secPerPatternMove: 0.03376,
-    secPerSearchMove: 0.01112,
-    secPerWallEdge: 0.00233,
-    secPerZeroCluster: 0.02789,
-    secPerMysteryCell: 0.00147,
-    secPerLiarCell: 0.00135,
-    secPerLockedCell: 0.04302,
-    secPerWormholePair: 0.03528,
-    secPerMirrorPair: 0.06149,
-    secPerSonarCell: 0.06764,
-    secPerCompassCell: 0.04771,
-    secPerWormLoad: 0.00835,
+    intercept: -2.1926,
+    secPerLogCell: 1.24790,
+    secPerMineRate: 4.43952,
+    secPerPatternRate: 4.57611,
+    secPerSearchRate: 1.31542,
+    secPerWallEdge: 0.00332,
+    secPerZeroCluster: 0.03853,
+    secPerMysteryCell: 0.01888,
+    secPerLiarCell: 0.00142,
+    secPerLockedCell: 0.04753,
+    secPerWormholePair: 0.05474,
+    secPerMirrorPair: 0.06773,
+    secPerSonarCell: 0.06267,
+    secPerCompassCell: 0.05349,
+    secPerWormLoad: 0.01017,
   },
   hex: {
     scale: 'log',
-    intercept: 2.8116,
-    secPerCell: -0.01209,
-    secPerMineFlag: 0.10103,
-    secPerPatternMove: 0.03376,
-    secPerSearchMove: 0.01112,
-    secPerWallEdge: 0.00233,
-    secPerZeroCluster: 0.03812,
-    secPerMysteryCell: 0.00147,
-    secPerLiarCell: 0.00135,
-    secPerLockedCell: 0.04302,
-    secPerWormholePair: 0.03528,
-    secPerMirrorPair: 0.06149,
-    secPerSonarCell: 0.06764,
-    secPerCompassCell: 0.04771,
-    secPerWormLoad: 0.00835,
+    intercept: -2.6331,
+    secPerLogCell: 1.08508,
+    secPerMineRate: 5.34073,
+    secPerPatternRate: 4.57611,
+    secPerSearchRate: 1.31542,
+    secPerWallEdge: 0.00332,
+    secPerZeroCluster: 0.04902,
+    secPerMysteryCell: 0.01888,
+    secPerLiarCell: 0.00142,
+    secPerLockedCell: 0.04753,
+    secPerWormholePair: 0.05474,
+    secPerMirrorPair: 0.06773,
+    secPerSonarCell: 0.06267,
+    secPerCompassCell: 0.05349,
+    secPerWormLoad: 0.01017,
   },
   cairo: {
     scale: 'log',
-    intercept: 2.6884,
-    secPerCell: 0.01963,
-    secPerMineFlag: 0.02033,
-    secPerPatternMove: 0.03376,
-    secPerSearchMove: 0.01112,
-    secPerWallEdge: 0.00233,
-    secPerZeroCluster: -0.04809,
-    secPerMysteryCell: 0.00147,
-    secPerLiarCell: 0.00135,
-    secPerLockedCell: 0.04302,
-    secPerWormholePair: 0.03528,
-    secPerMirrorPair: 0.06149,
-    secPerSonarCell: 0.06764,
-    secPerCompassCell: 0.04771,
-    secPerWormLoad: 0.00835,
+    intercept: -2.0758,
+    secPerLogCell: 1.16414,
+    secPerMineRate: 5.17576,
+    secPerPatternRate: 4.60352,
+    secPerSearchRate: 1.31542,
+    secPerWallEdge: 0.00332,
+    secPerZeroCluster: 0.05767,
+    secPerMysteryCell: 0.01888,
+    secPerLiarCell: 0.00142,
+    secPerLockedCell: 0.04753,
+    secPerWormholePair: 0.05474,
+    secPerMirrorPair: 0.06773,
+    secPerSonarCell: 0.06267,
+    secPerCompassCell: 0.05349,
+    secPerWormLoad: 0.01017,
   },
   floret: {
     scale: 'log',
-    intercept: 3.1505,
-    secPerCell: -0.00177,
-    secPerMineFlag: 0.10096,
-    secPerPatternMove: 0.03376,
-    secPerSearchMove: 0.01112,
-    secPerWallEdge: 0.00233,
-    secPerZeroCluster: 0.00205,
-    secPerMysteryCell: 0.00147,
-    secPerLiarCell: 0.00135,
-    secPerLockedCell: 0.04302,
-    secPerWormholePair: 0.03528,
-    secPerMirrorPair: 0.06149,
-    secPerSonarCell: 0.06764,
-    secPerCompassCell: 0.04771,
-    secPerWormLoad: 0.00835,
+    intercept: -2.5534,
+    secPerLogCell: 1.29350,
+    secPerMineRate: 4.66989,
+    secPerPatternRate: 4.84558,
+    secPerSearchRate: 1.31542,
+    secPerWallEdge: 0.00332,
+    secPerZeroCluster: 0.10970,
+    secPerMysteryCell: 0.01888,
+    secPerLiarCell: 0.00142,
+    secPerLockedCell: 0.04753,
+    secPerWormholePair: 0.05474,
+    secPerMirrorPair: 0.06773,
+    secPerSonarCell: 0.06267,
+    secPerCompassCell: 0.05349,
+    secPerWormLoad: 0.01017,
   },
   rhombille: {
     scale: 'log',
-    intercept: 2.9989,
-    secPerCell: -0.00948,
-    secPerMineFlag: 0.11573,
-    secPerPatternMove: 0.03376,
-    secPerSearchMove: 0.01112,
-    secPerWallEdge: 0.00233,
-    secPerZeroCluster: 0.00205,
-    secPerMysteryCell: 0.00147,
-    secPerLiarCell: 0.00135,
-    secPerLockedCell: 0.04302,
-    secPerWormholePair: 0.03528,
-    secPerMirrorPair: 0.06149,
-    secPerSonarCell: 0.06764,
-    secPerCompassCell: 0.04771,
-    secPerWormLoad: 0.00835,
+    intercept: -2.1816,
+    secPerLogCell: 1.13528,
+    secPerMineRate: 4.40008,
+    secPerPatternRate: 4.57611,
+    secPerSearchRate: 1.31542,
+    secPerWallEdge: 0.00332,
+    secPerZeroCluster: 0.37763,
+    secPerMysteryCell: 0.01888,
+    secPerLiarCell: 0.00142,
+    secPerLockedCell: 0.04753,
+    secPerWormholePair: 0.05474,
+    secPerMirrorPair: 0.06773,
+    secPerSonarCell: 0.06267,
+    secPerCompassCell: 0.05349,
+    secPerWormLoad: 0.01017,
   },
   deltoidal: {
     scale: 'log',
-    intercept: 3.4374,
-    secPerCell: -0.00133,
-    secPerMineFlag: 0.11844,
-    secPerPatternMove: 0.03376,
-    secPerSearchMove: 0.01112,
-    secPerWallEdge: 0.00233,
-    secPerZeroCluster: 0.00205,
-    secPerMysteryCell: 0.00147,
-    secPerLiarCell: 0.00135,
-    secPerLockedCell: 0.04302,
-    secPerWormholePair: 0.03528,
-    secPerMirrorPair: 0.06149,
-    secPerSonarCell: 0.06764,
-    secPerCompassCell: 0.04771,
-    secPerWormLoad: 0.00835,
+    intercept: -2.4694,
+    secPerLogCell: 1.31416,
+    secPerMineRate: 4.73001,
+    secPerPatternRate: 4.62307,
+    secPerSearchRate: 1.43274,
+    secPerWallEdge: 0.00332,
+    secPerZeroCluster: 0.06780,
+    secPerMysteryCell: 0.01888,
+    secPerLiarCell: 0.00142,
+    secPerLockedCell: 0.04753,
+    secPerWormholePair: 0.05474,
+    secPerMirrorPair: 0.06773,
+    secPerSonarCell: 0.06267,
+    secPerCompassCell: 0.05349,
+    secPerWormLoad: 0.01017,
   },
 };
 // PAR_MODEL_SHAPES:END

@@ -1,0 +1,329 @@
+{
+ "runs": 6,
+ "cells": {
+  "rect||sparse": {
+   "fails": 0
+  },
+  "rect||standard": {
+   "fails": 0
+  },
+  "rect||dense": {
+   "fails": 0
+  },
+  "rect|sonar|sparse": {
+   "fails": 0
+  },
+  "rect|sonar|standard": {
+   "fails": 0
+  },
+  "rect|sonar|dense": {
+   "fails": 0
+  },
+  "rect|liar|sparse": {
+   "fails": 0
+  },
+  "rect|liar|standard": {
+   "fails": 0
+  },
+  "rect|liar|dense": {
+   "fails": 0
+  },
+  "rect|walls|sparse": {
+   "fails": 0
+  },
+  "rect|walls|standard": {
+   "fails": 0
+  },
+  "rect|walls|dense": {
+   "fails": 0
+  },
+  "rect|compass|sparse": {
+   "fails": 0
+  },
+  "rect|compass|standard": {
+   "fails": 0
+  },
+  "rect|compass|dense": {
+   "fails": 0
+  },
+  "4.8.8||sparse": {
+   "fails": 0
+  },
+  "4.8.8||standard": {
+   "fails": 0
+  },
+  "4.8.8||dense": {
+   "fails": 0
+  },
+  "4.8.8|sonar|sparse": {
+   "fails": 0
+  },
+  "4.8.8|sonar|standard": {
+   "fails": 0
+  },
+  "4.8.8|sonar|dense": {
+   "fails": 0
+  },
+  "4.8.8|liar|sparse": {
+   "fails": 0
+  },
+  "4.8.8|liar|standard": {
+   "fails": 0
+  },
+  "rect||sparse|wide": {
+   "fails": 0
+  },
+  "rect||standard|wide": {
+   "fails": 0
+  },
+  "rect||dense|wide": {
+   "fails": 0
+  },
+  "rect|sonar|sparse|wide": {
+   "fails": 0
+  },
+  "rect|sonar|standard|wide": {
+   "fails": 0
+  },
+  "rect|sonar|dense|wide": {
+   "fails": 0
+  },
+  "rect|liar|sparse|wide": {
+   "fails": 0
+  },
+  "rect|liar|standard|wide": {
+   "fails": 0
+  },
+  "rect|liar|dense|wide": {
+   "fails": 0
+  },
+  "rect|walls|sparse|wide": {
+   "fails": 0
+  },
+  "rect|walls|standard|wide": {
+   "fails": 0
+  },
+  "rect|walls|dense|wide": {
+   "fails": 0
+  },
+  "rect|compass|sparse|wide": {
+   "fails": 0
+  },
+  "rect|compass|standard|wide": {
+   "fails": 0
+  },
+  "rect|compass|dense|wide": {
+   "fails": 0
+  },
+  "4.8.8||sparse|wide": {
+   "fails": 0
+  },
+  "4.8.8||standard|wide": {
+   "fails": 0
+  },
+  "4.8.8||dense|wide": {
+   "fails": 0
+  },
+  "4.8.8|sonar|sparse|wide": {
+   "fails": 0
+  },
+  "4.8.8|sonar|standard|wide": {
+   "fails": 0
+  },
+  "4.8.8|sonar|dense|wide": {
+   "fails": 0
+  },
+  "4.8.8|liar|sparse|wide": {
+   "fails": 0
+  },
+  "4.8.8|liar|standard|wide": {
+   "fails": 0
+  },
+  "4.8.8|liar|dense|wide": {
+   "fails": 0
+  },
+  "4.8.8|walls|sparse|wide": {
+   "fails": 0
+  },
+  "4.8.8|walls|standard|wide": {
+   "fails": 0
+  },
+  "4.8.8|walls|dense|wide": {
+   "fails": 0
+  },
+  "4.8.8|compass|sparse|wide": {
+   "fails": 0
+  },
+  "4.8.8|compass|standard|wide": {
+   "fails": 0
+  },
+  "4.8.8|compass|dense|wide": {
+   "fails": 0
+  },
+  "hex||sparse|wide": {
+   "fails": 0
+  },
+  "hex||standard|wide": {
+   "fails": 0
+  },
+  "hex||dense|wide": {
+   "fails": 0
+  },
+  "hex|sonar|sparse|wide": {
+   "fails": 0
+  },
+  "hex|sonar|standard|wide": {
+   "fails": 0
+  },
+  "hex|sonar|dense|wide": {
+   "fails": 0
+  },
+  "hex|liar|sparse|wide": {
+   "fails": 0
+  },
+  "hex|liar|standard|wide": {
+   "fails": 0
+  },
+  "hex|liar|dense|wide": {
+   "fails": 0
+  },
+  "hex|walls|sparse|wide": {
+   "fails": 0
+  },
+  "hex|walls|standard|wide": {
+   "fails": 0
+  },
+  "hex|walls|dense|wide": {
+   "fails": 0
+  },
+  "hex|compass|sparse|wide": {
+   "fails": 0
+  },
+  "hex|compass|standard|wide": {
+   "fails": 0
+  },
+  "hex|compass|dense|wide": {
+   "fails": 0
+  },
+  "cairo||sparse|wide": {
+   "fails": 0
+  },
+  "cairo||standard|wide": {
+   "fails": 0
+  },
+  "cairo||dense|wide": {
+   "fails": 0
+  },
+  "cairo|sonar|sparse|wide": {
+   "fails": 0
+  },
+  "cairo|sonar|standard|wide": {
+   "fails": 0
+  },
+  "cairo|sonar|dense|wide": {
+   "fails": 0
+  },
+  "cairo|liar|sparse|wide": {
+   "fails": 0
+  },
+  "cairo|liar|standard|wide": {
+   "fails": 0
+  },
+  "cairo|liar|dense|wide": {
+   "fails": 0
+  },
+  "cairo|walls|sparse|wide": {
+   "fails": 0
+  },
+  "cairo|walls|standard|wide": {
+   "fails": 0
+  },
+  "cairo|walls|dense|wide": {
+   "fails": 0
+  },
+  "cairo|compass|sparse|wide": {
+   "fails": 0
+  },
+  "cairo|compass|standard|wide": {
+   "fails": 0
+  },
+  "cairo|compass|dense|wide": {
+   "fails": 0
+  },
+  "floret||sparse|wide": {
+   "fails": 2
+  },
+  "floret||standard|wide": {
+   "fails": 2
+  },
+  "floret||dense|wide": {
+   "fails": 2
+  },
+  "floret|sonar|sparse|wide": {
+   "fails": 2
+  },
+  "floret|sonar|standard|wide": {
+   "fails": 2
+  },
+  "floret|sonar|dense|wide": {
+   "fails": 2
+  },
+  "floret|liar|sparse|wide": {
+   "fails": 2
+  },
+  "floret|liar|standard|wide": {
+   "fails": 2
+  },
+  "floret|liar|dense|wide": {
+   "fails": 2
+  },
+  "floret|walls|sparse|wide": {
+   "fails": 2
+  },
+  "floret|walls|standard|wide": {
+   "fails": 2
+  },
+  "floret|walls|dense|wide": {
+   "fails": 2
+  },
+  "floret|compass|sparse|wide": {
+   "fails": 2
+  },
+  "floret|compass|standard|wide": {
+   "fails": 2
+  },
+  "floret|compass|dense|wide": {
+   "fails": 2
+  },
+  "rhombille||sparse|wide": {
+   "fails": 0
+  },
+  "rhombille||dense|wide": {
+   "fails": 0
+  },
+  "rhombille|sonar|sparse|wide": {
+   "fails": 0
+  },
+  "rhombille|sonar|dense|wide": {
+   "fails": 0
+  },
+  "rhombille|liar|sparse|wide": {
+   "fails": 0
+  },
+  "rhombille||standard|wide": {
+   "fails": 0
+  },
+  "rhombille|sonar|standard|wide": {
+   "fails": 0
+  },
+  "rhombille|liar|standard|wide": {
+   "fails": 0
+  },
+  "rhombille|liar|dense|wide": {
+   "fails": 0
+  },
+  "rhombille|walls|sparse|wide": {
+   "fails": 0
+  }
+ }
+}

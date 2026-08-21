@@ -106,18 +106,35 @@ export const TILING_BAND_CONFIGS = {
     { id: '485d22', M: 7, N: 7, mines: 19, features: { cellCount: 85, totalMines: 19, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 5.5 } },   // ~90s
     { id: '498d22', M: 8, N: 7, mines: 22, features: { cellCount: 98, totalMines: 22, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 6 } },     // ~118s
     { id: '498d26', M: 8, N: 7, mines: 25, features: { cellCount: 98, totalMines: 25, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 1, zeroClusterCount: 5 } },     // ~163s
-    // The table's dearest entry, and the ONE violation of the 2026-08-06 phone
-    // cap that a transpose could not fix: the old 8x9 was 9 pitch units wide
-    // against the 4.8.8's cap of 7.77, and its own transpose is square. So it
-    // is re-picked rather than turned, taller and slightly larger at the same
-    // par, which the cap allows because height is the looser budget. Density
-    // falls to 0.187, still routed constructive: rejection sampling gets less
-    // reliable as the patch grows, and this is the largest 4.8.8 the table
-    // ships, so it is the last entry to gamble 600 attempts on.
-    { id: '498d28', M: 8, N: 7, mines: 27, features: { cellCount: 98, totalMines: 27, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 6 } },     // ~186s
+    // The ONE violation of the 2026-08-06 phone cap that a transpose could
+    // not fix: the old 8x9 was 9 pitch units wide against the 4.8.8's cap of
+    // 7.77, and its own transpose is square. So it is re-picked rather than
+    // turned, taller and slightly larger at the same par, which the cap
+    // allows because height is the looser budget. Density falls to 0.187,
+    // still routed constructive: rejection sampling gets less reliable as
+    // the patch grows.
+    { id: '498d28', M: 8, N: 7, mines: 27, features: { cellCount: 98, totalMines: 27, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 6 } },     // ~94s under M1
+    // NO RUNG SHIPS ABOVE 98 CELLS, enumerated 2026-08-18 during the M1
+    // repair: every larger patch fails one of the four fit gates. 12x7
+    // (150 cells) stands 12.00 height units against the 11.42 cap; 11x7 =
+    // 137 cells is prime, and 10x7/11x6 factor only through rows < 5, so
+    // no [5,30] container stores them; 10x6 (105 cells) passes the extent
+    // caps but is a tall ribbon (6 units x the height-capped pitch uses
+    // ~300px of the 314px width budget, under MIN_WIDTH_USE). The M1 size
+    // curve compressed the shape's whole table to ~45-97s, so the band's
+    // upper half is a measured REACH LIMIT for Octagons, carried by the
+    // tracking test's per-shape bar (the rhombille pattern); a hard target
+    // on a 4.8.8 day ships the closest board the lattice HAS.
   ],
   hex: [
-    { id: 'h49d18', M: 7, N: 7, mines: 9, features: { cellCount: 49, totalMines: 9, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },       // ~27s
+    // RETUNED 2026-08-20 after the rate-form refit. h49d18 (9 mines) priced
+    // 27s when it was frozen and 14.4s under the new equation, below the 20s
+    // daily floor: pricing per-cell difficulty rather than raw move counts
+    // made small sparse boards cheaper. Re-measured by
+    // calibrate-tiling-band-configs.mjs --shape=hex, which offered 12 mines at
+    // ~20s and 14 at ~26s for this size. Taking 14: admission needs HEADROOM
+    // above the bound, never a measurement that merely passes it.
+    { id: 'h49d29', M: 7, N: 7, mines: 14, features: { cellCount: 49, totalMines: 14, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2.5 } }, // ~26s
     { id: 'h110d14', M: 11, N: 10, mines: 15, features: { cellCount: 110, totalMines: 15, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 3.5 } }, // ~38s
     { id: 'h63d22', M: 9, N: 7, mines: 14, features: { cellCount: 63, totalMines: 14, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 4 } },     // ~43s
     { id: 'h63d25', M: 9, N: 7, mines: 16, fallback: true, features: { cellCount: 63, totalMines: 16, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 4 } }, // ~54s
@@ -169,12 +186,20 @@ export const TILING_BAND_CONFIGS = {
     { id: 'f96d18', M: 4, N: 4, mines: 17, constructive: true, features: { cellCount: 96, totalMines: 17, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 4 } }, // ~119s
     { id: 'f72d28', M: 3, N: 4, mines: 20, features: { cellCount: 72, totalMines: 20, canonicalSubsetMoves: 1, genericSubsetMoves: 1.5, advancedLogicMoves: 0, zeroClusterCount: 3 } },   // ~182s
   ],
+  // Recalibrated 2026-08-17 at the correction fit's equations. The grid
+  // ends at 72 cells by his ruling (90-cell rhombille measured 13.7s
+  // worst-case generation), which caps the shape's daily window at
+  // ~53-91s: a DOCUMENTED REACH LIMIT, the deltoidal pattern. The band
+  // steers inside that window and the kernel clamps targets outside it.
   rhombille: [
-    { id: 'r48d23', M: 4, N: 4, mines: 11, features: { cellCount: 48, totalMines: 11, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 1.5 } },   // ~47s
-    { id: 'r60d23', M: 4, N: 5, mines: 14, fallback: true, features: { cellCount: 60, totalMines: 14, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } }, // ~61s
-    { id: 'r72d24', M: 6, N: 4, mines: 17, features: { cellCount: 72, totalMines: 17, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~78s
-    { id: 'r60d28', M: 4, N: 5, mines: 17, features: { cellCount: 60, totalMines: 17, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~88s
-    { id: 'r72d28', M: 6, N: 4, mines: 20, features: { cellCount: 72, totalMines: 20, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~113s
+    { id: 'r48d27', M: 4, N: 4, mines: 13, features: { cellCount: 48, totalMines: 13, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 1 } },     // ~53s
+    { id: 'r48d25', M: 4, N: 4, mines: 12, features: { cellCount: 48, totalMines: 12, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 1 } },     // ~55s
+    { id: 'r48d23', M: 4, N: 4, mines: 11, fallback: true, features: { cellCount: 48, totalMines: 11, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 1.5 } }, // ~63s
+    { id: 'r60d28', M: 4, N: 5, mines: 17, features: { cellCount: 60, totalMines: 17, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~71s
+    { id: 'r60d23', M: 4, N: 5, mines: 14, features: { cellCount: 60, totalMines: 14, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~79s
+    { id: 'r72d28', M: 6, N: 4, mines: 20, features: { cellCount: 72, totalMines: 20, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~82s
+    { id: 'r72d25', M: 6, N: 4, mines: 18, features: { cellCount: 72, totalMines: 18, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~88s
+    { id: 'r72d24', M: 6, N: 4, mines: 17, features: { cellCount: 72, totalMines: 17, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~91s
   ],
   // Deltoidal's cheapest proven config prices ~63 s, the lattice cannot
   // reach the easy hill's lower half, so sub-63 targets ship the 63 s entry
@@ -308,7 +333,7 @@ export function drawDailyTilingConfig(type, dateString) {
  * Reach is the honest limit here. The tables were calibrated to the DAILY
  * band and top out around 218s (Honeycomb), so a weekly target above that
  * ships the table's hardest in-band entry, the same "the band is a
- * constraint, not a coverage target" reading the daily side documents.
+ * constraint, not a coverage target" reading documented on the daily side.
  *
  * @param {string} type a TILING_TYPES entry
  * @param {string} weekStart YYYY-MM-DD (the ET Monday)

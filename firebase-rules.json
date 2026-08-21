@@ -36,11 +36,18 @@
               "col": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99" },
               "penalty": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
               "infoValue": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
+              "patternBefore": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999" },
+              "searchBefore": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999" },
+              "patternAfter": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999" },
+              "searchAfter": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999" },
               "$other": { ".validate": false }
             }
           },
           "totalBombPenalty": {
             ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600"
+          },
+          "scrolled": {
+            ".validate": "newData.isBoolean()"
           },
           "hintEvents": {
             ".validate": "newData.hasChildren() || newData.val() === null",
@@ -118,11 +125,18 @@
               "col": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99" },
               "penalty": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
               "infoValue": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
+              "patternBefore": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999" },
+              "searchBefore": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999" },
+              "patternAfter": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999" },
+              "searchAfter": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999" },
               "$other": { ".validate": false }
             }
           },
           "totalBombPenalty": {
             ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600"
+          },
+          "scrolled": {
+            ".validate": "newData.isBoolean()"
           },
           "hintEvents": {
             ".validate": "newData.hasChildren() || newData.val() === null",
@@ -343,6 +357,7 @@
         "missionConfounder":{ ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 32" },
         "gatedCert":       { ".validate": "newData.isBoolean()" },
         "firstClick":      { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 900" },
+        "bestStart":       { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 900" },
         "tiling":          { ".validate": "newData.hasChildren(['type', 'M', 'N'])" },
         "cellNeighbors":   { ".validate": "newData.hasChildren()" },
         "cellPos":         { ".validate": "newData.hasChildren()" },
@@ -413,6 +428,7 @@
         "wallEdges":     { ".validate": "newData.hasChildren() || newData.val() === null" },
         "gatedCert":     { ".validate": "newData.isBoolean()" },
         "firstClick":    { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 900" },
+        "bestStart":     { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 900" },
         "tiling":        { ".validate": "newData.hasChildren(['type', 'M', 'N'])" },
         "cellNeighbors": { ".validate": "newData.hasChildren()" },
         "cellPos":       { ".validate": "newData.hasChildren()" },
@@ -492,7 +508,7 @@
             ".write": "auth != null && (auth.uid === $uid || auth.uid === $friendUid)",
             ".validate": "$friendUid !== $uid && newData.hasChildren(['name', 'addedAt'])",
             "name": {
-              ".validate": "newData.isString() && newData.val().length <= 20"
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20 && newData.val().matches(/^[^<>&\"'`@]+$/)"
             },
             "addedAt": {
               ".validate": "newData.val() === now"
@@ -703,6 +719,7 @@
           "time":    { ".validate": "newData.isString() && newData.val().length <= 12" },
           "density": { ".validate": "newData.isString() && newData.val().length <= 12" },
           "difficulty": { ".validate": "newData.isString() && newData.val().length <= 12" },
+          "scroll":  { ".validate": "newData.isBoolean()" },
           "$other":  { ".validate": false }
         },
         "boards": {
@@ -711,6 +728,7 @@
             ".validate": "$idx.matches(/^[0-9]$/) && newData.hasChildren(['seed', 'payload'])",
             "seed":     { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80" },
             "par":      { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
+            "parProvisional": { ".validate": "newData.isBoolean()" },
             "features": { ".validate": "newData.hasChildren(['rows', 'cols', 'totalMines'])" },
             "spec":     { ".validate": "newData.hasChildren(['shape', 'cells', 'mines'])" },
             "payload":  { ".validate": "newData.hasChildren(['rows', 'cols', 'totalMines', 'cells'])" },
@@ -726,6 +744,7 @@
             },
             "joinedAt":   { ".validate": "newData.val() === now" },
             "finishedAt": { ".validate": "newData.val() === now" },
+            "activeAt":   { ".validate": "newData.val() === now" },
             "results": {
               "$idx": {
                 ".validate": "$idx.matches(/^[0-9]$/) && newData.hasChildren(['time'])",

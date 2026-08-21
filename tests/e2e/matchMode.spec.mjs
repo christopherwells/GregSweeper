@@ -83,7 +83,26 @@ test('the Challenge card opens the setup sheet, and its supply line is real', as
   const supply = page.locator('#match-supply');
   await expect(supply).toHaveText(/\d+ boards fit these rules/, { timeout: 30_000 });
   const all = Number((await supply.textContent()).match(/(\d+)/)[1]);
-  expect(all).toBe(summary.boards + climbSummary.boards);
+  // Every chip on, but the scroll toggle OFF (its default), so the count is
+  // every stored board MINUS the marathon lane. Read from the summary's own
+  // per-corner `over` splits rather than hardcoded, so this equality keeps
+  // its meaning as the lane grows nightly.
+  const laneBoards = summary.corners.reduce(
+    (n, c) => n + (Array.isArray(c[6]) ? c[6].reduce((a, x) => a + x, 0) : 0), 0);
+  expect(laneBoards, 'the lane must hold something for this to test anything').toBeGreaterThan(0);
+  expect(all).toBe(summary.boards - laneBoards + climbSummary.boards);
+
+  // And with the opt-in ON, the sheet reaches EVERY stored board on both
+  // shelves: the equality the all-chips case used to carry, now split in two
+  // so the lane is pinned from both sides.
+  const scrollChipsAll = page.locator('#match-scroll .match-chip');
+  await scrollChipsAll.filter({ hasText: 'Allow' }).click();
+  await expect(supply).toHaveText(/\d+ boards fit these rules/);
+  const withLane = Number((await supply.textContent()).match(/(\d+)/)[1]);
+  expect(withLane).toBe(summary.boards + climbSummary.boards);
+  // Back to the default for the rest of the journey.
+  await scrollChipsAll.filter({ hasText: 'Off' }).click();
+  await expect(supply).toHaveText(/\d+ boards fit these rules/);
 
   // Narrowing to one shape must narrow the count: this is the assertion that
   // the chips are wired to the rules the deal will use, not to decoration.
@@ -106,6 +125,20 @@ test('the Challenge card opens the setup sheet, and its supply line is real', as
   const withDiff = Number((await supply.textContent()).match(/(\d+)/)[1]);
   expect(withDiff).toBeLessThanOrEqual(narrowed);
   await expect(diffChips.filter({ hasText: 'Mean' })).toHaveAttribute('aria-pressed', 'true');
+
+  // The scroll opt-in (the marathon lane, 2026-08-17): two chips, Off
+  // default, and Allow can only WIDEN the count (it admits oversized boards
+  // beside everything else, never instead of it). Equality would also pass
+  // today, with no oversized supply yet, but the invariant that survives
+  // the lane filling is the widening, so that is what is pinned.
+  const scrollChips = page.locator('#match-scroll .match-chip');
+  await expect(scrollChips).toHaveCount(2);
+  await expect(scrollChips.filter({ hasText: 'Off' })).toHaveAttribute('aria-pressed', 'true');
+  await scrollChips.filter({ hasText: 'Allow' }).click();
+  await expect(scrollChips.filter({ hasText: 'Allow' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(supply).toHaveText(/\d+ boards fit these rules/);
+  const withScroll = Number((await supply.textContent()).match(/(\d+)/)[1]);
+  expect(withScroll).toBeGreaterThanOrEqual(withDiff);
 
   expect(errors, `console errors: ${errors.join(' | ')}`).toHaveLength(0);
 });
@@ -155,6 +188,35 @@ test('the matchboard override deals the exact stored board, frozen and certified
     expect(errors, `console errors: ${errors.join(' | ')}`).toHaveLength(0);
   });
 
+test('REGRESSION: Start Challenge runs the REAL deal through to a playing board', async ({ page }) => {
+  // Every other spec here pins ?matchboard=, the practice lane, which skips
+  // dealMatchEntries entirely. So when #359 changed the deal's reading of
+  // planMatchDeal's `eligible` and the two disagreed (a count where rows were
+  // expected), every REAL deal crashed, solo and shared alike, the sheet said
+  // "check your connection", and the whole suite stayed green. This journey
+  // is the seam: sheet, Start Challenge, live library fetch, certification,
+  // a board on screen.
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+
+  await prepareInteractionSpec(page);
+  await page.goto('/?isTest=1');
+  await page.waitForSelector('#boot-overlay', { state: 'detached', timeout: 30_000 });
+  await page.locator('.mode-card[data-mode="match"]').click();
+  await expect(page.locator('#match-setup-modal')).toBeVisible();
+  await page.locator('#match-tab-new').click();
+
+  const start = page.locator('#match-start');
+  await expect(start).toBeEnabled({ timeout: 30_000 });
+  await start.click();
+
+  // The deal fetches shards and re-certifies stored boards; give it room.
+  await page.waitForSelector('#board .cell', { timeout: 45_000 });
+  await expect(page.locator('#level-display')).toHaveText(/Board 1/);
+  await expect(page.locator('#board .cell.suggested-start')).toHaveCount(1);
+  expect(errors, `page errors: ${errors.join(' | ')}`).toHaveLength(0);
+});
+
 test('a match board cannot be restarted, and offers no power-ups', async ({ page }) => {
   // Both follow from the mode's economy: the per-board clock feeds the match
   // total, so a fresh clock on a seen board is the daily's own cheat, and an
@@ -166,4 +228,64 @@ test('a match board cannot be restarted, and offers no power-ups', async ({ page
 
   await expect(page.locator('#reset-btn')).toBeDisabled();
   await expect(page.locator('#powerup-bar')).toHaveClass(/hidden/);
+});
+
+test('Help Greg fills the sheet with what the fit is short of, and the run still deals', async ({ page }) => {
+  // His idea (2026-08-18): a button beside the board count that aims the WHOLE
+  // run at what the model needs, where steering claims at most floor(N/5)
+  // slots. The e2e layer is the right one for it: the pure choice is tested in
+  // matchSteering, and what can only break here is the wiring (the target
+  // fetch, the chips re-rendering, the supply line re-counting, the deal still
+  // working afterwards) — the #363 lesson exactly.
+  const errors = [];
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('pageerror', (e) => errors.push(String(e)));
+
+  await prepareInteractionSpec(page);
+  await seedCrownedPlayer(page);
+  await page.goto('/?isTest=1');
+  await page.waitForSelector('#boot-overlay', { state: 'detached', timeout: 30_000 });
+  await page.locator('.mode-card[data-mode="match"]').click();
+  await page.locator('#match-tab-new').click();
+
+  const supply = page.locator('#match-supply');
+  await expect(supply).toHaveText(/\d+ boards fit these rules/, { timeout: 30_000 });
+
+  const before = await page.locator('#match-shapes .match-chip[aria-pressed="true"]').count();
+  expect(before, 'a crowned player starts with every shape on').toBe(7);
+
+  await page.locator('#match-help-greg').click();
+
+  // It says what it did, in a sentence naming real shapes.
+  const note = page.locator('#match-help-note');
+  await expect(note).toHaveText(/Greg has the least data on .+\. Change anything you like\./,
+    { timeout: 15_000 });
+
+  // The chips actually moved, and to FEWER shapes than everything.
+  const after = await page.locator('#match-shapes .match-chip[aria-pressed="true"]').count();
+  expect(after).toBeGreaterThan(0);
+  expect(after, 'it must narrow the sheet, not leave it as it was').toBeLessThan(before);
+
+  // The bands it must NOT touch are still Any: setting a density would chase
+  // the digit-share target and re-introduce the confound experimentDesign
+  // refuses on purpose.
+  for (const id of ['#match-density', '#match-time', '#match-difficulty']) {
+    await expect(page.locator(`${id} .match-chip[aria-pressed="true"]`)).toHaveText('Any');
+  }
+
+  // And the narrowed rules are DEALABLE: a positive supply count through the
+  // deal's own filter, and Start live.
+  //
+  // Deliberately not started here. The deal for a narrow shape selection
+  // fetches 437 corner shards (the modifier axis is 2^9 subsets), and eight
+  // parallel workers against the dependency-free static server time some of
+  // them out, which is a real round-trip finding rather than a flake and is
+  // reported on its own. The full sheet-to-playing-board journey is covered
+  // by the REGRESSION spec below under the wide default rules.
+  await expect(supply).toHaveText(/\d+ boards fit these rules/);
+  const n = Number((await supply.textContent()).match(/(\d+)/)[1]);
+  expect(n, 'the starved shapes must have supply to be worth proposing').toBeGreaterThan(0);
+  await expect(page.locator('#match-start')).toBeEnabled();
+
+  expect(errors, `console errors: ${errors.join(' | ')}`).toHaveLength(0);
 });

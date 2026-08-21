@@ -15,7 +15,7 @@ import test from 'node:test';
 import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 import {
-  steerMissions, currentSteerMissions, planMatchDeal,
+  steerMissions, currentSteerMissions, planMatchDeal, helpGregRules,
 } from '../src/logic/matchSteering.js';
 import { normalizeShapeCoverage } from '../src/logic/experimentDesign.js';
 import { steeredSlotCap, eligibleRows, boardMatchesRules } from '../src/logic/matchRules.js';
@@ -109,6 +109,12 @@ test('every pick clears the filter across a sweep of rule sets and missions', ()
       }
     }
   }
+  // OVERSIZED rows (the marathon lane) join the lattice so the scroll axis
+  // of the sweep below is exercised by real rows, not vacuously: a steered
+  // slot must be as unable to reach one as the ordinary deal is.
+  for (const shape of ['rect', 'hex']) {
+    rows.push({ ...row({ shape, mods: ['compass'], par: 300, mines: 60, cells: 600 }), oversized: true });
+  }
   // Every shape and every gimmick starved at once, the most aggressive
   // mission list the refit could possibly emit.
   const missions = steerMissions({
@@ -124,22 +130,31 @@ test('every pick clears the filter across a sweep of rule sets and missions', ()
   assert.ok(missions.length >= 9, 'sweep needs a full mission slate to be real');
 
   let sawSteer = false;
+  let sawOversizedPick = false;
   const rand = lcg(11);
   for (const shapes of [['rect'], ['hex'], ['rect', 'floret'], ['rect', ...TILING_TYPES]]) {
     for (const mods of [[], ['compass'], ['compass', 'sonar', 'liar']]) {
       for (const time of ['any', 'quick', 'long']) {
-        const rules = RULES({ count: 10, shapes, mods, time });
-        const plan = planMatchDeal(rows, rules, { rand, missions });
-        if (plan.steered.length > 0) sawSteer = true;
-        for (const p of plan.picks) {
-          assert.ok(boardMatchesRules(p, rules),
-            `${p.key} (${p.shape} ${JSON.stringify(p.mods)} par ${p.par}) escaped ${JSON.stringify(rules)}`);
+        for (const scroll of [undefined, false, true]) {
+          const rules = RULES({ count: 10, shapes, mods, time });
+          if (scroll !== undefined) rules.scroll = scroll;
+          const plan = planMatchDeal(rows, rules, { rand, missions });
+          if (plan.steered.length > 0) sawSteer = true;
+          for (const p of plan.picks) {
+            assert.ok(boardMatchesRules(p, rules),
+              `${p.key} (${p.shape} ${JSON.stringify(p.mods)} par ${p.par}`
+              + `${p.oversized ? ' oversized' : ''}) escaped ${JSON.stringify(rules)}`);
+            if (p.oversized === true) sawOversizedPick = true;
+          }
         }
       }
     }
   }
-  // Non-vacuity: a sweep where steering never fired would prove nothing.
+  // Non-vacuity: a sweep where steering never fired would prove nothing,
+  // and one where no opted-in rule set ever drew an oversized row would
+  // leave the scroll axis untested from the admitting side.
   assert.ok(sawSteer, 'the sweep must actually steer somewhere');
+  assert.ok(sawOversizedPick, 'some scroll:true rule set must actually deal an oversized row');
 });
 
 // ── The cap is his ruling ───────────────────────────────────────────────
@@ -468,8 +483,29 @@ test('an empty eligible set deals nothing rather than throwing', () => {
   const plan = planMatchDeal([row({ shape: 'rect' })], RULES({ count: 5, shapes: ['deltoidal'] }),
     { rand: lcg(1), missions: steerMissions(shapeSpec('deltoidal', 1)) });
   assert.deepEqual(plan.picks, []);
-  assert.equal(plan.eligible, 0);
+  assert.deepEqual(plan.eligible, []);
   assert.deepEqual(plan.steered, []);
+});
+
+test('REGRESSION: plan.eligible is the ROW ARRAY on both return paths, keys included', () => {
+  // It shipped as a COUNT once, on both paths, and #359 taught
+  // dealMatchEntries to read the rows' keys off it for the per-space seen
+  // reset (`eligible.map((r) => r.key)`). Every real deal then crashed,
+  // solo and shared alike, and the sheet said "check your connection". No
+  // test crossed the seam: this one pins the interface the consumer reads.
+  const rows = [row({ shape: 'rect' }), row({ shape: 'rect' }), row({ shape: 'deltoidal' })];
+  const rules = RULES({ count: 2, shapes: ['rect'], mods: [] });
+  // The plain path (no missions)...
+  const plain = planMatchDeal(rows, rules, { rand: lcg(1), missions: [] });
+  // ...and the steered path (a mission that can claim a slot).
+  const steered = planMatchDeal(rows, RULES({ count: 5, shapes: ['rect'], mods: [] }),
+    { rand: lcg(1), missions: steerMissions(shapeSpec('rect', 0)) });
+  for (const plan of [plain, steered]) {
+    assert.ok(Array.isArray(plan.eligible), 'eligible must be the row array');
+    assert.ok(plan.eligible.length >= 1);
+    assert.ok(plan.eligible.every((r) => typeof r.key === 'string' && r.key.length > 0),
+      'every eligible row must expose the key the seen reset scopes by');
+  }
 });
 
 test('currentSteerMissions reads the loaded file without throwing on a cold cache', () => {
@@ -519,7 +555,7 @@ test('the deal applies the filter itself, so no caller can hand it raw rows', ()
   const rows = [row({ shape: 'rect' }), row({ shape: 'deltoidal' })];
   const rules = RULES({ count: 2, shapes: ['rect'], mods: [] });
   const plan = planMatchDeal(rows, rules, { rand: lcg(1), missions: [] });
-  assert.equal(plan.eligible, 1);
+  assert.equal(plan.eligible.length, 1);
   assert.equal(plan.picks.length, 1);
   assert.equal(eligibleRows(rows, rules).length, 1);
 });
@@ -556,4 +592,71 @@ test('an EMPTY coverage list sorts to nothing rather than halting the refit', ()
   // assertions are satisfied by a file that never mentions them.
   assert.ok(R_SRC.includes('coverage_targets <- coverage_targets[order('),
     'the coverage sort itself was not found; this test is pinning nothing');
+});
+
+// ── "Help Greg": the whole run aimed at what the fit is short of ────────
+//
+// His idea (2026-08-18). Steering claims at most floor(N/5) slots so a run
+// never feels forced; this is the player ASKING for the whole run to count,
+// so it belongs in the RULES rather than in the deal. It aims with the same
+// mission list the deal steers on, so the two can never disagree.
+
+const HELP_MISSIONS = () => steerMissions({
+  target: 'clueShare2',
+  coverage: [{ feature: 'sonarCellCount', deficit_weight: 0.4 }],
+  decorrelation: null,
+  shapes: [
+    { shape: 'deltoidal', deficit_weight: 0.0667 },
+    { shape: 'floret', deficit_weight: 0.0588 },
+    { shape: 'rhombille', deficit_weight: 0.0588 },
+    { shape: 'cairo', deficit_weight: 0.05 },
+    { shape: 'rect', deficit_weight: 0.0051 },
+  ],
+});
+const CROWNED = {
+  shapes: ['rect', 'hex', '4.8.8', 'cairo', 'floret', 'rhombille', 'deltoidal'],
+  mods: ['walls', 'liar', 'mystery', 'sonar', 'wormhole', 'mirror', 'locked', 'compass', 'worm'],
+};
+
+test('Help Greg proposes the starved shapes, worst deficit first', () => {
+  const plan = helpGregRules(HELP_MISSIONS(), CROWNED);
+  assert.deepEqual(plan.shapes, ['deltoidal', 'floret', 'rhombille'],
+    'the three shapes the fit has least of, in deficit order');
+  assert.ok(!plan.shapes.includes('rect'), 'the saturated shape is not proposed');
+});
+
+test('REGRESSION: Help Greg never proposes a shape or modifier the player has not met', () => {
+  // His non-negotiable for the deal, and a proposal is no different.
+  const fresh = { shapes: ['rect'], mods: [] };
+  const plan = helpGregRules(HELP_MISSIONS(), fresh);
+  assert.deepEqual(plan.shapes, ['rect'], 'only what is unlocked, however starved the rest is');
+  assert.deepEqual(plan.mods, [], 'a locked modifier is never proposed');
+});
+
+test('a coverage target that a MODIFIER carries becomes that modifier', () => {
+  const plan = helpGregRules(HELP_MISSIONS(), CROWNED);
+  assert.deepEqual(plan.mods, ['sonar'], 'sonarCellCount is carried by sonar');
+});
+
+test('REGRESSION: Help Greg never chases a digit share, and never touches density', () => {
+  // experimentDesign refuses to MAXIMIZE the digit shares on purpose
+  // (isObservationalTarget, regression-tested there): they are measured on
+  // every board, and chasing one deepens the density confound that is why
+  // the study is stuck. The button must not re-introduce it by the back
+  // door, and the only lever it would have is a density band.
+  const digitOnly = steerMissions({
+    target: 'clueShare2', coverage: [], decorrelation: null, shapes: [],
+  });
+  assert.equal(helpGregRules(digitOnly, CROWNED), null,
+    'a digit-share target alone proposes NOTHING rather than a density');
+  // And the returned shape never carries a band at all, on any input.
+  const plan = helpGregRules(HELP_MISSIONS(), CROWNED);
+  for (const key of ['density', 'time', 'difficulty', 'count', 'scroll']) {
+    assert.equal(plan[key], undefined, `the plan must not set ${key}`);
+  }
+});
+
+test('nothing short means nothing proposed (his "if no discovery can happen, that is fine")', () => {
+  assert.equal(helpGregRules([], CROWNED), null);
+  assert.equal(helpGregRules(null, CROWNED), null);
 });

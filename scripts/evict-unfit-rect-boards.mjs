@@ -69,6 +69,10 @@ function sweepClimb() {
   const names = readdirSync(CLIMB_DIR).filter((f) => /^(level-\d+|endless-\d+)\.json$/.test(f)).sort();
   let removed = 0;
   let kept = 0;
+  // Split out for the epoch verdict: level bins key their seen-cycles by
+  // SEED, so an eviction there owes nothing, while the endless pages are
+  // position-keyed and any removal from one stales every device's cycle.
+  let endlessRemoved = 0;
   const emptied = [];
   for (const name of names) {
     const url = new URL(name, CLIMB_DIR);
@@ -76,6 +80,7 @@ function sweepClimb() {
     const before = (file.boards || []).length;
     const after = (file.boards || []).filter(boardIsFit);
     removed += before - after.length;
+    if (name.startsWith('endless-')) endlessRemoved += before - after.length;
     kept += after.length;
     if (after.length !== before) {
       file.boards = after;
@@ -99,7 +104,7 @@ function sweepClimb() {
     counts,
   };
   if (!DRY) writeFileSync(idxUrl, JSON.stringify(rebuilt));
-  return { removed, kept, emptied, endlessBoards: rebuilt.boards };
+  return { removed, kept, emptied, endlessRemoved, endlessBoards: rebuilt.boards };
 }
 
 function sweepMatch() {
@@ -110,6 +115,16 @@ function sweepMatch() {
     for (const b of JSON.parse(readFileSync(new URL(name, MATCH_DIR), 'utf8')).boards) {
       if (boardIsFit(b)) keep.push(b); else removed++;
     }
+  }
+  // NOTHING EVICTED means NOTHING CHANGES. The repage below renumbers every
+  // surviving board's page:idx, the seen-cycle key on every device, a cost
+  // his ruling accepts only when a deletion forces it. The #350 sweep (a
+  // Climb-only eviction) reached here with removed = 0 and rewrote 1,627
+  // match pages as pure churn, which would have invalidated every player's
+  // no-repeat memory for nothing; the write was reverted before commit and
+  // this guard is what makes the mistake unrepeatable.
+  if (removed === 0) {
+    return { removed, kept: keep.length, pagesBefore: names.length, pagesAfter: names.length, corners: null };
   }
   // Re-paged from scratch, which is the renumbering his ruling accepts. Order
   // is PRESERVED (the surviving boards stay in their original sequence) so the
@@ -136,9 +151,12 @@ function main() {
     + (climb.emptied.length ? `; ${climb.emptied.length} file(s) now EMPTY: ${climb.emptied.slice(0, 6).join(', ')}` : ''));
   const match = sweepMatch();
   console.log(`match-library: ${match.removed} board(s) evicted, ${match.kept} kept;`
-    + ` pages ${match.pagesBefore} -> ${match.pagesAfter}, ${match.corners} corners indexed`);
+    + (match.corners === null ? ' untouched (nothing to evict)'
+      : ` pages ${match.pagesBefore} -> ${match.pagesAfter}, ${match.corners} corners indexed`));
   console.log(DRY ? '(dry run: nothing written)'
-    : 'BUMP THE SEEN EPOCH: match and endless seen-cycles are position-keyed and are now stale.');
+    : match.removed === 0 && climb.endlessRemoved === 0
+      ? 'No match or endless positions moved; no seen epoch is owed (Climb level bins key by seed).'
+      : 'BUMP THE SEEN EPOCH: match and endless seen-cycles are position-keyed and are now stale.');
 }
 
 const _isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;

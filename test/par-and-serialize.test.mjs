@@ -21,18 +21,31 @@ test('predictPar on an all-zero feature vector returns the rounded baseline', ()
 });
 
 test('predictPar is monotonic in a positive-coefficient feature', () => {
-  assert.ok(PAR_MODEL.secPerSearchMove > 0, 'precondition: search coef positive');
+  assert.ok(PAR_MODEL.secPerSearchRate > 0, 'precondition: search coef positive');
   // advancedLogicMoves feeds the derived `search` tier (searchMoves = advanced).
-  // A wide delta keeps the gap clear of 0.1s rounding on a small baseline par.
-  const lo = predictPar({ advancedLogicMoves: 1 });
-  const hi = predictPar({ advancedLogicMoves: 20 });
+  //
+  // The delta is measured on a REALISTIC board, not on an empty feature
+  // vector. predictPar rounds to a tenth of a second, so the vector has to
+  // produce a par where a tenth is negligible. An empty one used to do that
+  // and stopped on 2026-08-20: the M1 refit moved the board's size into
+  // log(cells), which dropped the intercept to exp(0.2159) = 1.24s, and at
+  // that magnitude the rounding alone is 8% of the value. The old comment
+  // said a wide delta kept the gap clear of rounding, which was true of the
+  // gap and never of the RATIO the assertion actually checks.
+  const board = { cellCount: 144, totalMines: 30, passAMoves: 30 };
+  const lo = predictPar({ ...board, advancedLogicMoves: 1 });
+  const hi = predictPar({ ...board, advancedLogicMoves: 20 });
+  assert.ok(lo > 20, `precondition: the fixture must price above the rounding floor, got ${lo}`);
   assert.ok(hi > lo, `par should rise with search moves: ${lo} -> ${hi}`);
   if (PAR_MODEL.scale === 'log') {
-    // Multiplicative: hi / lo equals exp(coef × delta) within rounding.
-    const expectedRatio = Math.exp(PAR_MODEL.secPerSearchMove * 19);
-    assert.ok(Math.abs(hi / lo - expectedRatio) < 0.05, `ratio ${hi / lo} vs expected ${expectedRatio}`);
+    // Multiplicative: hi / lo IS exp(coef x delta), and on a board this size
+    // it holds to about 2e-4, so the tolerance can say so.
+    // Under the rate form the delta is per CELL, so the ratio carries the
+    // board's own size: exp(coef x 19 / 144).
+    const expectedRatio = Math.exp(PAR_MODEL.secPerSearchRate * 19 / board.cellCount);
+    assert.ok(Math.abs(hi / lo - expectedRatio) < 0.005, `ratio ${hi / lo} vs expected ${expectedRatio}`);
   } else {
-    const expected = PAR_MODEL.secPerSearchMove * 19;
+    const expected = PAR_MODEL.secPerSearchRate * 19 / board.cellCount;
     assert.ok(Math.abs((hi - lo) - expected) < 0.3, `delta ${hi - lo} vs expected ${expected}`);
   }
 });

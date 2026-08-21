@@ -293,3 +293,48 @@ test('REGRESSION: the stored Player sentinel never shadows a real name', () => {
   const rows = matchBoardBreakdown(unnamed, { myUid: 'me' });
   assert.equal(rows[0].entries.find((e) => e.uid === 'kate').name, null);
 });
+
+test('REGRESSION: a summary-shaped node (no boards array) still yields the record', () => {
+  // #357 switched fetchMyMatches to summary reads (rules + players + host +
+  // createdAt, no boards), and the stats panel fed those summaries straight
+  // into matchRecord. The breakdown mapped over node.boards, so the whole
+  // record read zero: a player with a hundred raced boards saw the
+  // "play a friend and these fill in" empty state. The breakdown is
+  // count-driven now (rules.count, matchStandings' own fallback), and a
+  // missing board entry costs only the spec splits, never the tallies.
+  const summary = {
+    host: 'me', createdAt: 1, rules: { count: 3 },
+    players: {
+      me: player('Me', [30, 40, 50]),
+      kate: player('Kate', [35, 32, 60]),
+    },
+  };
+  const rows = matchBoardBreakdown(summary, { myUid: 'me' });
+  assert.equal(rows.length, 3, 'one row per board, from rules.count');
+  assert.ok(rows.every((r) => r.contested), 'both players posted every board');
+  assert.ok(rows.every((r) => r.spec === null), 'no boards array means no spec, honestly');
+
+  const rec = matchRecord([summary], { myUid: 'me' });
+  assert.equal(rec.contested, 3);
+  assert.equal(rec.wonAdjusted, 2, 'boards 1 and 3 are mine on raw times');
+  assert.deepEqual(rec.splits.shape, {}, 'spec splits sit out rather than inventing buckets');
+
+  const riv = rivalries([summary], { myUid: 'me' });
+  assert.equal(riv.rivals.length, 1);
+  assert.equal(riv.rivals[0].boards, 3, 'the rivalry tally survives a spec-less summary');
+
+  // The withSpecs fetch attaches bare {spec} board entries; the splits
+  // return without touching the tallies.
+  const withSpecs = {
+    ...summary,
+    boards: [
+      { spec: { shape: 'hex', cells: 60, mines: 10, gimmicks: [] } },
+      { spec: { shape: 'rect', cells: 88, mines: 12, gimmicks: [] } },
+      { spec: { shape: 'hex', cells: 60, mines: 10, gimmicks: [] } },
+    ],
+  };
+  const rec2 = matchRecord([withSpecs], { myUid: 'me' });
+  assert.equal(rec2.contested, 3, 'tallies unchanged by attaching specs');
+  assert.equal(rec2.splits.shape.hex.contested, 2);
+  assert.equal(rec2.splits.shape.rect.contested, 1);
+});

@@ -8,7 +8,9 @@
 import { state, clearCoastlinePractice } from './state/gameState.js';
 import { PROD_SITE_BASE } from './config.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
-import { resizeCells, updateAllCells, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, renderWallOverlays, showGimmickRegion, clearGimmickRegion } from './ui/boardRenderer.js';
+import { resizeCells, updateAllCells, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, renderWallOverlays, showGimmickRegion, clearGimmickRegion, cameraCenterOnCell, cameraMinZoom, snapFirstClick, viewMoveGraceActive} from './ui/boardRenderer.js';
+import { chordHasWork } from './logic/boardSolver.js';
+import { CELL_SIZE_PREFS, prefMinPx } from './logic/boardCamera.js';
 import { renderWormOverlays } from './ui/wormRenderer.js';
 import { preloadSprites, medalImgForEmoji, gimmickSpriteImgHTML, achievementSpriteImgHTML, uiSpriteImgHTML } from './ui/spriteLoader.js';
 import { startGregMascot } from './ui/gregMascot.js';
@@ -17,7 +19,7 @@ import { updatePowerUpBar } from './ui/powerUpBar.js';
 import { showModal, hideModal } from './ui/modalManager.js';
 import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastManager.js';
 import { showCelebration, haptic } from './ui/effectsRenderer.js';
-import { THEME_UNLOCKS, getUnlockedThemes, loadThemeCSS, updateThemeColor, enterChaosTheme } from './ui/themeManager.js';
+import { THEME_UNLOCKS, getUnlockedThemes, isThemeShelved, loadThemeCSS, updateThemeColor, enterChaosTheme } from './ui/themeManager.js';
 import { applyThemeEffects, applyTitleSceneEffects } from './ui/themeEffects.js';
 import { newGame, revealCell, toggleFlag, handleChordReveal, rearmPlateTimers } from './game/gameActions.js';
 import './game/winLossHandler.js'; // side-effect: registers handleWin with powerUpActions
@@ -183,13 +185,19 @@ for (const btn of $$('.settings-tab')) {
 function renderCollectionModal() {
   // Themes only, the emoji-pack / effects / titles tabs were cut
   // 2026-06-12 (selection chaff; themes carry the whole identity).
-  for (const t of Object.keys(THEME_UNLOCKS)) loadThemeCSS(t);
+  // Shelved themes are skipped ENTIRELY (not rendered locked): the shelf
+  // means they do not exist on a production build, and the preview door
+  // (isThemeShelved consults it) is how they render on test builds.
+  for (const t of Object.keys(THEME_UNLOCKS)) {
+    if (!isThemeShelved(t)) loadThemeCSS(t);
+  }
   const themeGrid = $('#collection-theme-grid');
   themeGrid.innerHTML = '';
   const unlocked = getUnlockedThemes();
   const currentTheme = state.theme;
 
   for (const [theme, info] of Object.entries(THEME_UNLOCKS)) {
+    if (isThemeShelved(theme)) continue;
     const btn = document.createElement('button');
     btn.className = 'theme-swatch' + (theme === currentTheme ? ' active' : '') + (unlocked[theme] === false ? ' locked' : '');
     btn.dataset.theme = theme;
@@ -380,22 +388,68 @@ if (window.matchMedia && window.matchMedia('(hover: hover)').matches) {
   });
 }
 
+// ── Marathon-camera navigation gesture ──────────────
+// Two quick taps (or clicks) on the SAME cell, where BOTH taps found the cell
+// navigable, center the camera there (cameraCenterOnCell; the same-cell
+// repeat toggles out to the survey view). His ruling (2026-08-17): the
+// gesture lives ONLY on unchordable cells, "already chorded or not yet
+// chordable", so a cell where the chord has work keeps chord semantics
+// untouched and the double-tap never costs an action. Navigability is judged
+// BEFORE the tap's own dispatch runs, and both taps must pass: a tap that
+// revealed a hidden cell or fired a chord was an ACTION, and no pair
+// containing an action is a navigation gesture. chordHasWork (boardSolver)
+// is the one judge of "has work".
+const NAV_TAP_WINDOW_MS = 350;
+let _navTapAt = 0;
+let _navTapRow = null;
+let _navTapCol = null;
+let _navTapOk = false;
+
+function _cellIsNavigable(row, col) {
+  const cell = state.board?.[row]?.[col];
+  if (!cell || !cell.isRevealed) return false;
+  if (state.status !== 'playing' && state.status !== 'idle') return false;
+  return !chordHasWork(state.board, row, col);
+}
+
+function _navTap(row, col, navigable) {
+  if (!needsZoom()) { _navTapAt = 0; _navTapOk = false; return; }
+  const now = Date.now();
+  const isDouble = navigable && _navTapOk && row === _navTapRow && col === _navTapCol
+    && (now - _navTapAt) <= NAV_TAP_WINDOW_MS;
+  if (isDouble) {
+    _navTapAt = 0;
+    _navTapRow = null;
+    _navTapCol = null;
+    _navTapOk = false;
+    cameraCenterOnCell(row, col);
+  } else {
+    _navTapAt = now;
+    _navTapRow = row;
+    _navTapCol = col;
+    _navTapOk = navigable;
+  }
+}
+
 boardEl.addEventListener('mousedown', (e) => {
   if (Date.now() - lastTouchTime < 500) return;
   const cellEl = e.target.closest('.cell');
   if (!cellEl) return;
-  const row = parseInt(cellEl.dataset.row);
-  const col = parseInt(cellEl.dataset.col);
+  // A first click near the marked opener IS the marked opener (his ruling):
+  // at the opening survey a cell is a few pixels across, so an honest aim
+  // can miss. snapFirstClick returns null except in exactly that state.
+  const snapped = snapFirstClick(e.clientX, e.clientY);
+  const row = snapped ? snapped.row : parseInt(cellEl.dataset.row);
+  const col = snapped ? snapped.col : parseInt(cellEl.dataset.col);
 
   if (e.button === 0) {
     const cell = state.board[row]?.[col];
+    const navBefore = _cellIsNavigable(row, col);
     // A sonar/compass number counts a REGION, not its neighbors, so chording it
     // is meaningless, the click toggles its region highlight instead.
     if (cell && cell.isRevealed && (cell.isSonar || cell.isCompass)) {
       _toggleRegionPin(row, col);
-      return;
-    }
-    if (cell && cell.isRevealed && cell.adjacentMines > 0) {
+    } else if (cell && cell.isRevealed && cell.adjacentMines > 0) {
       handleChordReveal(row, col);
     } else if (state.flagMode && !cell?.isRevealed) {
       // Flag-mode toggle is on (set via the header bar), left-click
@@ -406,6 +460,7 @@ boardEl.addEventListener('mousedown', (e) => {
     } else {
       revealCell(row, col);
     }
+    _navTap(row, col, navBefore);
   }
 });
 
@@ -432,8 +487,11 @@ boardEl.addEventListener('touchstart', (e) => {
   e.preventDefault();
 
   longPressTriggered = false;
-  touchedCellRow = parseInt(cellEl.dataset.row);
-  touchedCellCol = parseInt(cellEl.dataset.col);
+  // The opener snap (his ruling), resolved at touchSTART so a long press
+  // flags the same cell the tap would have revealed.
+  const snapped = snapFirstClick(touch.clientX, touch.clientY);
+  touchedCellRow = snapped ? snapped.row : parseInt(cellEl.dataset.row);
+  touchedCellCol = snapped ? snapped.col : parseInt(cellEl.dataset.col);
   touchStartX = touch.clientX;
   touchStartY = touch.clientY;
   touchedCellEl = cellEl;
@@ -472,17 +530,23 @@ boardEl.addEventListener('touchend', (e) => {
   touchedCellCol = null;
 
   const cell = state.board[row]?.[col];
+  const navBefore = _cellIsNavigable(row, col);
   if (cell && cell.isRevealed && (cell.isSonar || cell.isCompass)) {
     _toggleRegionPin(row, col);
-    return;
-  }
-  if (cell && cell.isRevealed && cell.adjacentMines > 0) {
+  } else if (cell && cell.isRevealed && cell.adjacentMines > 0) {
     handleChordReveal(row, col);
   } else if (state.flagMode && !cell?.isRevealed) {
     toggleFlag(row, col);
+  } else if (viewMoveGraceActive()) {
+    // THE VIEW JUST MOVED, so this tap did not choose this cell (his report,
+    // 2026-08-21: two taps panned and the third revealed a mine). Refuse the
+    // REVEAL only: the pan itself, flagging and chording all still work,
+    // because none of them can lose a run. Only the irreversible action waits
+    // for the board to stop sliding under the finger.
   } else {
     revealCell(row, col);
   }
+  _navTap(row, col, navBefore);
 });
 
 boardEl.addEventListener('touchmove', (e) => {
@@ -625,7 +689,9 @@ boardScrollWrapper.addEventListener('touchmove', (e) => {
     const dy = e.touches[0].clientY - e.touches[1].clientY;
     const dist = Math.hypot(dx, dy);
     const ratio = dist / pinchStartDist;
-    state.zoomLevel = Math.round(Math.min(200, Math.max(50, pinchStartZoom * ratio)));
+    // The floor is the camera's, not a constant: a marathon board too big for
+    // 50% to show whole may pinch down to its own fit scale (survey view).
+    state.zoomLevel = Math.round(Math.min(200, Math.max(cameraMinZoom(), pinchStartZoom * ratio)));
     updateZoom();
   }
 }, { passive: true });
@@ -1605,6 +1671,9 @@ if (matchNextBtn) {
     state.match.current++;
     hideModal('gameover-overlay');
     await newGame();
+    // Re-baseline the race: the next gap card should report what happened
+    // during THIS board, not the whole run so far.
+    import('./ui/matchRace.js').then((m) => m.matchRaceBoardStart()).catch(() => {});
   });
 }
 
@@ -2053,6 +2122,96 @@ if (classicObjectsToggle) {
   });
 }
 
+// Cell-size preference (the marathon camera's entry point): a minimum cell
+// size in px, written as the --cell-pref-min-size token both fit paths read
+// (a floor UNDER the fit result, never a cap). When the floor wins, the board
+// overflows the scroll wrapper and the camera engages: scrolling, pinch and
+// the +/- buttons, and the double-tap-to-center gesture. Options and their px
+// live in logic/boardCamera.js (CELL_SIZE_PREFS); the stored key is the
+// preset's own key string, absent reads as 'fit' (today's behavior).
+const cellSizeChips = $('#cell-size-chips');
+const CELL_SIZE_PREF_KEY = 'minesweeper_cell_size_pref';
+let _cellPref = 'fit';
+
+// The preview shows REAL cells at the size the choice delivers, rather than
+// naming it (his ask, 2026-08-18). "Fit to screen" has no fixed size, so it
+// shows what the board on screen is actually using right now, which is the
+// honest answer to "what will I get".
+function renderCellSizePreview() {
+  const el = $('#cell-size-preview');
+  if (!el) return;
+  // "Fit to screen" has no size of its own, so it can only be shown against a
+  // board that exists. With one in play the preview reads the live pitch and
+  // says so; with none, --cell-size is sitting at its floor and quoting it
+  // would promise 18px cells that no board would ever get.
+  const playing = !!(state.board && state.board.length && state.cols);
+  const live = parseFloat(getComputedStyle(document.documentElement)
+    .getPropertyValue('--cell-size')) || 30;
+  const chosen = prefMinPx(_cellPref);
+  const px = chosen || (playing ? live : 30);
+  const caption = chosen
+    ? `${Math.round(px)}px`
+    : (playing ? `${Math.round(live)}px on this board` : 'sized to each board');
+  el.innerHTML = '';
+  for (let i = 0; i < 4; i++) {
+    const c = document.createElement('div');
+    c.className = i === 1 ? 'cell-size-swatch revealed' : 'cell-size-swatch';
+    c.style.width = `${px}px`;
+    c.style.height = `${px}px`;
+    c.style.fontSize = `${Math.round(px * 0.5)}px`;
+    if (i === 1) c.textContent = '1';
+    el.appendChild(c);
+  }
+  const cap = document.createElement('span');
+  cap.className = 'cell-size-caption';
+  cap.textContent = caption;
+  el.appendChild(cap);
+}
+
+function renderCellSizeChips() {
+  if (!cellSizeChips) return;
+  cellSizeChips.innerHTML = CELL_SIZE_PREFS.map((p) => `<button type="button"`
+    + ` class="match-chip${p.key === _cellPref ? ' active' : ''}" data-key="${p.key}"`
+    + ` aria-pressed="${p.key === _cellPref ? 'true' : 'false'}" title="${p.label}">`
+    + `<span class="match-chip-label">${p.label}</span></button>`).join('');
+  renderCellSizePreview();
+}
+
+function applyCellSizePref(key) {
+  const px = prefMinPx(key);
+  _cellPref = px > 0 ? key : 'fit';
+  if (px > 0) {
+    document.documentElement.style.setProperty('--cell-pref-min-size', px + 'px');
+  } else {
+    document.documentElement.style.removeProperty('--cell-pref-min-size');
+  }
+  safeSet(CELL_SIZE_PREF_KEY, _cellPref);
+  // Re-fit a live board immediately: the same sequence the resize handler
+  // runs, because a preference change is a geometry change.
+  if (state.board && state.cols) {
+    resizeCells();
+    if (!state.board._cellPos) {
+      boardEl.style.gridTemplateColumns = `repeat(${state.cols}, var(--cell-size))`;
+      boardEl.style.gridTemplateRows = `repeat(${state.rows}, var(--cell-size))`;
+    }
+    renderWallOverlays();
+    renderWormOverlays();
+    updateZoom();
+  }
+  renderCellSizeChips();
+}
+
+if (cellSizeChips) {
+  const savedPref = safeGet(CELL_SIZE_PREF_KEY);
+  _cellPref = CELL_SIZE_PREFS.some((p) => p.key === savedPref) ? savedPref : 'fit';
+  applyCellSizePref(_cellPref);
+  cellSizeChips.addEventListener('click', (e) => {
+    const btn = e.target.closest('.match-chip');
+    if (btn && btn.dataset.key) applyCellSizePref(btn.dataset.key);
+  });
+}
+
+
 // ── Init ───────────────────────────────────────────────
 
 // Background-resume the mode slot's save behind the TITLE SCREEN, landing it
@@ -2093,18 +2252,23 @@ async function init() {
   const unlocked = getUnlockedThemes();
 
   let activeTheme = theme;
-  // Guard BOTH not-yet-unlocked and no-longer-existing themes. A saved
-  // theme that was cut from the catalog (the 2026-06 trim to the kept
-  // set) is undefined in `unlocked`, without the `in` check it would
-  // apply with no CSS file behind it and render unstyled.
-  if (!(theme in THEME_UNLOCKS) || unlocked[theme] === false) {
-    const stats = loadStats();
-    const maxLevel = stats.maxLevelReached || 1;
-    const sortedThemes = Object.entries(THEME_UNLOCKS)
-      .filter(([, info]) => maxLevel >= info.levelRequired)
-      .sort((a, b) => b[1].levelRequired - a[1].levelRequired);
-    activeTheme = sortedThemes.length > 0 ? sortedThemes[0][0] : 'classic';
+  // Guard cut, shelved, and locked saved themes, with two different fates:
+  // a theme that was CUT from the catalog (the 2026-06 trim) is undefined
+  // in `unlocked` and its stored preference is overwritten (there is
+  // nothing to come back to; without the `in` check it would apply with no
+  // CSS file behind it and render unstyled), while a SHELVED or locked
+  // theme renders classic but KEEPS the stored preference, so a theme that
+  // returns from the shelf comes back on its own with no player action.
+  // Both fates fall back the way index.html's pre-boot script does (dark
+  // for a dark-scheme system, classic otherwise), so the first-paint theme
+  // and the settled theme agree and the boot never visibly flips.
+  const schemeFallback = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+    ? 'dark' : 'classic';
+  if (!(theme in THEME_UNLOCKS)) {
+    activeTheme = schemeFallback;
     saveTheme(activeTheme);
+  } else if (unlocked[theme] === false) {
+    activeTheme = schemeFallback;
   }
 
   state.theme = activeTheme;
@@ -2169,6 +2333,15 @@ async function init() {
   initAnonymousAuth().then(async () => {
     const uid = getUid();
     if (!uid) return;
+    // The playerNames boot self-heal (the Kate gap, 2026-08-18): a player
+    // named BEFORE the registry existed passes the name gate (they have a
+    // name), never re-opens Settings, never switches uid, so no other
+    // publishPlayerName call site ever fires and their canonical entry
+    // stays empty forever while every score row carries the name. One
+    // idempotent set per boot keeps the registry in lockstep with the
+    // local name; publishPlayerName itself no-ops on empty names and on
+    // test builds.
+    publishPlayerName(getPlayerName());
     const { backfillResidualsFromFirebase } = await import('./logic/handicaps.js');
     backfillResidualsFromFirebase(uid).catch(err => reportCaughtError('residuals-backfill', err));
   }).catch(err => reportCaughtError('residuals-backfill-auth', err));
@@ -2666,6 +2839,9 @@ window.addEventListener('resize', () => {
   // their edges on any viewport resize / phone rotation until 2026-07-17)
   renderWallOverlays();
   renderWormOverlays();
+  // A resize (rotation, split screen) can move a board across the fits /
+  // overflows line in either direction; the camera must follow it.
+  updateZoom();
 });
 
 // Safety net: if init throws anywhere, drop the boot overlay so the

@@ -15,7 +15,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import {
   FIT_OUTPUT_PATHS, DERIVED_PATHS, REDERIVE_COMMANDS,
   isDerivedPath, isFitOutputPath, classifyConflicts,
@@ -127,4 +127,77 @@ test('the two classes do not overlap', () => {
   for (const p of DERIVED_PATHS) {
     assert.equal(isFitOutputPath(p), false, `${p} cannot be both`);
   }
+});
+
+// ── The direction the lockstep did NOT cover (2026-08-18) ───────────────
+//
+// The tests above check that everything the refit STAGES is classified. The
+// bug that broke three nightly runs was the other way round: the pool
+// repricer rewrites scripts/data/pool-features.json, a TRACKED file, and the
+// commit step never staged it. So every run committed with a dirty working
+// tree, which nobody notices until a human pushes to main while Stan is
+// sampling. Then the push is rejected, `git rebase` REFUSES TO START on a
+// dirty tree, `git diff --diff-filter=U` is empty because no rebase began,
+// the classifier correctly reports nothing conflicted, and the else branch
+// runs `git rebase --abort` with no rebase in progress, which under `set -e`
+// kills the step with a bare 128 before the diagnostic can print.
+//
+// This scans what the nightly actually RUNS and asserts every tracked data
+// file it can write is staged.
+
+test('REGRESSION: every tracked data file the nightly writes is staged', () => {
+  const staged = stagedPaths();
+  const covered = (p) => staged.some((s) => p === s || p.startsWith(`${s}/`));
+
+  // The scripts the workflow itself invokes, read from the workflow so a new
+  // step joins this check with no edit here.
+  const scripts = [...new Set([...WF.matchAll(/node (scripts\/[a-z0-9-]+\.mjs)/g)].map((m) => m[1]))];
+  assert.ok(scripts.length >= 8,
+    `only ${scripts.length} nightly scripts parsed; the workflow's shape moved`);
+
+  // Ignored files are caches by design and must NOT be committed.
+  const ignored = readFileSync(new URL('../.gitignore', import.meta.url), 'utf8')
+    .split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
+  // Glob matching by hand rather than by regex: the patterns are simple
+  // (a trailing slash, at most one star) and a hand-escaped regex is one
+  // lost backslash away from silently matching nothing.
+  const isIgnored = (p) => ignored.some((pat) => {
+    const base = p.split('/').pop();
+    if (pat.endsWith('/')) return p.startsWith(pat);
+    if (pat.includes('*')) {
+      const [head, tail] = pat.split('*');
+      return (p.startsWith(head) && p.endsWith(tail))
+        || (base.startsWith(head) && base.endsWith(tail));
+    }
+    return p === pat || base === pat;
+  });
+
+  const offenders = [];
+  for (const rel of scripts) {
+    let src;
+    try { src = readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8'); } catch { continue; }
+    for (const m of src.matchAll(/'([A-Za-z0-9._-]+\.json)'/g)) {
+      for (const dir of ['scripts/data/', 'src/logic/']) {
+        const path = dir + m[1];
+        if (!existsSync(new URL(`../${path}`, import.meta.url))) continue;
+        if (isIgnored(path) || covered(path)) continue;
+        offenders.push(`${path} (written by ${rel})`);
+      }
+    }
+  }
+  assert.deepEqual([...new Set(offenders)], [],
+    'these tracked files a nightly script writes are NOT in the commit step\'s `git add`, '
+    + 'so the refit commits with a dirty tree and its rebase retry cannot start. Stage them '
+    + '(and classify them in scripts/refit-push-conflict.mjs), or gitignore them if caches.');
+});
+
+test('the rebase retry survives a dirty tree and never swallows its diagnostic', () => {
+  // --autostash: a rebase refuses to start on a dirty tree. The staged set is
+  // the real fix; this is the guard that keeps the next stray file from
+  // costing another night.
+  assert.ok(WF.includes('git rebase --autostash origin/main'),
+    'the retry must rebase with --autostash so a stray unstaged file cannot stop it');
+  // `|| true` on the abort, or `set -e` kills the step before the ::error.
+  assert.ok(WF.includes('git rebase --abort || true'),
+    'aborting a rebase that never started must not kill the step before its error prints');
 });

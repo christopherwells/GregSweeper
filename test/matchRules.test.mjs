@@ -13,7 +13,7 @@ import {
   densityPhrase, matchUnlocks, matchUnlockLevel,
   defaultMatchRules, sanitizeMatchRules,
   matchIndexRow, matchIndexFeatureKeys, parseMatchIndex, boardMatchesRules, eligibleRows,
-  MATCH_PAR_CEILING_SECONDS,
+  MATCH_PAR_CEILING_SECONDS, MARATHON_PAR_CEILING_SECONDS,
   pickMatchBoards, matchAdvance, matchTotals, resolveMatchPicks,
   matchRulesForLaunch, unmetMatchRules,
 } from '../src/logic/matchRules.js';
@@ -75,22 +75,27 @@ test('a crowned player has all seven shapes and all nine daily-safe modifiers', 
 
 // ── Bands ───────────────────────────────────────────────────────────────
 
-test('time bands split at two and four minutes, with an open top', () => {
+test('time bands split at two, four and twelve minutes, with an open top', () => {
   // His cutoffs, 2026-08-15, replacing 60/150: Quick under two minutes,
   // Standard two to four, Long past four. The old split sold a two-and-a-half
   // minute board as "Standard", which he called wrong the moment the
-  // distribution was in front of him.
-  assert.equal(MATCH_TIME_BANDS.length, 3);
+  // distribution was in front of him. MARATHON joined 2026-08-17 ("Those
+  // would be 10-30 mins", then "Maybe long boards should be priced up to 12
+  // minutes"), so Long closes at 720s and Marathon takes the open top.
+  assert.equal(MATCH_TIME_BANDS.length, 4);
   assert.equal(timeBandOf(119.9), 'quick');
   assert.equal(timeBandOf(120), 'short');
   assert.equal(timeBandOf(239.9), 'short');
   assert.equal(timeBandOf(240), 'long');
-  assert.equal(timeBandOf(9999), 'long');
-  // The top stays OPEN while the ceiling is an admission rule: a board past it
-  // must never be un-bandable, or a re-price that nudged one over would leave
-  // it in no corner at all.
-  assert.equal(timeBandOf(MATCH_PAR_CEILING_SECONDS + 1), 'long');
-  assert.equal(MATCH_PAR_CEILING_SECONDS, 600, 'his ceiling: ten minutes, for now');
+  assert.equal(timeBandOf(719.9), 'long');
+  assert.equal(timeBandOf(720), 'marathon', 'twelve minutes is where Marathon starts');
+  assert.equal(timeBandOf(9999), 'marathon');
+  // The top stays OPEN while the ceilings are admission rules: a board past
+  // one must never be un-bandable, or a re-price that nudged one over would
+  // leave it in no corner at all.
+  assert.equal(timeBandOf(MARATHON_PAR_CEILING_SECONDS + 1), 'marathon');
+  assert.equal(MATCH_PAR_CEILING_SECONDS, 600, 'the FIT lane ceiling: ten minutes');
+  assert.equal(MARATHON_PAR_CEILING_SECONDS, 1800, 'his Marathon range tops out at 30 minutes');
 });
 
 test('density bands split at 0.16 and 0.26', () => {
@@ -156,7 +161,7 @@ test('matchIndexRow and parseMatchIndex round-trip, feature vector included', ()
   assert.equal(rows.length, 1);
   assert.deepEqual(rows[0], {
     page: 3, idx: 7, shape: 'hex', cells: 72, mines: 12, par: 73.2,
-    mods: ['liar', 'sonar'], key: '3:7',
+    mods: ['liar', 'sonar'], key: '3:7', oversized: false,
     // Rounded to MATCH_INDEX_FEATURE_DP: these numbers steer a choice among
     // boards, and par is re-priced from the page's full-precision copy.
     features: { cellCount: 72, clueShare3: 0.1235, sonarCellCount: 3 },
@@ -504,4 +509,145 @@ test('REGRESSION: every rules field the client writes is whitelisted in the matc
     assert.ok(allowed.has(key),
       `the client writes rules.${key} but the match node's whitelist lacks it`);
   }
+});
+
+// ── The SCROLL opt-in (the marathon lane's rules child, 2026-08-17) ──────
+// A boolean, not a band: true admits OVERSIZED boards (bigger than the phone
+// fit, played through the camera) alongside everything else; false or absent
+// deals the fit-legal library only. Exact `=== true` on both sides because a
+// guest plays host rules UNSANITIZED, so absent, false, and garbage must all
+// read the safe way.
+
+import {
+  matchShardFileForRow, matchShardFilesFor, oversizedShardPrefix,
+  MATCH_SHARD_PREFIX,
+} from '../src/logic/matchRules.js';
+
+test('an oversized row deals only under the scroll opt-in, and fit rows always deal', () => {
+  const fit = { shape: 'rect', mods: [], par: 150, mines: 20, cells: 100 };
+  const over = { ...fit, oversized: true };
+  const base = { shapes: ['rect'], mods: [], time: 'any', density: 'any', difficulty: 'any' };
+  assert.equal(bmr(over, { ...base, scroll: true }), true, 'opt-in admits');
+  assert.equal(bmr(over, { ...base, scroll: false }), false);
+  assert.equal(bmr(over, base), false, 'absent reads as excluded, never as any');
+  // A guest plays host rules verbatim, so garbage must read as excluded too.
+  assert.equal(bmr(over, { ...base, scroll: 'yes' }), false);
+  assert.equal(bmr(over, { ...base, scroll: 1 }), false);
+  // Allowed, never required: the opt-in widens the deal, fit rows stay in.
+  assert.equal(bmr(fit, { ...base, scroll: true }), true);
+  assert.equal(bmr(fit, base), true);
+});
+
+test('sanitize coerces scroll to an exact boolean; defaults carry it false', () => {
+  const un = { shapes: ['rect'], mods: [] };
+  assert.equal(defaultMatchRules(un).scroll, false);
+  assert.equal(smr({ shapes: ['rect'], mods: [], scroll: true }, un).scroll, true);
+  assert.equal(smr({ shapes: ['rect'], mods: [], scroll: 'yes' }, un).scroll, false);
+  assert.equal(smr({ shapes: ['rect'], mods: [] }, un).scroll, false);
+});
+
+test('the index row carries oversized as an appended 1; fit rows keep their exact shape', () => {
+  const entry = {
+    par: 73.2, oversized: true,
+    spec: { shape: 'hex', cells: 288, mines: 40, gimmicks: [] },
+    features: { cellCount: 288 },
+  };
+  const keys = matchIndexFeatureKeys([entry]);
+  const row = matchIndexRow(3, 7, entry, keys);
+  assert.equal(row.length, 9, 'the flag rides element 8');
+  assert.equal(parseMatchIndex({ featureKeys: keys, rows: [row] })[0].oversized, true);
+  // A fit entry's row is BYTE-stable: no ninth element, so the shipped
+  // library's files do not change shape underneath the flag.
+  const fitRow = matchIndexRow(3, 8, { ...entry, oversized: undefined }, keys);
+  assert.equal(fitRow.length, 8);
+  assert.equal(parseMatchIndex({ featureKeys: keys, rows: [fitRow] })[0].oversized, false);
+});
+
+test('the summary oversized split is exact under scroll and difficulty together', () => {
+  // One corner (rect, plain, quick, sparse) holding a fit board and an
+  // oversized board in DIFFERENT difficulty bands, so every filter combo
+  // has a distinct exact answer the sweep can check against eligibleRows.
+  const rows = [
+    { shape: 'rect', mods: [], par: 100, mines: 12, cells: 120, key: 'a' },
+    { shape: 'rect', mods: [], par: 110, mines: 8, cells: 80, key: 'b' },
+    { shape: 'rect', mods: [], par: 115, mines: 5, cells: 50, key: 'c', oversized: true },
+  ];
+  const corners = pms({ corners: bmc(rows) });
+  assert.equal(corners.length, 1);
+  assert.deepEqual(corners[0].diff, [1, 1, 1]);
+  assert.deepEqual(corners[0].over, [0, 0, 1], 'the oversized split rides its difficulty band');
+  const base = { shapes: ['rect'], mods: [], time: 'any', density: 'any' };
+  for (const difficulty of ['any', 'gentle', 'mean']) {
+    for (const scroll of [true, false]) {
+      const rules = { ...base, difficulty, scroll };
+      assert.equal(cec(corners, rules), eligibleRows(rows, rules).length,
+        `exact under difficulty=${difficulty} scroll=${scroll}`);
+    }
+  }
+  // An all-fit library emits NO over element: the summary's bytes are
+  // unchanged until the lane actually holds a board.
+  const fitOnly = bmc(rows.slice(0, 2));
+  assert.equal(fitOnly[0].length, 6, 'no seventh element without oversized boards');
+  assert.equal(pms({ corners: fitOnly })[0].over, null);
+  // A summary cached before the split: six-element tuples still parse and
+  // count exactly (they described a library with no oversized boards).
+  const old = pms({ corners: [['rect', '', 'quick', 'sparse', 3, [1, 1, 1]]] });
+  assert.equal(old[0].over, null);
+  assert.equal(cec(old, { ...base, difficulty: 'any', scroll: false }), 3);
+});
+
+test('oversized rows shard into their own file class, fetched only under the opt-in', () => {
+  const fit = { shape: 'rect', mods: [], par: 100, mines: 12, cells: 120 };
+  const over = { ...fit, oversized: true };
+  assert.equal(matchShardFileForRow(fit), 'mx-rect-quick-sparse-none.json');
+  assert.equal(matchShardFileForRow(over), 'mxo-rect-quick-sparse-none.json');
+  // The mxo- name never matches an /^mx-/ scan: the two file classes stay
+  // separate to every directory walk that predates the lane.
+  assert.equal(/^mx-/.test(oversizedShardPrefix(MATCH_SHARD_PREFIX) + '-'), false);
+
+  const corners = pms({ corners: bmc([fit, { ...over, key: 'k' }]) });
+  const rules = { shapes: ['rect'], mods: [], time: 'quick', density: 'sparse' };
+  const off = matchShardFilesFor(rules, corners);
+  assert.deepEqual(off, ['mx-rect-quick-sparse-none.json'],
+    'without the opt-in the oversized shard is never requested');
+  const on = matchShardFilesFor({ ...rules, scroll: true }, corners);
+  assert.deepEqual(on,
+    ['mx-rect-quick-sparse-none.json', 'mxo-rect-quick-sparse-none.json']);
+  // A pre-split summary (over null) understates gracefully: base only.
+  const oldCorners = pms({ corners: [['rect', '', 'quick', 'sparse', 2, [1, 1, 0]]] });
+  assert.deepEqual(matchShardFilesFor({ ...rules, scroll: true }, oldCorners),
+    ['mx-rect-quick-sparse-none.json']);
+  // A corner that is ALL oversized has no base file to request.
+  const allOver = pms({ corners: bmc([{ ...over, key: 'k' }]) });
+  assert.deepEqual(matchShardFilesFor({ ...rules, scroll: true }, allOver),
+    ['mxo-rect-quick-sparse-none.json']);
+  assert.deepEqual(matchShardFilesFor(rules, allOver), [],
+    'an all-oversized corner offers nothing without the opt-in');
+});
+
+// ── The per-space seen reset (issue #305) ────────────────────────────────
+
+test('REGRESSION #305: exhausting a narrow filter resets only that space, never the library-wide record', async () => {
+  const { nextMatchSeen } = await import('../src/logic/matchRules.js');
+  // A player with history across the library plays a two-board Petals-only
+  // corner to exhaustion. The old reset replaced the WHOLE list with the
+  // dealt keys; the fix removes only the exhausted space's keys.
+  const seen = ['0:1', '0:2', '7:4', 'c:seed-a', 'p:1', 'p:2'];
+  const eligible = ['p:1', 'p:2', 'p:3'];
+  const dealt = ['p:3', 'p:1'];
+  const next = nextMatchSeen(seen, eligible, dealt, true);
+  for (const k of ['0:1', '0:2', '7:4', 'c:seed-a']) {
+    assert.ok(next.includes(k), `${k} was played under other rules and must keep its no-repeat standing`);
+  }
+  assert.ok(next.includes('p:3') && next.includes('p:1'), 'the re-dealt space records its new cycle');
+  assert.ok(!next.includes('p:2'), 'the exhausted corner\'s undealt key resets');
+});
+
+test('a non-cycled deal appends, and no key ever doubles', async () => {
+  const { nextMatchSeen } = await import('../src/logic/matchRules.js');
+  const next = nextMatchSeen(['0:1', '0:2'], ['0:1', '0:2', '0:3', '0:4'], ['0:3'], false);
+  assert.deepEqual(next, ['0:1', '0:2', '0:3']);
+  // A cycled deal that re-serves a still-listed key keeps one copy.
+  const again = nextMatchSeen(['a', 'x:1'], ['x:1', 'x:2'], ['x:1'], true);
+  assert.deepEqual(again, ['a', 'x:1']);
 });

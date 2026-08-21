@@ -37,7 +37,7 @@
 //
 // Pure, so every one of those decisions is testable without a Firebase.
 
-import { densityBandOf } from './matchRules.js';
+import { densityBandOf, matchBoardCountOf } from './matchRules.js';
 
 /** k for a uid, on rankAdjusted's own terms: unrated ranks raw (k = 1). */
 function ratioFor(handicaps, uid) {
@@ -68,7 +68,16 @@ export function matchBoardBreakdown(node, opts = {}) {
   const players = (node && node.players && typeof node.players === 'object')
     ? node.players : {};
 
-  return boards.map((board, index) => {
+  // COUNT-DRIVEN, never boards-driven (the #357 regression): summary reads
+  // carry rules + players but no boards array, and a breakdown that maps over
+  // boards reported zero contested boards to a player with a hundred raced.
+  // matchBoardCountOf falls back to rules.count, which the rules require on
+  // every node ever written; matchStandings already counts this way. A board
+  // whose entry is absent keeps its slot with a null spec and par, so the
+  // rivalry tallies still count it and only the spec splits sit it out.
+  const count = Math.max(boards.length, matchBoardCountOf(node));
+  return Array.from({ length: count }, (_, index) => {
+    const board = boards[index] || null;
     const entries = [];
     for (const [uid, p] of Object.entries(players)) {
       const result = Array.isArray(p && p.results) ? p.results[index] : null;

@@ -66,7 +66,15 @@ const STACK_PROBE = ['liar', 'mystery'];  // the stacked-pair proof, per committ
 // clean without having touched the changed entries).
 const CANDIDATES = {
   '4.8.8': {
-    sizes: [[5, 6], [6, 7], [7, 7], [8, 7], [12, 7]],
+    // 8x7 = 98 cells is the shape's ceiling under ALL FOUR fit gates at
+    // once (enumerated over every M<=14, N<=10 patch, 2026-08-18): 12x7
+    // fails the height cap, 11x7 = 137 is prime and 10x7/11x6 factor only
+    // through rows < 5 (nothing in [5,30] stores them), and 10x6 = 105 is
+    // a tall ribbon under MIN_WIDTH_USE. The 12x7 rung sat here for a
+    // while measured-but-uncommittable, and the M1 repair walked each of
+    // those dead ends before the enumeration settled it; the band test
+    // carries the shape's reach limit instead (the rhombille pattern).
+    sizes: [[5, 6], [6, 7], [7, 7], [8, 7]],
     densities: [0.14, 0.18, 0.187, 0.22, 0.25, 0.28],
   },
   hex: {
@@ -88,6 +96,12 @@ const CANDIDATES = {
     densities: [0.18, 0.21, 0.24, 0.28],
   },
   rhombille: {
+    // The grid ends at 72 cells BY RULING (his 90-cell fixture measured
+    // 13.7s worst-case generation: "rotation rhombille never exceeds the
+    // proven 72-cell scale"). Under the 2026-08-17 correction fit that
+    // caps the shape's daily par window at ~53-91s, under the x2 span the
+    // band prefers; rhombille therefore carries a documented reach limit
+    // in the band test, the deltoidal pattern, rather than a bigger grid.
     sizes: [[4, 4], [4, 5], [6, 4]],
     densities: [0.23, 0.255, 0.28],
   },

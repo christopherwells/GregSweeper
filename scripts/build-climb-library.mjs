@@ -38,6 +38,7 @@ import {
   CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, CLIMB_MIN_PAR_SECONDS, specFace,
   endlessParCeiling,
 } from '../src/logic/challenge250.js';
+import { ENDLESS_MIN_HARD, endlessHardOf } from '../src/logic/challengeRules.js';
 import { BOARD_WIDTH_CAP } from '../src/logic/difficulty.js';
 import {
   LIB_SHAPE_INTROS, LIB_MOD_INTROS, intakeRules, boardAllowedAtLevel,
@@ -203,10 +204,16 @@ function legalPatches() {
       }
     }
   }
-  // Classic: the width cap is 13 columns; height is free until the board stops
-  // fitting, which the probe finds by pricing.
+  // Classic: held to rectFitsPhone the same way the lattice branch above is
+  // held to boardFitsPhone, so both halves ask one question (issue #350: this
+  // branch kept enumerating 12-13 columns after the 2026-08-15 cap moved to
+  // 11, and every nightly fill re-manufactured the boards the eviction had
+  // just removed). The candidate range is deliberately wider than the rule so
+  // the rule, not the enumeration, decides; height is free until the board
+  // stops fitting, which the probe finds by pricing.
   for (let rows = 8; rows <= 20; rows++) {
     for (const cols of [10, 11, 12, 13]) {
+      if (!rectFitsPhone(rows, cols)) continue;
       out.push({ shape: 'rect', rows, cols, cells: rows * cols });
     }
   }
@@ -227,8 +234,9 @@ const GIMMICK_SETS = (() => {
   return sets;
 })();
 
-const hardOf = (c) => c.canonicalSubsetMoves + c.genericSubsetMoves
-  + c.advancedLogicMoves + c.disjunctiveMoves;
+// The one hard-work definition lives in challengeRules (endlessHardOf), so
+// the strict endless bar and this file's candidate scoring cannot drift.
+const hardOf = endlessHardOf;
 
 /** Generate one candidate; null when it fails a floor. */
 function candidate(spec, seed) {
@@ -290,14 +298,30 @@ function candidate(spec, seed) {
 // hundred deals before the global cycle can repeat one, and the library is
 // append-only by design, so growing it later is a --endless run, not a
 // project.
-const ENDLESS_TARGET_BOARDS = 500;
+// HIS RULING 2026-08-21: "I think we can drop endless to 100 boards. I'd
+// rather spend time working on other things." The rate-form re-price moved
+// boards out of the zone and refilling to 500 measured at roughly five hours
+// of generation.
+const ENDLESS_TARGET_BOARDS = 100;
 const ENDLESS_PAGE_SIZE = 16;          // ~150-250KB per page at endless payload sizes
 const ENDLESS_FACE_CAP = 2;            // dims/mines/stack variety, the ladder's own bar
 // His even-coverage ruling, as a number: no shape may hold fewer than this
 // many endless boards. Named here rather than in the test that enforces it,
 // because the nightly RE-BIN has to reserve against it, and a floor only the
 // test knows about is a floor the tool that has to satisfy it cannot see.
-export const ENDLESS_SHAPE_FLOOR = 25;
+//
+// DERIVED FROM THE TARGET, not hand-set (2026-08-21). The pair used to read
+// 500 and 25, where seven shapes x 25 guaranteed 35% of the library was spread
+// evenly and the rest could pile up wherever generation was cheap. When he
+// dropped the target to 100 that guarantee became arithmetically impossible,
+// since 7 x 25 is 175. Deriving keeps the GUARANTEE rather than the digit, so
+// the two can never contradict each other again. This is the width-cap lesson
+// from 2026-08-20 applied a day later: a remembered number beside the number
+// it depends on goes stale the first time either moves.
+const ENDLESS_EVEN_FRACTION = 0.35;    // what the original 500/25 pair encoded
+const ENDLESS_SHAPE_COUNT = TILING_TYPES.length + 1;   // + rect
+export const ENDLESS_SHAPE_FLOOR = Math.max(1, Math.round(
+  ENDLESS_EVEN_FRACTION * ENDLESS_TARGET_BOARDS / ENDLESS_SHAPE_COUNT));
 // And what the nightly re-bin RESERVES toward, which is deliberately above the
 // floor. Reserving exactly the floor leaves a shape one re-price from red: a
 // board that a refit prices under ENDLESS_PAR_FLOOR cannot be handed back to
@@ -356,6 +380,54 @@ const endlessCacheFile = (shape) => (shape
   : ENDLESS_CACHE);
 const ENDLESS_INDEX = new URL('endless-index.json', OUT_DIR);
 const endlessPageFile = (page) => new URL(`endless-${String(page).padStart(3, '0')}.json`, OUT_DIR);
+// The SCROLLING lane's page class (his ruling 2026-08-18: "endless can have
+// scrolling boards"). Its own class because the index's `counts` array is a
+// pre-scroll client's whole reach; the lane rides `overCounts`, which such a
+// client never reads (climbLibrary.js documents the doctrine).
+const endlessOverPageFile = (page) => new URL(`endless-over-${String(page).padStart(3, '0')}.json`, OUT_DIR);
+
+function loadEndlessOverPages() {
+  const out = [];
+  for (let k = 0; ; k++) {
+    const page = loadJsonMaybe(endlessOverPageFile(k));
+    if (!page) break;
+    out.push(page);
+  }
+  return out;
+}
+
+/**
+ * The ONE endless-index writer. Both page classes are read from disk and
+ * written together, because the index used to be written inline by the fit
+ * emit and the repricer separately, and a writer that only knows one class
+ * silently drops the other's fields (the three-tables lesson from the pool
+ * repricer, met here before it could bite: the over fields would have
+ * vanished on the first nightly re-bin after the lane landed). `overPages`/
+ * `overCounts`/`overBoards` are emitted only when the lane has boards, so a
+ * lane-less library keeps its exact historical index bytes.
+ */
+function writeEndlessIndex(fp) {
+  const fit = [];
+  for (let k = 0; ; k++) {
+    const page = loadJsonMaybe(endlessPageFile(k));
+    if (!page) break;
+    fit.push(page);
+  }
+  const over = loadEndlessOverPages();
+  const counts = fit.map((p) => p.boards.length);
+  const overCounts = over.map((p) => p.boards.length);
+  const total = counts.reduce((a, b) => a + b, 0);
+  const overTotal = overCounts.reduce((a, b) => a + b, 0);
+  writeFileSync(ENDLESS_INDEX, JSON.stringify({
+    parModel: fp,
+    parFloor: ENDLESS_PAR_FLOOR,
+    boards: total,
+    pages: counts.length,
+    counts,
+    ...(overTotal > 0 ? { overPages: overCounts.length, overCounts, overBoards: overTotal } : {}),
+  }));
+  return { boards: total, overBoards: overTotal };
+}
 
 const ENDLESS_SHAPES = ['rect', ...TILING_TYPES];
 
@@ -562,13 +634,9 @@ function emitEndlessPages(existingPages, keeps, dry) {
       const k = existingPages.length + i;
       writeFileSync(endlessPageFile(k), JSON.stringify({ page: k, parModel: fp, boards }));
     });
-    writeFileSync(ENDLESS_INDEX, JSON.stringify({
-      parModel: fp,
-      parFloor: ENDLESS_PAR_FLOOR,
-      boards: total,
-      pages: counts.length,
-      counts,
-    }));
+    // The ONE index writer, so the scrolling lane's fields survive a fit
+    // append (an inline write here used to know only this page class).
+    writeEndlessIndex(fp);
   }
   return { pages: counts.length, boards: total };
 }
@@ -655,6 +723,9 @@ function runEndlessBuild({ dry, minutes, onlyShape, target }) {
   const accept = (shape, c) => {
     if (!c) return false;
     if (c.par < ENDLESS_PAR_FLOOR || c.par > endlessParCeiling(shape)) return false;
+    // The strict work floor (his 2026-08-17 ruling): a board that clears the
+    // par window by SIZE alone is a chore, not endless material. Shape-blind.
+    if ((c.hard ?? endlessHardOf(c.features || {})) < ENDLESS_MIN_HARD) return false;
     if ((faceCount.get(c.face) || 0) >= ENDLESS_FACE_CAP) return false;
     return true;
   };
@@ -665,11 +736,25 @@ function runEndlessBuild({ dry, minutes, onlyShape, target }) {
   // outlast the LONGEST possible rest rather than to feel proportionate —
   // the first cut broke at 65 idle rounds, before a third-bail rest could
   // even expire, and read a resting shard as an exhausted one.
+  //
+  // The hard cap counts FRESH rounds only (2026-08-17): a resumed run
+  // replays its whole cached visit sequence through the same loop, and
+  // counting those rounds meant any run that had ONCE hit the cap could
+  // never do new work again — the 4.8.8 shard stopped at round 39,955 with
+  // 3/35 kept, and a relaunch would have fast-forwarded through 40k cached
+  // rounds straight into the cap. Replays are free; the cap bounds compute.
+  // The absolute bound on the loop variable stays as a runaway backstop.
   const HARD_ROUND_CAP = 40_000;
   const IDLE_HORIZON = ENDLESS_LANE_REST_ROUNDS * ENDLESS_LANE_BAILS_CAP * LANE_COUNT * 2;
   let inactiveRounds = 0;
+  let freshVisits = 0;
+  let freshRounds = 0;
   outer:
-  for (let round = 0; round < HARD_ROUND_CAP; round++) {
+  for (let round = 0; round < HARD_ROUND_CAP * 50; round++) {
+    if (freshRounds >= HARD_ROUND_CAP) {
+      console.log(`hard cap: ${HARD_ROUND_CAP} fresh rounds spent`);
+      break;
+    }
     if (keeps.length >= wanted) break;
     if (shapes.every((s) => keptByShape.get(s) >= perShapeTarget)) break;
     if (inactiveRounds > IDLE_HORIZON) {
@@ -680,6 +765,7 @@ function runEndlessBuild({ dry, minutes, onlyShape, target }) {
       const shapeLine = shapes.map((s) => `${s} ${keptByShape.get(s)}`).join('  ');
       console.log(`round ${round}: kept ${keeps.length}/${wanted}  built ${built}  ${((Date.now() - t0) / 60000).toFixed(1)}m  [${shapeLine}]`);
     }
+    const freshAtRoundStart = freshVisits;
     // One visit of one (shape, lane) stratum. Returns true when it RAN
     // (found a runnable lane), whatever the outcome.
     const runVisit = (si, shape, laneIdx) => {
@@ -738,6 +824,7 @@ function runEndlessBuild({ dry, minutes, onlyShape, target }) {
           kept = best;
         }
         progress.visits[visitKey] = kept;
+        freshVisits++;
         saveProgress(false);
       }
 
@@ -787,6 +874,7 @@ function runEndlessBuild({ dry, minutes, onlyShape, target }) {
       }
     }
     inactiveRounds = anyActive ? 0 : inactiveRounds + 1;
+    if (freshVisits > freshAtRoundStart) freshRounds++;
   }
   saveProgress(true);
 
@@ -852,6 +940,7 @@ function runEndlessEmitOnly({ dry, target }) {
         if (!kept || !key.startsWith(`${shape}|`)) continue;
         if (existingSeeds.has(kept.seed)) continue;
         if (kept.par < ENDLESS_PAR_FLOOR || kept.par > endlessParCeiling(shape)) continue;
+        if ((kept.hard ?? endlessHardOf(kept.features || {})) < ENDLESS_MIN_HARD) continue;
         if ((faceCount.get(kept.face) || 0) >= ENDLESS_FACE_CAP) continue;
         existingSeeds.add(kept.seed);
         faceCount.set(kept.face, (faceCount.get(kept.face) || 0) + 1);
@@ -888,10 +977,190 @@ function runEndlessEmitOnly({ dry, target }) {
   console.log(`${dry ? '[dry-run] would write' : 'wrote'} ${out.pages} pages, ${out.boards} boards`);
 }
 
+/**
+ * THE SCROLLING LANE BUILD (his ruling 2026-08-18: "endless can have
+ * scrolling boards"). Marathon-region dims per shape, the marathon lane's
+ * own pricing discipline (in-support boards on the model verbatim, past
+ * support on a real fit-ceiling anchor with `parProvisional`), and the
+ * endless zone's own admission: the 400s floor, the strict hard bar, and
+ * the marathon admission ceiling. Emits `endless-over-NNN.json` pages,
+ * append-only, and rewrites the index through the one writer.
+ *
+ * The lane exists because M1 compressed big-board prices: rhombille's 400s+
+ * region now starts at 96+ cells, past its fit-legal sizes, so the shape
+ * floor is only reachable through boards that scroll.
+ */
+async function runScrollBuild({ dry, minutes, onlyShape, perShape }) {
+  const { marathonDims, marathonDimsSpread, marathonShapes, inSupportCells, marathonProvisionalPar } =
+    await import('../src/logic/marathonFit.js');
+  const { MARATHON_PAR_CEILING_SECONDS } = await import('../src/logic/matchRules.js');
+  const { fitCeilingSpecs } = await import('./topup-marathon-lane.mjs');
+
+  const fitPages = endlessExistingPages();
+  const overPages = loadEndlessOverPages();
+  const held = new Set([...fitPages, ...overPages].flatMap((p) => p.boards.map((b) => b.seed)));
+  const faceCount = new Map();
+  for (const p of [...fitPages, ...overPages]) {
+    for (const b of p.boards) faceCount.set(b.face, (faceCount.get(b.face) || 0) + 1);
+  }
+
+  const shapes = onlyShape ? [onlyShape] : marathonShapes();
+  // Tiling-safe singles; walls ride wallSegments and stays rect-plus-tilings
+  // the way the marathon lane ships it.
+  const MOD_SETS = [[], ['sonar'], ['mystery'], ['liar'], ['walls']];
+  // Rhombille's constructive floor is 0.23 (sparse no-guess rhombille is
+  // unfindable, 0/12 at 0.211): a 0.20 round there burns a whole visit on
+  // a density the shape cannot certify at.
+  const densitiesFor = (shape) => (shape === 'rhombille' ? [0.24, 0.26, 0.28] : [0.20, 0.24, 0.28]);
+  const deadline = Date.now() + minutes * 60 * 1000;
+  const anchorCache = new Map();
+  const anchorFor = (shape, mods, dens) => {
+    const key = `${shape}|${mods.join('+')}|${dens}`;
+    if (anchorCache.has(key)) return anchorCache.get(key);
+    let out = null;
+    for (const geom of fitCeilingSpecs(shape)) {
+      if (out) break;
+      for (let t = 0; t < 4 && !out; t++) {
+        const spec = {
+          ...geom, mines: Math.max(1, Math.round(geom.cells * dens)),
+          gimmicks: mods.slice(),
+          ...(mods.includes('walls') ? { wallSegments: 4 } : {}),
+        };
+        let r = null;
+        try { r = buildChallenge250Board(spec, `soanchor:${specFace(spec)}:${t}`, {}); } catch { r = null; }
+        if (r && r.check && r.check.solvable && r.par > 0 && r.features) {
+          out = { par: r.par, cells: geom.cells, features: r.features };
+        }
+      }
+    }
+    anchorCache.set(key, out);
+    return out;
+  };
+
+  const keeps = [];
+  const got = new Map(shapes.map((s) => [s, 0]));
+  outer:
+  for (let round = 0; round < 40; round++) {
+    let progressed = false;
+    for (const shape of shapes) {
+      if (Date.now() > deadline) break outer;
+      if ((got.get(shape) || 0) >= perShape) continue;
+      // The dear shapes work a NARROW window, smallest first (the endless
+      // build's per-shape corridor doctrine): rhombille's marathon region
+      // reaches 540 cells at minutes per attempt, while the 400s floor is
+      // already cleared from ~96 cells under M1, and the first scroll run
+      // ground its whole budget on a 168-cell rung. The window reads the
+      // full per-cell-count menu (marathonDims), not the spread sample,
+      // because the spread's ten-way thinning skipped the cheap 96-130
+      // rungs entirely. The cheap shapes may roam the sampled region.
+      const dear = shape === 'rhombille' || shape === 'deltoidal';
+      const dims = dear
+        ? marathonDims(shape).filter((x) => x.cells >= 90 && x.cells <= 150).sort((a, b) => a.cells - b.cells)
+        : marathonDimsSpread(shape, 10);
+      if (!dims.length) continue;
+      const d = dims[(round * 7 + 3) % dims.length];
+      const mods = MOD_SETS[round % MOD_SETS.length];
+      const DENSITIES = densitiesFor(shape);
+      const dens = DENSITIES[(round + shape.length) % DENSITIES.length];
+      const mines = Math.max(5, Math.round(d.cells * dens));
+      const spec = {
+        ...d, mines, gimmicks: mods.slice(),
+        ...(shape === 'rect' ? {} : { constructive: true }),
+        ...(mods.includes('walls') ? { wallSegments: 4 } : {}),
+      };
+      if ((faceCount.get(specFace(spec)) || 0) >= ENDLESS_FACE_CAP) continue;
+      const inSupport = inSupportCells(shape, d.cells);
+      const anchor = inSupport ? null : anchorFor(shape, mods, dens);
+      if (!inSupport && !anchor) continue;
+      const seedBase = `endless-scroll:${specFace(spec)}:${round}`;
+      let kept = null;
+      for (let t = 0; t < 3 && !kept; t++) {
+        let r = null;
+        try { r = buildChallenge250Board({ ...spec }, `${seedBase}:${t}`, {}); } catch { continue; }
+        if (!r || !r.check || !r.check.solvable || r.check.remainingUnknowns !== 0 || !r.features) continue;
+        const hard = hardOf(r.features);
+        if (hard < ENDLESS_MIN_HARD) continue;
+        const par = inSupport
+          ? Math.round(r.par * 10) / 10
+          : marathonProvisionalPar({ cells: d.cells, anchorPar: anchor.par, anchorCells: anchor.cells });
+        if (!(par >= ENDLESS_PAR_FLOOR) || par > MARATHON_PAR_CEILING_SECONDS) continue;
+        const seed = `${seedBase}:${t}`;
+        if (held.has(seed)) continue;
+        let payload;
+        try {
+          payload = serializeBoard({
+            board: r.board, rows: r.rows, cols: r.cols, totalMines: r.totalMines,
+            rngSeed: seed, activeGimmicks: r.activeGimmicks, firstClick: r.firstClick,
+          });
+        } catch { continue; }
+        kept = {
+          par: Math.round(par * 10) / 10,
+          work: r.check.totalClicks - 1,
+          hard,
+          seed,
+          payload,
+          face: specFace(spec),
+          spec: {
+            shape, ...(shape === 'rect' ? { rows: d.rows, cols: d.cols } : { M: d.M, N: d.N }),
+            cells: d.cells, mines, gimmicks: mods.slice(),
+            ...(mods.includes('walls') ? { wallSegments: 4 } : {}),
+          },
+          features: r.features,
+          oversized: true,
+          ...(inSupport ? {} : {
+            parProvisional: true,
+            anchorCells: anchor.cells,
+            anchorFeatures: anchor.features,
+          }),
+        };
+      }
+      if (kept) {
+        held.add(kept.seed);
+        faceCount.set(kept.face, (faceCount.get(kept.face) || 0) + 1);
+        keeps.push(kept);
+        got.set(shape, (got.get(shape) || 0) + 1);
+        progressed = true;
+        console.log(`  + ${shape} ${kept.spec.cells}c [${(kept.spec.gimmicks || []).join('+') || 'plain'}]`
+          + ` par ${kept.par}s hard ${kept.hard}${kept.parProvisional ? ' (anchor-provisional)' : ''}`);
+      }
+    }
+    if (!progressed && Date.now() > deadline) break;
+  }
+
+  if (!keeps.length) {
+    console.log('scroll lane: nothing new kept (targets met, or generation dry this run)');
+    return;
+  }
+  // Round-robin the shapes into pages, the fit emitter's own deal.
+  const byShape = new Map();
+  for (const c of keeps) {
+    if (!byShape.has(c.spec.shape)) byShape.set(c.spec.shape, []);
+    byShape.get(c.spec.shape).push(c);
+  }
+  const queues = [...byShape.values()];
+  const sequence = [];
+  while (queues.some((q) => q.length)) {
+    for (const q of queues) if (q.length) sequence.push(q.shift());
+  }
+  const fp = modelFingerprint();
+  if (!dry) {
+    for (let i = 0; i < sequence.length; i += ENDLESS_PAGE_SIZE) {
+      const k = overPages.length + Math.floor(i / ENDLESS_PAGE_SIZE);
+      writeFileSync(endlessOverPageFile(k),
+        JSON.stringify({ page: k, parModel: fp, boards: sequence.slice(i, i + ENDLESS_PAGE_SIZE) }));
+    }
+    const { overBoards } = writeEndlessIndex(fp);
+    console.log(`scroll lane: +${keeps.length} boards (${[...got].filter(([, n]) => n).map(([s, n]) => `${s} ${n}`).join('  ')}); lane now ${overBoards}`);
+  } else {
+    console.log(`[dry-run] scroll lane would add ${keeps.length}`);
+  }
+}
+
 export { parFloor, parWindowTop, hardFloor, minBoardsFor, legalPatches, GIMMICK_SETS, candidate, hardOf,
   MIN_PAR, MIN_WORK, CANDIDATES_PER_KEEP, OUT_DIR,
   LIB_SHAPE_INTROS, LIB_MOD_INTROS, intakeRules, boardAllowedAtLevel, PAR_FLOOR_SHAPE_RELIEF,
-  ENDLESS_PAGE_SIZE, ENDLESS_FACE_CAP, ENDLESS_INDEX, endlessPageFile,
+  ENDLESS_PAGE_SIZE, ENDLESS_FACE_CAP, ENDLESS_INDEX, endlessPageFile, endlessOverPageFile,
+  loadEndlessOverPages, writeEndlessIndex,
   endlessLanes, endlessDims, endlessCacheSpecs, drawEndlessSpec };
 
 // ── CLI ────────────────────────────────────────────────────────────────
@@ -909,7 +1178,14 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
   })();
 
   if (args.includes('--endless')) {
-    if (args.includes('--emit-only')) {
+    if (args.includes('--scroll')) {
+      await runScrollBuild({
+        dry,
+        minutes: Number(argOf('--minutes', 60)),
+        onlyShape: argOf('--shape'),
+        perShape: Number(argOf('--per-shape', 6)),
+      });
+    } else if (args.includes('--emit-only')) {
       runEndlessEmitOnly({ dry, target: argOf('--target') ? Number(argOf('--target')) : null });
     } else {
       runEndlessBuild({

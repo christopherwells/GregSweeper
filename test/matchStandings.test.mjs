@@ -7,6 +7,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { matchStandings, matchFinishedCount, matchFitRows, columnLeader, MATCH_FIT_MIN_TIME } from '../src/logic/matchStandings.js';
 import { matchRowKey } from '../src/logic/matchCodes.js';
 
@@ -135,6 +136,29 @@ test('one row per cleared board, keyed off the board SEED', () => {
   assert.deepEqual(rows[0].features, entries[0].features);
 });
 
+test("REGRESSION: a resumed run's row keeps the board's par (measured 2026-08-20)", () => {
+  // The match node's results block whitelists time, penalty and strikes and
+  // ends $other: false, so par is NEVER stored there. A cross-device resume
+  // rebuilds results from the node, `res.par` comes back undefined, and the
+  // row filed par 0. Measured on the ten marathon rows: one of them, on a
+  // board whose other player filed 1263.5.
+  //
+  // The dealt entry carries the board's own par and rides the node whole
+  // under `boards`, which is where state.matchPar came from at install.
+  const resumed = matchFitRows([entry('resumed-seed')], [{ time: 300, strikes: 0 }]).rows[0];
+  assert.equal(resumed.par, 60, 'a result with no par must recover the one on its entry');
+
+  // The result still WINS when it has one, so a client that played the board
+  // files what that player actually saw.
+  const played = matchFitRows([entry('played-seed')], [{ time: 300, strikes: 0, par: 512 }]).rows[0];
+  assert.equal(played.par, 512, 'a stated par must not be overwritten by the entry');
+
+  // NON-VACUITY: with no par anywhere the answer is still 0, so this is a
+  // recovery and not a floor that invents a number.
+  const bare = matchFitRows([{ ...entry('bare-seed'), par: undefined }], [{ time: 300 }]).rows[0];
+  assert.equal(bare.par, 0, 'nothing to recover must stay 0, never a guess');
+});
+
 test('the same board in two different matches files under the SAME key', () => {
   // This is the property the per-shape fit is starved of: four people playing
   // one Kites board across two matches is four observations of one board, not
@@ -201,4 +225,122 @@ test('columnLeader stays silent under two finished players, and flags a tie', ()
   ], 'adjusted');
   assert.equal(tie.tied, true, 'a tie leads nobody; the painter styles it as tied');
   assert.deepEqual(tie.uids, ['a', 'b']);
+});
+
+// ── The summary read (issue #331) ────────────────────────────────────────
+// The review list fetches rules and players, never the frozen board
+// payloads (a ten-board node runs 18-148 KB and the list reads three lines
+// of it). A summary-shaped node carries NO boards array, so the board count
+// resolves through matchBoardCountOf's rules.count fallback, which the
+// rules REQUIRE on every node ever written.
+
+test('matchBoardCountOf: boards array wins, rules.count covers a summary, junk reads 0', async () => {
+  const { matchBoardCountOf } = await import('../src/logic/matchRules.js');
+  assert.equal(matchBoardCountOf({ boards: [1, 2, 3], rules: { count: 5 } }), 3,
+    'the dealt list is the ground truth where present');
+  assert.equal(matchBoardCountOf({ rules: { count: 5 } }), 5, 'a summary falls back to rules.count');
+  assert.equal(matchBoardCountOf({ rules: { count: 99 } }), 0, 'an out-of-band count is refused');
+  assert.equal(matchBoardCountOf({}), 0);
+  assert.equal(matchBoardCountOf(null), 0);
+});
+
+test('matchStandings works on a summary node: of from rules.count, finished via finishedAt', () => {
+  const summary = {
+    host: 'host-uid-1234567890',
+    rules: { count: 4 },
+    players: {
+      'host-uid-1234567890': { name: 'Host', results: [{ timeSec: 60 }, { timeSec: 70 }], finishedAt: 0 },
+      'guest-uid-123456789': { name: 'Guest', results: [{ timeSec: 50 }], finishedAt: 1234 },
+    },
+  };
+  const rows = matchStandings(summary, { myUid: 'host-uid-1234567890' });
+  assert.equal(rows.length, 2);
+  for (const r of rows) {
+    assert.equal(r.of, 4, 'the board count must come from rules.count on a summary');
+  }
+  const guest = rows.find((r) => r.uid === 'guest-uid-123456789');
+  assert.equal(guest.finished, true, 'finishedAt still resolves finished with no boards array');
+});
+
+test('the review list and the invite card fetch summaries, never whole nodes (source scan)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const fb = readFileSync(new URL('../src/firebase/firebaseMatch.js', import.meta.url), 'utf8');
+  // PR 6 moved the mapping into fetchMatchSummaries so the paged finished
+  // list shares it; the contract is unchanged: list rows go through the
+  // summary fetch, and only real opens read whole nodes.
+  assert.match(fb, /rows\.map\(\(r\) => fetchMatchSummary\(r\.matchId, opts\)\)/,
+    'fetchMatchSummaries must map rows through fetchMatchSummary');
+  assert.match(fb, /return fetchMatchSummaries\(refs\.slice\(0, limit\), opts\)/,
+    'fetchMyMatches must page refs through fetchMatchSummaries');
+  const lobby = readFileSync(new URL('../src/ui/matchLobby.js', import.meta.url), 'utf8');
+  assert.match(lobby, /m\.fetchMatchSummary\(invite\.matchId\)/,
+    'the invite offer reads the summary');
+  // The full-node fetch survives ONLY where boards are dealt or installed.
+  assert.doesNotMatch(fb, /rows\.map\(\(r\) => fetchMatch\(/,
+    'the list path must never fetch whole nodes again');
+});
+
+// ── Issue #372: a row the fit would misread is refused, not filed ───────
+//
+// The payload writes `totalBombPenalty` only alongside per-hit events, and
+// the R side reads `bombHits > 0 && totalBombPenalty == 0` as the RETIRED
+// +10s/re-fog cohort, charging LEGACY_BOMB_RATE (15s a hit) against a true
+// ramped cost of 3n + 0.75n(n-1). A cross-device resume rebuilds its earlier
+// boards from the match node, which whitelists only {time, penalty, strikes},
+// so those boards arrive with strikes and no events. Filing them poisons the
+// per-shape coefficients on exactly the library boards Challenge exists to
+// price, so they are refused instead.
+
+test('REGRESSION #372: a board with strikes but no events files NO fit row', () => {
+  const entries = [
+    { seed: 's-clean', features: { cellCount: 80 }, spec: { mines: 12 } },
+    { seed: 's-lost', features: { cellCount: 80 }, spec: { mines: 12 } },
+    { seed: 's-kept', features: { cellCount: 80 }, spec: { mines: 12 } },
+  ];
+  const results = [
+    // Clean board, no strikes: needs no events and files normally.
+    { time: 44, strikes: 0, bombHitEvents: [] },
+    // Rebuilt from the node: strikes survived, the events did not.
+    { time: 70, strikes: 3 },
+    // Played on this device: strikes AND events.
+    { time: 66, strikes: 2, bombHitEvents: [{ t: 3, row: 1, col: 1, penalty: 3 }] },
+  ];
+  const out = matchFitRows(entries, results);
+  const seeds = out.rows.map((r) => r.seed);
+  assert.deepEqual(seeds, ['s-clean', 's-kept'],
+    'the event-less strike row must be refused, the other two filed');
+  assert.equal(out.eventless, 1, 'and the refusal is COUNTED, never silent');
+  // The kept row still carries what it had.
+  const kept = out.rows.find((r) => r.seed === 's-kept');
+  assert.equal(kept.bombHits, 2);
+  assert.equal(kept.bombHitEvents.length, 1);
+});
+
+// ── The provisional par must survive the deal (his report, 2026-08-18) ───
+//
+// He played an oversized honeycomb board and the end card showed a par of
+// 10704s, 178 minutes, against his 11. No stored board is priced anywhere
+// near that (the highest anywhere is 1789s), because the client RE-PRICED the
+// stored features through predictPar at deal time. That re-price is right for
+// a board the model has data at and exactly wrong past a shape's fit ceiling,
+// which is the whole reason the lane stores an anchored par instead. The flag
+// has to reach the consumer for the consumer to respect it.
+
+test('REGRESSION: certifyStoredBoard carries parProvisional to the deal', async () => {
+  const src = readFileSync(new URL('../src/game/climbDeal.js', import.meta.url), 'utf8');
+  assert.ok(/parProvisional:\s*pick\.parProvisional === true/.test(src),
+    'the certifier must carry the flag, or the consumer cannot tell an anchored par from a measured one');
+  // And the consumer must actually branch on it.
+  const actions = readFileSync(new URL('../src/game/gameActions.js', import.meta.url), 'utf8');
+  assert.ok(/res\.parProvisional !== true/.test(actions),
+    'the match re-price must skip a provisionally priced board');
+});
+
+test('REGRESSION: the match node whitelists parProvisional, so a guest sees the host price', () => {
+  const rules = JSON.parse(readFileSync(new URL('../firebase-rules.json', import.meta.url), 'utf8'));
+  const board = rules.rules.matches.$matchId.boards.$idx;
+  assert.equal(board.$other['.validate'], false, 'the board whitelist must stay closed');
+  const allowed = Object.keys(board).filter((k) => !k.startsWith('.') && k !== '$other');
+  assert.ok(allowed.includes('parProvisional'),
+    'the node carries parProvisional but the rules would refuse it, dropping the WHOLE match write');
 });

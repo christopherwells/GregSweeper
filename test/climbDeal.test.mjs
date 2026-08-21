@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 
 const {
   pickFromBin, levelHasLibrary, levelFileUrl,
-  pickEndlessPage, endlessGlobalIndex, endlessIndexUrl, endlessPageUrl,
+  pickEndlessPage, pickEndlessLane, endlessGlobalIndex, endlessIndexUrl, endlessPageUrl,
 } = await import('../src/logic/climbLibrary.js');
 const { dealClimbBoard } = await import('../src/game/climbDeal.js');
 const { state } = await import('../src/state/gameState.js');
@@ -194,6 +194,37 @@ test('pickEndlessPage weighs pages by their unseen count and cycles at exhaustio
   // Degenerate inputs stay null rather than throwing under a click.
   assert.equal(pickEndlessPage([], {}, () => 0).page, null);
   assert.equal(pickEndlessPage([0, 0], {}, () => 0).page, null);
+});
+
+test('pickEndlessLane unions the scrolling lane into ONE cycle, and reduces to the fit deal without it', () => {
+  // The scrolling lane (his ruling 2026-08-18). Absent or empty overCounts
+  // must reproduce pickEndlessPage EXACTLY, which is what keeps a
+  // lane-less library (and the moment before the first supply run) dealing
+  // byte-identically.
+  for (const rolls of [0, 0.2, 0.3, 0.7, 0.99]) {
+    const a = pickEndlessPage([1, 3], { 0: ['s'] }, () => rolls);
+    const b = pickEndlessLane([1, 3], undefined, { 0: ['s'] }, () => rolls);
+    assert.deepEqual({ page: b.page, cycled: b.cycled }, a,
+      `no lane: must reduce to the fit-only pick at roll ${rolls}`);
+    assert.equal(b.over, false);
+  }
+  // With a lane, the draw is uniform over unseen across BOTH classes:
+  // counts [1] + overCounts [3], nothing seen, so rolls past 1/4 land in
+  // the lane.
+  assert.deepEqual(pickEndlessLane([1], [3], {}, () => 0.2),
+    { page: 0, over: false, cycled: false });
+  assert.deepEqual(pickEndlessLane([1], [3], {}, () => 0.3),
+    { page: 0, over: true, cycled: false });
+  // Over pages key as o<n>, so fit page 0 and over page 0 hold separate
+  // seen lists and can never collide.
+  const seen = { 0: ['a'], o0: ['x', 'y'] };
+  assert.deepEqual(pickEndlessLane([1], [3], seen, () => 0.99),
+    { page: 0, over: true, cycled: false },
+    'one over board left unseen; the fit page is exhausted');
+  // ONE shared cycle: only when BOTH classes are fully seen does it reset,
+  // over the full union.
+  assert.equal(pickEndlessLane([1], [3], { 0: ['a'], o0: ['x', 'y', 'z'] }, () => 0).cycled, true);
+  assert.equal(pickEndlessLane([], [], {}, () => 0).page, null);
 });
 
 test('endlessGlobalIndex resolves a flat board index across page boundaries', () => {

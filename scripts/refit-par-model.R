@@ -420,7 +420,23 @@ PRIOR_INTERCEPT_SD <- 2.0    # LOG scale now (was 15s additive): the log
                               # wide (±2SD ≈ ×[0.018, 55]) yet not degenerate;
                               # the OLS seed + bias-correction set the level.
 PRIOR_SIGMAS <- list(
-  cellCount            = 1.0,
+  # cellCount has NO entry here any more (his M1 ruling, 2026-08-18): the
+  # size pair (cellCount + logCells) is SIGNED and rides the dev nlpar at
+  # normal(0, SIZE_DEV_PRIOR_SD), routed around this bounded-lognormal
+  # machinery the way matchPlay is. See the SIZE_DEV_COLS block below
+  # COEF_TO_PREDICTOR.
+  # The rate predictors (2026-08-20). Wide, like the counts they replace: the
+  # priors are OLS-seeded, so the seed adapts to the rates' own scale
+  # (coefficients near 5 rather than near 0.05) and sigma stays a statement
+  # about how much the prior should say, not about units.
+  mineRate             = 1.0,
+  patternRate          = 1.0,
+  searchRate           = 1.0,
+  # The COUNTS keep their sigmas even though the primary fit no longer uses
+  # them. They are retired as SHIPPED coefficients, not as predictors: the
+  # digit, contribution and decorrelation fits still carry them as controls,
+  # and build_priors stop()s on any formula term without a sigma. The pipeline
+  # smoke caught exactly this ("Missing prior sigma for totalMines").
   totalMines           = 1.0,
   patternMoves         = 1.0,
   searchMoves          = 1.0,
@@ -471,10 +487,30 @@ PRIOR_SIGMAS <- list(
 # this replaced did not have (their slot/arg counts silently drifted twice,
 # each drift shifting every later coefficient one slot).
 COEF_TO_PREDICTOR <- c(
-  secPerCell         = "cellCount",
-  secPerMineFlag     = "totalMines",
-  secPerPatternMove  = "patternMoves",
-  secPerSearchMove   = "searchMoves",
+  # THE RATE FORM (his ruling 2026-08-20, proven in
+  # scripts/par-model-move-rates.qmd). Every count that grows with board AREA
+  # now enters divided by the board, and log(cells) carries size on its own.
+  #
+  # Why: counts multiply on the log scale, so a board four times larger
+  # carried four times the moves and par grew like e^(4*beta*n). Measured, the
+  # shipped form priced a 660-cell board that two people finished in twenty
+  # minutes at five to thirty-one hours. Trained at <= 187 cells and asked to
+  # price 638-660 cell boards, the count form missed by 23.9x typically, this
+  # one by 1.3x, which also beats the marathon lane's own anchor pricing
+  # (1.5x) on boards it was purpose-built for. In sample the two are
+  # indistinguishable (residual SD 0.404 against 0.399), so nothing is given
+  # up where people actually play.
+  #
+  # secPerCell, secPerMineFlag, secPerPatternMove and secPerSearchMove are
+  # RETIRED, the way secPerShape* was: gone from this table, gone from the
+  # emitted blocks, and gone from COEF_TERMS on the JS side, so a stale
+  # coefficient cannot be applied to a predictor that no longer means what it
+  # did. Retiring rather than zeroing is deliberate; a key at 0 reads as
+  # "not yet earned", and these are not coming back.
+  secPerLogCell      = "logCells",
+  secPerMineRate     = "mineRate",
+  secPerPatternRate  = "patternRate",
+  secPerSearchRate   = "searchRate",
   secPerWallEdge     = "wallEdgeCount",
   secPerZeroCluster  = "zeroClusterCount",
   secPerMysteryCell  = "mysteryCellCount",
@@ -487,6 +523,67 @@ COEF_TO_PREDICTOR <- c(
   secPerWormLoad     = "wormLoad"
 )
 BASE_MODEL_FEATURES <- unname(COEF_TO_PREDICTOR)
+
+# EVERY key that has ever been a shipped predictor, current and retired, with
+# the predictor each one MEANS. apply_par_model prices a PARSED block off this
+# union rather than off COEF_TO_PREDICTOR, and the difference matters on
+# exactly one run: the one that changes the model's form.
+#
+# The trap, met on 2026-08-20. apply_par_model looped COEF_TO_PREDICTOR (what
+# this script is about to FIT) while reading coefficients out of the shipped
+# difficulty.js (what was fitted LAST time). Its `%||% 0` fallback is correct
+# for an ADDED coefficient, which is the case its comment describes, and
+# silently wrong for a REPLACED one: on the rate-form transition the parsed
+# block had no rate keys at all, so the pre-fit outlier screen priced every
+# board with its three largest terms at zero and screened against a number
+# that meant nothing.
+#
+# A block only ever carries ONE form's keys, so the union is self-selecting:
+# the absent form contributes zero by construction, with no branch and no
+# marker to keep in step. Same reason applyParModel on the JS side needs no
+# branch either. A retired key must STAY here, or a block written before its
+# retirement stops pricing correctly.
+COEF_TO_PREDICTOR_ANY <- c(
+  COEF_TO_PREDICTOR,
+  # Retired 2026-08-20 by the rate form; still the correct reading of any
+  # block emitted before it.
+  secPerCell        = "cellCount",
+  secPerMineFlag    = "totalMines",
+  secPerPatternMove = "patternMoves",
+  secPerSearchMove  = "searchMoves"
+)
+
+# ── The size pair (his M1 ruling, 2026-08-18) ──────────────────────────
+# `logCells = log(cellCount)` beside the linear term, fitted as ONE concave
+# size curve: gamma ~ +0.9 on the log term with the linear term going
+# NEGATIVE (~ -0.01), measured in scripts/par-model-size-offset.qmd on 800
+# rows (M1; the replace-form M2 found gamma 0.15 and was refuted, so BOTH
+# terms stay). The pair dissolves the 19s zero-feature intercept into the
+# size curve and takes the marathon-envelope extrapolation from 5.5 days to
+# ~2 hours.
+#
+# BOTH terms ride the dev nlpar (matchPlay's routing, and for matchPlay's
+# reason): the class-wide lb = 0 on the base block is a claim about single
+# features par is monotonic in, and under M1 the SIZE CURVE is the pair
+# jointly. Its linear half is negative by measurement, so bounded it would
+# pile at zero and push the curvature into the board coefficients. The two
+# columns are never gated: any frame that clears MIN_SCORES_TO_FIT spans
+# many board sizes, and a degenerate frame fails the Rhat/ESS gate rather
+# than a variance check here.
+#
+# Prior: normal(0, SIZE_DEV_PRIOR_SD) on both. INTERACTION_PRIOR_SD (0.5)
+# would shrink the measured gamma ~14% toward zero (posterior SE ~0.2 against
+# a 0.5-wide prior); at 1.0 the pull is ~4%, and an elasticity above 2
+# (par growing faster than cells squared) stays implausible under it.
+# Under the rate form the linear half is retired, so the size curve is
+# log(cells) alone and its elasticity is firmly positive (1.164 [1.060,
+# 1.267], measured). It stays on the SIGNED dev nlpar anyway: the lb = 0
+# blanket is a claim that par is monotonic non-decreasing in the feature, and
+# leaving the one term the whole size question rides on unbounded keeps the
+# data able to say otherwise. Keeping the column non-empty also keeps Path B
+# permanent for the primary fit, which the dev_cols construction relies on.
+SIZE_DEV_COLS <- c("logCells")
+SIZE_DEV_PRIOR_SD <- 1.0
 
 # JS tilingType string (the PAR_MODEL_SHAPES key) -> R predictor stem. Must
 # stay in lockstep with TILING_TYPES in src/logic/tilingGeometry.js — R cannot
@@ -623,13 +720,30 @@ apply_par_model <- function(df, coefs, log_scale = TRUE, shape_devs = NULL) {
     if (!.f %in% colnames(df)) df[[.f]] <- 0
     df[[.f]] <- ifelse(is.na(df[[.f]]), 0, as.numeric(df[[.f]]))
   }
-  # Data-driven off COEF_TO_PREDICTOR — the same table the emitter and the
-  # extraction read, so a coefficient cannot exist in the shipped block
-  # without being priced here. `%||% 0` keeps it correct against a parsed
-  # block predating any given coefficient.
+  # logCells is DERIVED, never defaulted: a frame built before the mutate
+  # that adds it (timed_df, ad-hoc predict frames) still carries cellCount,
+  # and pricing its log term as 0 would misprice every board the moment the
+  # coefficient is nonzero. Same pmax guard as the JS derivation; recomputing
+  # on a frame that already has the column is the identical value.
+  df$logCells <- log(pmax(1, df$cellCount))
+  # The RATE predictors, derived here for the same reason logCells is: a frame
+  # built before the mutate that adds them still carries the raw counts, and
+  # pricing a rate as 0 would misprice every board. Division is by the same
+  # pmax-guarded cell count, so a degenerate zero-cell row cannot produce Inf.
+  cells_safe <- pmax(1, df$cellCount)
+  if (!is.null(df$totalMines))   df$mineRate    <- df$totalMines / cells_safe
+  if (!is.null(df$patternMoves)) df$patternRate <- df$patternMoves / cells_safe
+  if (!is.null(df$searchMoves))  df$searchRate  <- df$searchMoves / cells_safe
+  # Data-driven off COEF_TO_PREDICTOR_ANY, the union of current and retired
+  # keys, so a PARSED block is priced in the form IT was written in. Looping
+  # the current table instead reads a pre-transition block as though its
+  # retired terms were zero; see the union's own comment for the run that
+  # caught it.
   lp <- rep(as.numeric(coefs$intercept), nrow(df))
-  for (k in names(COEF_TO_PREDICTOR)) {
-    lp <- lp + (coefs[[k]] %||% 0) * df[[COEF_TO_PREDICTOR[[k]]]]
+  for (k in names(COEF_TO_PREDICTOR_ANY)) {
+    pred <- COEF_TO_PREDICTOR_ANY[[k]]
+    if (is.null(df[[pred]])) next
+    lp <- lp + (coefs[[k]] %||% 0) * df[[pred]]
   }
   for (cn in names(shape_devs %||% list())) {
     lp <- lp + as.numeric(shape_devs[[cn]]) * df[[cn]]
@@ -822,8 +936,17 @@ build_priors <- function(means, fixed_names, deviation_names = character(0)) {
     # posteriors at doubled width (the seeding block by the shape registry).
     # Unseeded terms, including every gimmick-by-shape cell, keep the
     # zero-centered signed normal at the documented INTERACTION_PRIOR_SD.
+    # The SIZE PAIR (cellCount + logCells, M1) rides this nlpar for its sign
+    # freedom but takes its own wider SIZE_DEV_PRIOR_SD: the elasticity's
+    # posterior SE is ~0.2, and INTERACTION_PRIOR_SD would shrink the
+    # measured gamma ~14% toward zero (see the SIZE_DEV_COLS block).
+    # lab_seed_devs cannot collide here: its keys are shape stems and
+    # shape_x_feature names, never a bare predictor.
     seed <- lab_seed_devs[[nm]]
-    parts[[length(parts) + 1]] <- if (!is.null(seed)) {
+    parts[[length(parts) + 1]] <- if (nm %in% SIZE_DEV_COLS) {
+      set_prior(sprintf("normal(0, %f)", SIZE_DEV_PRIOR_SD),
+                class = "b", coef = nm, nlpar = "dev")
+    } else if (!is.null(seed)) {
       set_prior(sprintf("normal(%f, %f)", seed$mean, seed$sd),
                 class = "b", coef = nm, nlpar = "dev")
     } else {
@@ -1268,7 +1391,20 @@ if (.n_pre_cheat - nrow(df) > 0) {
 df <- df |>
   mutate(
     patternMoves = canonicalSubsetMoves + genericSubsetMoves,
-    searchMoves  = advancedLogicMoves
+    searchMoves  = advancedLogicMoves,
+    # The size elasticity's predictor (M1): DERIVED from the stored cellCount,
+    # never a stored feature, so every historical row carries it and
+    # NEW_STRUCTURAL_FEATURES / FEATURES_EPOCH stay untouched. The pmax guard
+    # mirrors the JS derivation (log(max(1, cellCount))).
+    logCells     = log(pmax(1, cellCount)),
+    # THE RATE FORM (2026-08-20). Every count that grows with board AREA
+    # enters divided by the board, so the coefficients describe per-cell
+    # difficulty, a quantity with no reason to grow with the board. Derived
+    # from stored features exactly as logCells is, so no stored vector
+    # changes and FEATURES_EPOCH stays put.
+    mineRate     = totalMines / pmax(1, cellCount),
+    patternRate  = patternMoves / pmax(1, cellCount),
+    searchRate   = searchMoves / pmax(1, cellCount)
   )
 
 # Shape-by-feature interaction columns (per-shape par equations): indicator ×
@@ -1320,11 +1456,36 @@ new_model_is_log <- prev_is_log
 # this refit runs). Threshold: time < max(5s, 0.3 × predicted_par).
 df$predicted_for_outlier <- apply_par_model(df, current_coefs, prev_is_log, current_shape_devs)
 pre_outlier_n <- nrow(df)
-df <- df |> filter(time >= pmax(5, 0.3 * predicted_for_outlier))
+
+# THE SCREEN MUST NOT FIRE ON A PREDICTION IT CANNOT MAKE (2026-08-20).
+# A row is only "impossibly fast" relative to a par worth believing. Where
+# the shipped model is out of its depth the floor it computes is nonsense,
+# and the rows it then refuses are exactly the ones that would fix the
+# pricing: measured the day the first marathon rows landed, the count-form
+# model priced 638-660 cell boards at 16,000-18,000s, putting the floor near
+# 5,000s, and SIX OF THE TEN honest plays (658-1,321s) were thrown out. That
+# is the anti-cheat lesson of 2026-08-09 in a second gate, a filter censoring
+# its own calibration set.
+#
+# The guard is the score validator's own ceiling rather than a new number:
+# no real board is submitted above SCORE_MAX_SECONDS, so a prediction past it
+# is a statement about the model, never about the row. Deliberately NOT
+# widened (his standing ruling on goalposts): a believable prediction screens
+# exactly as hard as it always did, and only an unbelievable one abstains.
+SCORE_MAX_SECONDS <- 3600
+df$screen_is_usable <- df$predicted_for_outlier <= SCORE_MAX_SECONDS
+n_unpriceable <- sum(!df$screen_is_usable)
+df <- df |> filter(!screen_is_usable | time >= pmax(5, 0.3 * predicted_for_outlier))
 n_outliers <- pre_outlier_n - nrow(df)
+if (n_unpriceable > 0) {
+  message(sprintf(
+    "  screen ABSTAINED on %d row(s) the shipped model prices above %ds; unusable prediction, not a verdict",
+    n_unpriceable, SCORE_MAX_SECONDS))
+}
 if (n_outliers > 0) {
   message(sprintf("  rejected %d outlier row(s) with time < max(5, 0.3 × predicted_par)", n_outliers))
 }
+df$screen_is_usable <- NULL
 df$predicted_for_outlier <- NULL
 
 # Recompute n_scores after outlier rejection so downstream diagnostics
@@ -1502,14 +1663,43 @@ diagnostic_failure <- FALSE
 
 # ── 2. Fit ──────────────────────────────────────────────
 
-fit_formula_fixed <- log(pure_time) ~
-  cellCount + totalMines +
-  patternMoves + searchMoves +
-  wallEdgeCount +
-  mysteryCellCount + liarCellCount + lockedCellCount +
-  wormholePairCount + mirrorPairCount +
-  sonarCellCount + compassCellCount +
-  zeroClusterCount
+# DERIVED from BASE_MODEL_FEATURES, never written out (2026-08-20).
+#
+# This was a hand-written list of predictors sitting beside COEF_TO_PREDICTOR,
+# and the two were a mirror pair nothing held in lockstep. The extraction's own
+# comment claims "the table IS the extraction, so a key missing from it never
+# has a posterior to lose" — true of the table, and false of this formula. Add
+# a coefficient to the table without adding it here and the fit never estimates
+# it, `co[p]` comes back NA, and nn() maps NA to 0: the coefficient SHIPS AT
+# ZERO with no error anywhere. That is exactly what the rate-form change hit,
+# and it would have shipped a par model with no mine or move terms at all.
+#
+# The two exclusions are the real ones, and both are stated where they are
+# decided rather than assumed here:
+#   - SIZE_DEV_COLS rides the SIGNED dev nlpar, because the class-wide lb = 0
+#     is a claim about features par is monotonic in and the size curve's sign
+#     is the question (his M1 ruling, 2026-08-18).
+#   - wormLoad joins conditionally below (add_worm_term): before the first
+#     worm board's scores land it is identically zero in df_fit, a
+#     zero-variance predictor, so it gates on real data like archivePlay.
+BOUNDED_BASE_TERMS <- setdiff(BASE_MODEL_FEATURES, c(SIZE_DEV_COLS, "wormLoad"))
+stopifnot(length(BOUNDED_BASE_TERMS) > 0)
+fit_formula_fixed <- as.formula(
+  paste("log(pure_time) ~", paste(BOUNDED_BASE_TERMS, collapse = " + ")))
+
+# THE DRIFT GUARD. Every shipped coefficient must have a route into the fit:
+# the bounded block, the signed dev nlpar, or a named conditional gate. A key
+# with no route is the silent-zero above, so this stops the run rather than
+# emitting a model with a hole in it.
+local({
+  routed <- c(BOUNDED_BASE_TERMS, SIZE_DEV_COLS, "wormLoad")
+  orphans <- setdiff(BASE_MODEL_FEATURES, routed)
+  if (length(orphans) > 0) {
+    stop(sprintf(
+      "COEF_TO_PREDICTOR names %s with no route into the fit; it would ship at 0 silently",
+      paste(orphans, collapse = ", ")))
+  }
+})
   # wormLoad joins conditionally below (add_worm_term): until the first
   # worm board's scores land it is identically zero in df_fit — a
   # zero-variance predictor — so it gates on real data like archivePlay.
@@ -1621,12 +1811,28 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
   # on the log scale, +-1 SD spans roughly a 40% speed-up to a 65% slowdown,
   # which is wide enough for a frame offset nobody has measured and, as the
   # constant's own note says, far too wide to bind.
-  dev_cols <- c(active_shape_cols, if (add_match_term) "matchPlay" else NULL)
+  #
+  # The SIZE PAIR leads dev_cols unconditionally (his M1 ruling, 2026-08-18):
+  # cellCount + logCells are jointly the concave size curve, the linear half
+  # is negative by measurement, and neither is gated because any frame that
+  # clears MIN_SCORES_TO_FIT spans many board sizes (see SIZE_DEV_COLS). This
+  # makes Path B PERMANENT for the primary fit: dev_cols can no longer be
+  # empty, so the flat branch below survives as the specification anchor the
+  # two-path comments reason from (and the digit fit's else-branch shape),
+  # not as a branch this fit can reach.
+  dev_cols <- c(SIZE_DEV_COLS, active_shape_cols,
+                if (add_match_term) "matchPlay" else NULL)
   use_nl_split <- length(dev_cols) > 0
   base_terms <- all.vars(fit_formula_fixed_active)[-1]
   # OLS seeds cover the BASE terms only: a deviation's prior center is fixed
   # at zero (build_priors routes deviation_names around the means lookup).
-  ols_seeds <- compute_log_ols_seeds(df_fit, base_terms)
+  # The size pair joins the OLS FORMULA all the same, because the intercept
+  # seed must come from the M1-form fit: without any size regressor the OLS
+  # intercept absorbs the mean size effect (~3 on the log scale) and centers
+  # the intercept prior a full form away from the M1 posterior (~0).
+  # build_priors never reads the pair's own OLS slopes: it looks up fixed
+  # names only.
+  ols_seeds <- compute_log_ols_seeds(df_fit, c(base_terms, SIZE_DEV_COLS))
   priors <- build_priors(ols_seeds, c("Intercept", base_terms),
                          deviation_names = dev_cols)
   fit_formula <- if (use_nl_split) {
@@ -1780,7 +1986,11 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
         n_distinct(digit_df$uid) >= 2 &&
         all(vapply(DIGIT_FEATURES, function(f) stats::sd(digit_df[[f]]) > 0, logical(1)))) {
       digit_candidates <- tryCatch({
-        digit_controls <- c("cellCount", "totalMines", "patternMoves", "searchMoves",
+        # cellCount is NOT among the bounded controls (M1): the size pair
+        # rides digit_dev_cols below, signed, exactly as it does in the
+        # primary fit. Measuring the digit shares against the M0 size curve
+        # would leave the curvature miss in the residual this study reads.
+        digit_controls <- c("totalMines", "patternMoves", "searchMoves",
                              "wallEdgeCount", "mysteryCellCount", "liarCellCount",
                              "lockedCellCount", "wormholePairCount", "mirrorPairCount",
                              "sonarCellCount", "compassCellCount", "zeroClusterCount")
@@ -1815,11 +2025,17 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
         # in a secondary study. Left as the machinery does it, flagged rather
         # than special-cased.
         digit_dev_cols <- c(
+          # The size pair leads, ungated, for the primary fit's reason (see
+          # SIZE_DEV_COLS): its dev routing is what lets the linear half go
+          # negative here too.
+          SIZE_DEV_COLS,
           digit_shape_cols[vapply(digit_shape_cols,
                                   function(cn) any(digit_df[[cn]] != 0, na.rm = TRUE), logical(1))],
           if (length(unique(digit_df$matchPlay)) > 1) "matchPlay" else NULL
         )
-        digit_seeds <- compute_log_ols_seeds(digit_df, digit_fixed)
+        # The size pair joins the OLS formula for the intercept seed's sake
+        # (the primary fit's reasoning at its own ols_seeds call).
+        digit_seeds <- compute_log_ols_seeds(digit_df, c(digit_fixed, SIZE_DEV_COLS))
         digit_priors <- build_priors(digit_seeds, c("Intercept", digit_fixed),
                                      deviation_names = digit_dev_cols)
         # TWO PATHS, exactly as the main fit has them, and for the same reason.
@@ -1942,7 +2158,10 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
           # to modelHistory would be prior-blend artifacts whose bands can
           # never narrow (verified: QR rank 2 of 3 on the committed backfill).
           # In this fit the SPLIT replaces the pooled count.
-          contrib_controls <- c("cellCount", "totalMines", "patternMoves", "searchMoves",
+          # logCells sits beside cellCount (M1's concave size pair). No
+          # special routing here: this fit's controls are already unbounded
+          # normals, so the pair needs no dev nlpar to take its signs.
+          contrib_controls <- c("cellCount", "logCells", "totalMines", "patternMoves", "searchMoves",
                                 "wallEdgeCount", "mysteryCellCount", "liarCellCount",
                                 "wormholePairCount", "mirrorPairCount",
                                 "sonarCellCount", "compassCellCount", "zeroClusterCount")
@@ -2363,7 +2582,11 @@ if (fit_method == "brms-ranef") {
   # Non-negative clamp for BASE coefficients — their lognormal priors have
   # support only above zero so this should never trigger; cheap insurance
   # against a future prior change. Shape DEVIATIONS are signed by design and
-  # are handled separately below — never through nn().
+  # are handled separately below — never through nn(). The SIZE PAIR
+  # (cellCount + logCells) is signed by design too: M1's linear half is
+  # negative on real data, so routing it through nn() would clamp it to 0
+  # and ship the log term alone, the refuted M2 form at its worst (the
+  # concavity gone, every big board overpriced). sn() is its extraction.
   nn <- function(x, name) {
     v <- if (is.na(x)) 0 else as.numeric(x)
     if (v < 0) {
@@ -2372,6 +2595,7 @@ if (fit_method == "brms-ranef") {
     }
     v
   }
+  sn <- function(x) if (is.na(x)) 0 else as.numeric(x)
 
   # TABLE-DRIVEN off COEF_TO_PREDICTOR, never a hand-written list. The hand
   # list this replaced was the one remaining place a coefficient could exist in
@@ -2385,11 +2609,28 @@ if (fit_method == "brms-ranef") {
   # is per REALIZED wormLoad unit (the fit's regressor); the
   # scheduled-to-realized bridge is applied below, after the realization ratio
   # is computed.
+  # A term that ENTERED the bounded formula must come back with a posterior.
+  # nn() maps NA to 0, which is right for a term deliberately gated out (the
+  # worm term before the first worm board) and wrong for one the sampler
+  # dropped: that ships a zero coefficient for a feature the model was asked
+  # to estimate. The formula-time drift guard cannot see this, because the
+  # term was routed correctly and simply did not survive.
+  local({
+    fitted_names <- names(co)
+    missing_base <- setdiff(BOUNDED_BASE_TERMS, fitted_names)
+    if (length(missing_base) > 0) {
+      stop(sprintf(
+        "these bounded terms entered the formula but have no posterior: %s (they would ship at 0)",
+        paste(missing_base, collapse = ", ")))
+    }
+  })
+
   new_coefs <- c(
     list(intercept = nn(co["Intercept"], "intercept")),
     setNames(
       lapply(names(COEF_TO_PREDICTOR), function(k) {
-        nn(co[COEF_TO_PREDICTOR[[k]]], k)
+        p <- COEF_TO_PREDICTOR[[k]]
+        if (p %in% SIZE_DEV_COLS) sn(co[p]) else nn(co[p], k)
       }),
       names(COEF_TO_PREDICTOR)
     )

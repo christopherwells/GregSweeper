@@ -1,0 +1,38 @@
+name: Backfill scrolled flag
+
+# Admin tool: stamp `scrolled` on score rows written before the client logged
+# it. Runs scripts/backfill-scrolled-flag.mjs, which derives the value from
+# each board's own stored `oversized` fact rather than from features.rows/cols
+# (the broken proxy that caused the original bug).
+#
+# It exists as a workflow because daily/ rows are NOT client-writable: the
+# write needs the service account, and that lives only in this repo's secrets.
+#
+# DRY RUN BY DEFAULT. It writes to PLAYED HISTORY, so the default dispatch
+# prints the full plan and touches nothing; set write to "yes" deliberately.
+
+on:
+  workflow_dispatch:
+    inputs:
+      write:
+        description: 'Set to "yes" to write (anything else = dry run)'
+        required: false
+        default: 'no'
+
+permissions:
+  contents: read
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Backfill
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: >
+          node scripts/backfill-scrolled-flag.mjs
+          ${{ github.event.inputs.write == 'yes' && '--write' || '' }}
