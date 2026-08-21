@@ -85,11 +85,65 @@ function seedsToOversized(bySeed) {
   return out;
 }
 
+// THE SECOND SHELF. A match can also deal a HARVESTED Climb board, whose seed
+// lives in the Climb library's index rather than the match library's, which is
+// why the first pass left 53 rows unresolved. Those are all fit-legal, and by
+// a TESTED contract rather than an assumption: the harvest's file scan is
+// blind to the oversized page class (`endless-over-*`) on purpose, so that a
+// harvested oversized board can never deal to a Challenge host who did not opt
+// into scrolling. test/matchHarvest.test.mjs pins that boundary.
+//
+// The guard below re-proves it here rather than trusting it. If a harvest row
+// ever DOES come off an oversized page the contract has broken, and this
+// script must refuse to mark anything false rather than quietly file a
+// scrolling board as flat.
+function harvestRowKeys() {
+  const dir = join(HERE, 'data', 'climb-library');
+  const keys = new Set();
+  let scanned = 0, oversized = 0;
+  for (const f of readdirSync(dir)) {
+    if (!/^cmx-/.test(f)) continue;
+    let j;
+    try { j = JSON.parse(readFileSync(join(dir, f), 'utf8')); } catch { continue; }
+    for (const r of (j.rows || [])) {
+      // Row shape: [file, index, shape, cells, mines, par, mods, SEED, features]
+      const file = String(r[0] || '');
+      const seed = r[7];
+      if (!seed) continue;
+      scanned++;
+      if (/^endless-over-/.test(file)) oversized++;
+      keys.add(matchRowKey(seed));
+    }
+  }
+  if (oversized > 0) {
+    throw new Error(
+      `${oversized} harvest row(s) come from an oversized page; the harvest is `
+      + 'supposed to exclude that class entirely (test/matchHarvest.test.mjs). '
+      + 'Refusing to mark harvested rows as not-scrolling until that is understood.');
+  }
+  return { keys, scanned };
+}
+
 // A match row's KEY is matchRowKey(seed), a hash, so the seed itself is not on
 // the row and the join has to run FORWARD: hash every library seed and match
 // on the key. Going the other way (reading a seed off the row) silently
 // resolves nothing, which the first dry run showed as 417 unresolved rows.
 const { matchRowKey } = await import('../src/logic/matchCodes.js');
+const { fitCeilingCells } = await import('../src/logic/marathonFit.js');
+
+// True when the board is too SMALL to be oversized under any dimensions.
+// Returns false when the shape or the cell count cannot be read, so an
+// unreadable row is left alone rather than assumed flat.
+function belowFitCeiling(meta) {
+  const f = meta && meta.features;
+  if (!f) return false;
+  const cells = Number(f.cellCount) || (Number(f.rows) * Number(f.cols)) || 0;
+  if (!(cells > 0)) return false;
+  const shape = f.tilingType ? String(f.tilingType) : 'rect';
+  let ceiling = 0;
+  try { ceiling = fitCeilingCells(shape); } catch { return false; }
+  return ceiling > 0 && cells <= ceiling;
+}
 
 const j = async (path, q = '') => (await fetch(`${DB}/${path}.json${q}`)).json();
 
@@ -97,17 +151,21 @@ const { bySeed, shards } = buildSeedIndex();
 const oversizedBySeed = seedsToOversized(bySeed);
 const oversizedByRowKey = new Map();
 for (const [seed, flag] of oversizedBySeed) oversizedByRowKey.set(matchRowKey(seed), flag);
+const { keys: harvestKeys, scanned: harvestScanned } = harvestRowKeys();
 console.log(`library: ${shards} index shard(s), ${oversizedBySeed.size} seed(s) -> `
   + `${oversizedByRowKey.size} row key(s)`);
+console.log(`harvest: ${harvestScanned} row(s) -> ${harvestKeys.size} row key(s), `
+  + 'all fit-legal by contract');
 
 const dateKeys = Object.keys(await j('daily', '?shallow=true') || {});
 const plan = [];
-let already = 0, unresolved = 0;
+let already = 0, unresolved = 0, harvested = 0, belowCeiling = 0;
 
 for (const key of dateKeys) {
   const isMatch = key.startsWith('match_');
   const rows = await j(`daily/${key}`);
   if (!rows) continue;
+  const meta = isMatch ? await j(`dailyMeta/${key}`) : null;
   for (const [pushId, row] of Object.entries(rows)) {
     if (!row || typeof row.time !== 'number') continue;
     if (typeof row.scrolled === 'boolean') { already++; continue; }
@@ -118,8 +176,33 @@ for (const key of dateKeys) {
     } else {
       // A match row's seed is its board's identity. `rngSeed` is omitted when
       // it equals the date key, which never happens for a match_ key.
-      if (!oversizedByRowKey.has(key)) { unresolved++; continue; }
-      value = oversizedByRowKey.get(key) === true;
+      if (oversizedByRowKey.has(key)) {
+        value = oversizedByRowKey.get(key) === true;
+      } else if (harvestKeys.has(key)) {
+        // A harvested Climb board. Fit-legal by the contract re-proved above,
+        // so it did not scroll.
+        value = false;
+        harvested++;
+      } else if (belowFitCeiling(meta)) {
+        // THE THIRD PATH, and the only one that reasons from the board's own
+        // measurements rather than from a stored fact. It is sound in ONE
+        // direction only. marathonFits defines an oversized board as LONGER,
+        // WIDER or BIGGER than any fit-legal board of its shape, so a board
+        // whose total cell count sits below its shape's fit ceiling cannot be
+        // oversized under any dimensions at all.
+        //
+        // This is NOT the proxy the original bug came from. That one read
+        // features.rows/cols as geometry, which on a lattice is an arbitrary
+        // factorization of the cell count rather than the shape on screen.
+        // This reads the CELL COUNT against a per-shape ceiling, which is the
+        // same basis inSupportCells uses, and it never claims a board IS
+        // oversized: it only rules the possibility out.
+        value = false;
+        belowCeiling++;
+      } else {
+        unresolved++;
+        continue;
+      }
     }
     plan.push({ path: `daily/${key}/${pushId}/scrolled`, value, key });
   }
@@ -128,6 +211,13 @@ for (const key of dateKeys) {
 const trues = plan.filter((p) => p.value).length;
 console.log(`\nrows already carrying the flag: ${already}`);
 console.log(`rows this would stamp: ${plan.length}  (${trues} scrolling, ${plan.length - trues} not)`);
+if (belowCeiling > 0) {
+  console.log(`rows resolved by SIZE (below their shape's fit ceiling, so they `
+    + `cannot be oversized): ${belowCeiling}`);
+}
+if (harvested > 0) {
+  console.log(`rows resolved from the HARVEST (fit-legal Climb boards): ${harvested}`);
+}
 if (unresolved > 0) {
   console.log(`rows LEFT ALONE because their seed is not in the library: ${unresolved}`);
 }
