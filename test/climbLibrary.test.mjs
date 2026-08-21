@@ -170,8 +170,8 @@ test('reserve boards genuinely fit nowhere', () => {
 
 // ── The ENDLESS bins (2026-08-11): the same contract past the crown ─────
 //
-// ~500 pre-generated boards at launch (his ruling: "start with 500", the
-// library appends) for L251+, dealt randomly under one global seen-cycle
+// ~100 pre-generated boards for L251+ (his ruling 2026-08-21, lowering the
+// original "start with 500"), dealt randomly under one global seen-cycle
 // (his rule: a board cannot repeat until every other board has been
 // served). One window bound, the 400s par floor; per-shape ceilings are
 // build-time admission, deliberately NOT asserted here, because a refit
@@ -184,9 +184,14 @@ test('the endless library is real, sharded, and its index tells the truth', () =
   assert.deepEqual(endlessIndex.counts, endlessPages.map((p) => p.boards.length),
     'per-page counts drive the deal\'s page weighting and must match the pages');
   assert.equal(endlessIndex.boards, endlessBoards.length, 'the index total matches the boards');
-  assert.ok(endlessBoards.length >= 350,
-    `${endlessBoards.length} endless boards is far under the ~500 launch target `
-    + '(his 2026-08-11 ruling); append supply with: node scripts/build-climb-library.mjs --endless');
+  // HIS RULING 2026-08-21, lowering the bar from ~500: "I think we can drop
+  // endless to 100 boards. I'd rather spend time working on other things."
+  // The rate-form re-price moved boards out of the zone and refilling to 500
+  // measured at roughly five hours of generation, which is not what that time
+  // is worth.
+  assert.ok(endlessBoards.length >= 100,
+    `${endlessBoards.length} endless boards is under the 100 target `
+    + '(his 2026-08-21 ruling); append supply with: node scripts/build-climb-library.mjs --endless');
   const seeds = new Set([...endlessBoards, ...overBoards].map((b) => b.seed));
   assert.equal(seeds.size, endlessBoards.length + overBoards.length,
     'every endless board, scrolling lane included, has a unique seed');
@@ -302,7 +307,19 @@ test('the endless bins carry all SEVEN shapes, Classic included', () => {
   // shape's large end back over the 400s floor: it holds 34 boards against
   // the 25 floor, so the exemption has done its job and retired itself
   // exactly as its own failure message instructed.
-  const MEASURED_CEILING = { rhombille: 13 };
+  // hex, added 2026-08-21 under the rate form, on the same measured basis
+  // rhombille's entry carries. The re-price moved the shape's price surface
+  // and its buildable boards stopped reaching the 400s floor: a 43-minute
+  // build run produced 1,492 candidates across all seven shapes and kept
+  // ZERO hex, while rect kept 16, cairo 11 and floret 11 in the same run.
+  // Its 1 standing board is the shape's physical supply under this model.
+  // Self-retiring like the others: when a refit moves hex's equation back
+  // the floor assertion fires and the entry is deleted.
+  // rhombille's entry is GONE too (2026-08-21): it holds 30 boards against
+  // the 25 floor. The rate form lifted BOTH it and the 4.8.8 back over the
+  // bar while pushing hex under, which is the mechanism working in both
+  // directions on one night.
+  const MEASURED_CEILING = { hex: 1 };
   // The floor counts the scrolling lane (his ruling 2026-08-18: "endless
   // can have scrolling boards"): under M1, rhombille's 400s+ region starts
   // past its fit-legal sizes, so the shape holds its floor THROUGH boards
