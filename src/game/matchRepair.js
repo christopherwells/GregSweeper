@@ -33,11 +33,16 @@
 // ~6ms on a 660-cell board, and a strike costs two.
 
 import { deserializeBoard } from '../firebase/dailyBoardSync.js';
-import { computeBombInfoValue } from '../logic/bombInfoValue.js';
+import { computeBombInfoValue, repriceStoredStrike } from '../logic/bombInfoValue.js';
 import { BOMB_PENALTY_BASE, BOMB_PENALTY_RAMP } from '../logic/difficulty.js';
 
 /** A stored total and a recomputed one agree inside the game's own 0.1s. */
 const SAME_PENALTY_EPS = 0.05;
+
+// What BOTH destinations refuse: the match node validates time and penalty at
+// <= 3600, and matchFitRows refuses the same range. A stored row inside it is
+// one the game accepted and both consumers will take, so nothing is owed.
+const DESTINATION_MAX_SECONDS = 3600;
 
 /**
  * Re-derive one result's penalties from its board.
@@ -67,6 +72,60 @@ export function repairMatchResult(entry, res) {
   if (opener < 0) return null;
   const fr = Math.floor(opener / d.cols);
   const fc = opener % d.cols;
+
+  // ── The stored counts are the RIGHT basis, when they exist ─────────
+  //
+  // Each event since 2026-08-20 carries patternBefore/searchBefore/
+  // patternAfter/searchAfter, recorded for exactly this job:
+  // repriceStoredStrike turns them into today's seconds with no board state
+  // and no solver run. They are a measurement of the BOARD, so neither a
+  // model change nor a change of information basis can invalidate them.
+  //
+  // Why this matters (issue #410). The live handler prices a strike from the
+  // PLAYER'S board; this module was written on 2026-08-19 when from-scratch
+  // was the shipped rule, and when 8606f216b changed that the next day the
+  // repair was given `{ liveState: false }` to keep it working on stored
+  // payloads. That pinned it to the OLD rule while the live path moved on,
+  // and its premise, that recomputation is a no-op on an honest result,
+  // silently stopped holding: the opener basis is systematically the LARGER
+  // number, so the repair began rewriting ordinary honest boards upward by
+  // tens of seconds and feeding that to the standings and the par fit.
+  const counted = events.map((e) => repriceStoredStrike(e, entry.features || null, par));
+  const everyEventCounted = counted.every((v) => v !== null);
+
+  if (everyEventCounted) {
+    const rebuiltFromCounts = [];
+    let countedTotal = 0;
+    for (let i = 0; i < events.length; i++) {
+      const rampedBase = BOMB_PENALTY_BASE * (1 + BOMB_PENALTY_RAMP * i);
+      const penalty = Math.round((counted[i] + rampedBase) * 10) / 10;
+      rebuiltFromCounts.push({ ...events[i], penalty, infoValue: Math.round(counted[i] * 10) / 10 });
+      countedTotal += penalty;
+    }
+    countedTotal = Math.round(countedTotal * 10) / 10;
+    const storedNow = Number(res.penalty) || 0;
+    if (Math.abs(countedTotal - storedNow) < SAME_PENALTY_EPS) return null;
+    const wallNow = Math.round(((Number(res.time) || 0) - storedNow) * 10) / 10;
+    return {
+      ...res,
+      time: Math.round((wallNow + countedTotal) * 10) / 10,
+      penalty: countedTotal,
+      bombHitEvents: rebuiltFromCounts,
+    };
+  }
+
+  // ── The legacy cohort: events with no counts ───────────────────────
+  //
+  // These predate 2026-08-20 and are the rows this module was actually
+  // written for. The only answer available is the opener basis, which is NOT
+  // the rule they were charged under, so it is applied ONLY where the stored
+  // number is already one the destinations refuse. An honest row is never
+  // touched by a rule that cannot reproduce it.
+  const storedSoFar = Number(res.penalty) || 0;
+  const storedTime = Number(res.time) || 0;
+  const destinationsRefuse = storedSoFar < 0 || storedSoFar > DESTINATION_MAX_SECONDS
+    || storedTime < 0 || storedTime > DESTINATION_MAX_SECONDS;
+  if (!destinationsRefuse) return null;
 
   const prior = [];
   const rebuilt = [];
