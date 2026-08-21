@@ -111,6 +111,7 @@ function _tilingExtent() {
 }
 
 export function resizeCells() {
+  invalidateBoardOverflow();
   const container = document.getElementById('board-container');
   if (!container || !state.cols || !state.rows) return;
   const borderPad = 8; // 2px border + 2px padding on each side
@@ -133,6 +134,7 @@ export function resizeCells() {
 }
 
 export function renderBoard() {
+  invalidateBoardOverflow();
   // TEST BUILDS ONLY (his ruling): an instrument for one investigation must
   // not run for everyone. It is a permanent animation-frame loop on every
   // board, so the cost is real even though nothing is drawn, and the /test/
@@ -313,6 +315,7 @@ function _anchorPadding(dx, dy) {
 // focus, restart the cascade animation, and detach the wall/worm overlays'
 // reference cell. Safe to call before the cells exist (it no-ops).
 export function layoutTilingCells() {
+  invalidateBoardOverflow();
   const board = state.board;
   if (!board || !board._cellPos || !board._tiling || !boardEl || !boardEl.children.length) return;
   const { wUnits, hUnits } = _tilingExtent();
@@ -1027,12 +1030,43 @@ function _boardLayoutSize() {
   return { w: boardEl.offsetWidth, h: boardEl.offsetHeight };
 }
 
+// THE OVERFLOW VERDICT IS CACHED, because reading it forces layout.
+//
+// His report, and the frame probe that finally caught it (2026-08-21):
+// revealing ONE cell cost 133ms on an Octagons board, the same as revealing
+// sixteen, so the cost was per TAP and not per cell. _boardLayoutSize reads
+// offsetWidth/offsetHeight, which forces a synchronous reflow, and needsZoom
+// is called from _navTap on every tap and from the pinch branch of touchmove
+// on every move event. Both run straight after the reveal has written classes
+// and inline styles to cells, which is the textbook write-then-read thrash:
+// the browser must recompute the whole board mid-frame.
+//
+// It is worse the further into a board you are, which is exactly what he
+// described ("it doesn't lag on first reveal"): every revealed cell runs an
+// 0.8s glow, so a later tap forces layout while more cells are mid-animation.
+// Octagons is the sharpest case because the 4.8.8 carries two cell classes and
+// the most geometry to re-resolve.
+//
+// Whether the board overflows its wrapper cannot change between taps. It
+// changes when the board is rebuilt, when the pitch is re-laid, or when the
+// viewport changes, and each of those invalidates here. A zoom does NOT: the
+// camera moves by transform, which is not layout, so offsetWidth is unmoved.
+let _overflowCache = null;
+
+/** Forget the cached overflow verdict; the layout is about to move. */
+export function invalidateBoardOverflow() {
+  _overflowCache = null;
+}
+
 function _boardOverflowsWrapper() {
   if (!boardEl || !boardScrollWrapper || !boardEl.children.length) return false;
+  if (_overflowCache !== null) return _overflowCache;
   const { w, h } = _boardLayoutSize();
   // +1 forgives subpixel rounding; a board one fractional px over is not a
   // marathon board, it is a rounding artifact.
-  return w > boardScrollWrapper.clientWidth + 1 || h > boardScrollWrapper.clientHeight + 1;
+  _overflowCache = w > boardScrollWrapper.clientWidth + 1
+    || h > boardScrollWrapper.clientHeight + 1;
+  return _overflowCache;
 }
 
 export function needsZoom() {
