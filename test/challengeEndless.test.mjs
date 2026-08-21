@@ -368,12 +368,18 @@ test('GOLDEN: the first endless block is fixed', () => {
   // 08-19 re-search re-emitted these pools proven-faces-only, and the
   // night's re-price then re-sorted which of them the deck deals. A
   // golden that moves when the model does is the point.
+  // Moved WHOLESALE on 2026-08-21 by the rate-form refit. The re-price left
+  // the spec cache carrying pre-refit prices, so the pool was re-emitted from
+  // a repriced cache (search-endless-specs.mjs --reprice-cache, then
+  // write-challenge-pool.mjs --only endless): a different pool, so a
+  // different five. All five entries changed, which is what a change to the
+  // model's FORM should look like where a nightly re-price moves one.
   assert.deepEqual(got, [
-    '4.8.8:50c:18m:[liar+locked+compass]',
-    'cairo:112c:37m:[locked+sonar+compass]',
-    'floret:72c:26m:[locked+wormhole+sonar]',
-    'hex:30c:11m:[mystery+locked+sonar]',
-    'rect:63c:28m:[]',
+    '4.8.8:72c:22m:[walls+locked+compass]',
+    'cairo:110c:41m:[liar+locked+sonar]',
+    'deltoidal:36c:7m:[walls+mystery+mirror]',
+    'floret:108c:27m:[locked+compass+worm]',
+    'hex:80c:28m:[]',
   ]);
 
 
