@@ -1148,6 +1148,28 @@ export function detectWrongFlags(board) {
 
 // ── Game-play reveal / chord functions ──────────────────────
 
+// THE CASCADE STAGGER IS BOUNDED IN TOTAL, not fixed per step.
+//
+// His report, 2026-08-21: "the lag one experiences when playing all of the
+// shape game modes... an odd reveal the cells lag which doesn't happen with
+// classic." It is not paint and it is not the device. gameActions locks input
+// for the length of the cascade animation (`maxDelay + 100`), and the delay was
+// a flat 30ms per BFS step, a constant tuned on the rectangular
+// 8-neighbourhood where diagonals keep a region shallow.
+//
+// A sparser lattice needs far more steps to cover the same area, so the same
+// constant draws a much longer animation and holds the board unresponsive for
+// all of it. Measured full-board depth against an equal-area rectangle: hex 14
+// vs 9 (420ms vs 270ms), 4.8.8 12 vs 8 (360 vs 240), deltoidal 17 vs 14 (510 vs
+// 420). Half a second of a board ignoring taps is the lag.
+//
+// Bounding the TOTAL makes the feel shape-independent, which is the property
+// the flat constant only ever had on rectangles. Short cascades are untouched
+// (they never reach the cap, so classic is byte-identical in the common case);
+// deep ones compress their step instead of running long.
+const CASCADE_STAGGER_STEP_MS = 30;
+export const CASCADE_STAGGER_MAX_MS = 300;
+
 export function floodFillReveal(board, startRow, startCol, preNeighborCache) {
   const rows = board.length;
   const cols = board[0].length;
@@ -1164,7 +1186,9 @@ export function floodFillReveal(board, startRow, startCol, preNeighborCache) {
     if (cell.isFlagged || cell.isMine || cell.isLocked) continue;
 
     cell.isRevealed = true;
-    cell.revealAnimDelay = distance * 30;
+    // Provisional: the depth is not known until the walk finishes, so the
+    // scale is applied in one pass below.
+    cell.revealAnimDelay = distance;
     revealed.push(cell);
 
     // Cascade on displayed value (mirror cells show swapped numbers)
@@ -1183,6 +1207,17 @@ export function floodFillReveal(board, startRow, startCol, preNeighborCache) {
       }
     }
   }
+
+  // Scale the recorded DEPTHS into milliseconds, bounding the total. A shallow
+  // cascade keeps the historic 30ms step exactly; a deep one compresses so the
+  // whole animation, and therefore the input lock that waits on it, never runs
+  // past CASCADE_STAGGER_MAX_MS.
+  let maxDepth = 0;
+  for (const c of revealed) if (c.revealAnimDelay > maxDepth) maxDepth = c.revealAnimDelay;
+  const step = maxDepth * CASCADE_STAGGER_STEP_MS > CASCADE_STAGGER_MAX_MS
+    ? CASCADE_STAGGER_MAX_MS / maxDepth
+    : CASCADE_STAGGER_STEP_MS;
+  for (const c of revealed) c.revealAnimDelay = Math.round(c.revealAnimDelay * step);
 
   return revealed;
 }

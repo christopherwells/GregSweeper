@@ -155,3 +155,51 @@ test('the gesture predicate: unchordable means already chorded or not yet chorda
   }
   assert.equal(chordHasWork(b, 1, 1), false);
 });
+
+// ── Cascade stagger, his 2026-08-21 lag report ──────────────────────
+test('REGRESSION: a deep cascade cannot lock input past the stagger bound', async () => {
+  // gameActions locks input for the cascade animation (`maxDelay + 100`), and
+  // the delay was a flat 30ms per BFS step, a constant tuned on the
+  // rectangular 8-neighbourhood where diagonals keep a region shallow. A
+  // sparser lattice needs far more steps for the same area, so the same
+  // constant drew a much longer animation and held the board unresponsive for
+  // all of it: measured full-board depth against an equal-area rectangle, hex
+  // 14 vs 9 and deltoidal 17 vs 14, i.e. 420ms and 510ms of a board ignoring
+  // taps. That is the lag, and it is code rather than the device.
+  const { floodFillReveal, CASCADE_STAGGER_MAX_MS } = await import('../src/logic/boardSolver.js');
+
+  // A long thin all-zero board: every cell cascades and the graph is a path,
+  // which is the deepest a walk can get for a given cell count.
+  const rows = 1, cols = 60;
+  const board = Array.from({ length: rows }, () => Array.from({ length: cols }, () => ({
+    isMine: false, adjacentMines: 0, isRevealed: false, isFlagged: false, isLocked: false,
+  })));
+  const revealed = floodFillReveal(board, 0, 0);
+  assert.equal(revealed.length, cols, 'the whole strip must cascade');
+
+  const worst = Math.max(...revealed.map((c) => c.revealAnimDelay));
+  // NON-VACUITY: unbounded, this walk would have run 59 * 30 = 1770ms.
+  assert.ok((cols - 1) * 30 > CASCADE_STAGGER_MAX_MS * 2,
+    'the fixture must be deep enough that the bound actually bites');
+  assert.ok(worst <= CASCADE_STAGGER_MAX_MS,
+    `a deep cascade must stay inside the bound, got ${worst}ms`);
+
+  // And the order still reads outward: a bound that flattened every delay to
+  // the same number would pass the check above while destroying the animation.
+  assert.equal(revealed[0].revealAnimDelay, 0, 'the origin reveals first');
+  assert.ok(worst > 0, 'and the far end still trails it');
+});
+
+test('a SHALLOW cascade keeps the historic 30ms step exactly', async () => {
+  // The bound must not change the common case, or every classic board's feel
+  // moves for a problem classic never had.
+  const { floodFillReveal } = await import('../src/logic/boardSolver.js');
+  const rows = 1, cols = 5;
+  const board = Array.from({ length: rows }, () => Array.from({ length: cols }, () => ({
+    isMine: false, adjacentMines: 0, isRevealed: false, isFlagged: false, isLocked: false,
+  })));
+  const revealed = floodFillReveal(board, 0, 0);
+  const byCol = revealed.map((c, i) => c.revealAnimDelay).sort((a, b) => a - b);
+  assert.deepEqual(byCol, [0, 30, 60, 90, 120],
+    'a shallow cascade is untouched by the bound');
+});
