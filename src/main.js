@@ -10,7 +10,7 @@ import { PROD_SITE_BASE } from './config.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
 import { resizeCells, updateAllCells, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, renderWallOverlays, showGimmickRegion, clearGimmickRegion, cameraCenterOnCell, cameraMinZoom, snapFirstClick, viewMoveGraceActive} from './ui/boardRenderer.js';
 import { chordHasWork } from './logic/boardSolver.js';
-import { CELL_SIZE_PREFS, prefMinPx } from './logic/boardCamera.js';
+import { CELL_SIZE_PREFS, CELL_SIZE_DEFAULT_KEY, normalizeCellPref, prefMinPx } from './logic/boardCamera.js';
 import { renderWormOverlays } from './ui/wormRenderer.js';
 import { preloadSprites, medalImgForEmoji, gimmickSpriteImgHTML, achievementSpriteImgHTML, uiSpriteImgHTML } from './ui/spriteLoader.js';
 import { startGregMascot } from './ui/gregMascot.js';
@@ -2147,9 +2147,13 @@ function renderCellSizePreview() {
   const playing = !!(state.board && state.board.length && state.cols);
   const live = parseFloat(getComputedStyle(document.documentElement)
     .getPropertyValue('--cell-size')) || 30;
-  const chosen = prefMinPx(_cellPref);
-  const px = chosen || (playing ? live : 30);
-  const caption = chosen
+  // Every preset is a floor, but only three of them are a request to ENLARGE.
+  // The default asks for the bare tap floor, which most boards clear on their
+  // own, so quoting its px would promise a size the board is not using. Read
+  // the live pitch for it instead, exactly as before it had a number at all.
+  const enlarges = _cellPref !== CELL_SIZE_DEFAULT_KEY;
+  const px = enlarges ? prefMinPx(_cellPref) : (playing ? live : 30);
+  const caption = enlarges
     ? `${Math.round(px)}px`
     : (playing ? `${Math.round(live)}px on this board` : 'sized to each board');
   el.innerHTML = '';
@@ -2178,13 +2182,12 @@ function renderCellSizeChips() {
 }
 
 function applyCellSizePref(key) {
-  const px = prefMinPx(key);
-  _cellPref = px > 0 ? key : 'fit';
-  if (px > 0) {
-    document.documentElement.style.setProperty('--cell-pref-min-size', px + 'px');
-  } else {
-    document.documentElement.style.removeProperty('--cell-pref-min-size');
-  }
+  _cellPref = normalizeCellPref(key);
+  // Always written, including for the default: the tap floor applies whether or
+  // not the player has an opinion (his ruling 2026-08-21). Absent used to mean
+  // "let the theme's 18px render clamp decide", which is what put sub-24px
+  // cells on screen for anyone who never opened Settings.
+  document.documentElement.style.setProperty('--cell-pref-min-size', prefMinPx(_cellPref) + 'px');
   safeSet(CELL_SIZE_PREF_KEY, _cellPref);
   // Re-fit a live board immediately: the same sequence the resize handler
   // runs, because a preference change is a geometry change.
