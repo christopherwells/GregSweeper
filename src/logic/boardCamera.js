@@ -10,7 +10,9 @@
 // replaces the tap-protection job of boardFit's 28/24px floors ONLY. It never
 // touches their supply-legality job: every mode's board-choosing contracts
 // (boardFitsPhone, rectFitsPhone, the band tables) are untouched by anything
-// in this module, which is why it imports nothing.
+// in this module. It imports exactly one thing, the tap floor, because the
+// preference ladder is DEFINED against it; it reaches for no supply rule, and
+// nothing here can move which boards a mode is allowed to build.
 //
 // The clamping rule, his words: "It wouldn't vertically center on a cell
 // that's on the top or bottom edge, so the screen is still full of cells."
@@ -25,18 +27,65 @@
 // scroll container's content space. All functions here take that scale
 // explicitly; nothing reads the DOM.
 
+import { MIN_TAP_MAJORITY } from './tapFloor.js';
+
+// THE SIZE LADDER IS DERIVED FROM THE TAP FLOOR (his ruling 2026-08-21: "The
+// tap floor is 24 px. No argument there. Beyond that, the sizes should be 10%
+// more, 25% more, and 50% more").
+//
+// Derived rather than written out, for the reason the width cap taught on
+// 2026-08-20: a number sitting beside the number it depends on goes stale the
+// first time either moves, and this ladder depends on MIN_TAP_MAJORITY twice
+// over, as its base and as its unit.
+//
+// It also closes the gap he found: "Fit to screen" used to mean px 0, "no
+// preference floor", which let the renderer's own --cell-min-size of 18px take
+// over. 18 is a last-resort RENDER clamp for boards meant to exceed the screen;
+// 24 is the PRESSING SURFACE, and a player who has expressed no preference
+// should still get a cell they can hit. Fit now asks for the floor itself.
 /**
- * The Settings presets for the minimum cell size. `px: 0` means "fit to
- * screen", today's behavior and the default: the renderer's own fit result
- * stands and the camera never engages. A nonzero px is a floor UNDER the fit
- * result; when the floor wins, the board no longer fits and scrolls instead.
+ * The default preset's key: no preference expressed. It is still a FLOOR (the
+ * tap floor), but unlike the other three it is not a request to enlarge, so
+ * surfaces that quote a delivered size must read the live board rather than
+ * quoting this entry's px.
+ */
+export const CELL_SIZE_DEFAULT_KEY = 'fit';
+
+const SIZE_STEPS = Object.freeze([
+  { key: 'fit', label: 'Fit to screen', mult: 1.00 },
+  { key: 'comfortable', label: 'Comfortable', mult: 1.10 },
+  { key: 'large', label: 'Large', mult: 1.25 },
+  { key: 'largest', label: 'Largest', mult: 1.50 },
+]);
+
+/**
+ * The Settings presets for the minimum cell size. Each is a floor UNDER the
+ * renderer's fit result: while the fit is the larger number the board still
+ * fits and the camera never engages, and when the floor wins the board
+ * overflows and scrolls instead. 'fit' is the default and asks for the bare
+ * tap floor, so it behaves as "fit to screen" on every board that can hold a
+ * 24px cell, which is every board the supply rules allow.
  * Keys are stored in localStorage, so they are a contract: never rename one.
  */
-export const CELL_SIZE_PREFS = Object.freeze([
-  Object.freeze({ key: 'fit', label: 'Fit to screen', px: 0 }),
-  Object.freeze({ key: 'comfortable', label: 'Comfortable', px: 32 }),
-  Object.freeze({ key: 'large', label: 'Large', px: 40 }),
-]);
+export const CELL_SIZE_PREFS = Object.freeze(SIZE_STEPS.map((s) => Object.freeze({
+  key: s.key,
+  label: s.label,
+  px: Math.round(MIN_TAP_MAJORITY * s.mult),
+})));
+
+/**
+ * The preset a stored key actually selects. Membership decides it, NEVER the
+ * key's px: every preset now carries a nonzero floor, so a truthiness test on
+ * the pixels would wave through whatever string localStorage happened to hold
+ * and write it straight back (the bug this replaced, 2026-08-21).
+ * @param {string|null|undefined} key
+ * @returns {string} a key that is guaranteed to be in CELL_SIZE_PREFS
+ */
+export function normalizeCellPref(key) {
+  return CELL_SIZE_PREFS.some((e) => e.key === key)
+    ? /** @type {string} */ (key)
+    : CELL_SIZE_DEFAULT_KEY;
+}
 
 /**
  * The pixel floor a stored preference key asks for. Unknown or absent keys
@@ -46,7 +95,10 @@ export const CELL_SIZE_PREFS = Object.freeze([
  */
 export function prefMinPx(key) {
   const p = CELL_SIZE_PREFS.find((e) => e.key === key);
-  return p ? p.px : 0;
+  // An unknown or absent key reads as the FLOOR, not as zero. Zero meant "no
+  // preference, let the render clamp decide", and the render clamp is 18px,
+  // which is below the pressing surface he set.
+  return p ? p.px : MIN_TAP_MAJORITY;
 }
 
 /**

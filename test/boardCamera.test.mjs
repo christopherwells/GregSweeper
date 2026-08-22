@@ -7,11 +7,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  CELL_SIZE_PREFS, prefMinPx, cameraFitScale, clampedScroll,
+  CELL_SIZE_PREFS, CELL_SIZE_DEFAULT_KEY, normalizeCellPref,
+  prefMinPx, cameraFitScale, clampedScroll,
   easeOutCubic, glideFrame, cameraTapPlan,
   withinViewMoveGrace, VIEW_MOVE_GRACE_MS,
 } from '../src/logic/boardCamera.js';
 import { readFileSync } from 'node:fs';
+import { MIN_TAP_MAJORITY } from '../src/logic/tapFloor.js';
 
 // A 1000x2000 board in a 320x480 view at scale 1: taller and wider than the
 // view, so both axes have real clamp ranges.
@@ -74,20 +76,64 @@ test('cameraFitScale answers 1 on degenerate input, never 0 or Infinity', () => 
   }
 });
 
-test('the preference presets are a stored contract: keys and floors', () => {
-  assert.deepEqual(CELL_SIZE_PREFS.map((p) => p.key), ['fit', 'comfortable', 'large']);
-  assert.equal(prefMinPx('fit'), 0);
-  assert.equal(prefMinPx('comfortable'), 32);
-  assert.equal(prefMinPx('large'), 40);
-  // Absent or unknown reads as today's behavior, never a guess.
-  assert.equal(prefMinPx(null), 0);
-  assert.equal(prefMinPx(undefined), 0);
-  assert.equal(prefMinPx('huge'), 0);
-  // The nonzero floors sit above the 28px tap floor they replace, so the
-  // preference can only ever ask for MORE finger room than the default.
-  for (const p of CELL_SIZE_PREFS) {
-    if (p.px !== 0) assert.ok(p.px >= 28, `${p.key} at ${p.px}px is under the tap floor`);
+test('the size ladder is DERIVED from the tap floor, not written down', () => {
+  // HIS RULING 2026-08-21: "The tap floor is 24 px. No argument there. Beyond
+  // that, the sizes should be 10% more, 25% more, and 50% more."
+  //
+  // Derived rather than listed, for the reason the width cap taught a day
+  // earlier: a number beside the number it depends on goes stale the first
+  // time either moves, and this ladder depends on the tap floor twice, as its
+  // base and as its unit. Asserting the MULTIPLES rather than the pixels is
+  // what makes that real; pinning 24/26/30/36 would just be the old table
+  // with new digits.
+  assert.deepEqual(CELL_SIZE_PREFS.map((p) => p.key),
+    ['fit', 'comfortable', 'large', 'largest']);
+  const px = (k) => prefMinPx(k);
+  assert.equal(px('fit'), MIN_TAP_MAJORITY, 'fit IS the floor');
+  assert.equal(px('comfortable'), Math.round(MIN_TAP_MAJORITY * 1.10));
+  assert.equal(px('large'), Math.round(MIN_TAP_MAJORITY * 1.25));
+  assert.equal(px('largest'), Math.round(MIN_TAP_MAJORITY * 1.50));
+
+  // NON-VACUITY: the ladder must actually climb, or the multiples are inert.
+  const ladder = CELL_SIZE_PREFS.map((p) => p.px);
+  for (let i = 1; i < ladder.length; i++) {
+    assert.ok(ladder[i] > ladder[i - 1],
+      `the ladder must increase: ${ladder.join(' ')}`);
   }
+
+  // NOTHING BELOW THE PRESSING SURFACE. "Fit to screen" used to mean px 0, no
+  // preference floor, which let the renderer's 18px last-resort clamp take
+  // over; 18 guards boards MEANT to exceed the screen and is not a tap target.
+  for (const p of CELL_SIZE_PREFS) {
+    assert.ok(p.px >= MIN_TAP_MAJORITY,
+      `${p.key} at ${p.px}px is under the ${MIN_TAP_MAJORITY}px pressing surface`);
+  }
+  // An absent or unknown key reads as the FLOOR, never as zero.
+  assert.equal(px(null), MIN_TAP_MAJORITY);
+  assert.equal(px(undefined), MIN_TAP_MAJORITY);
+  assert.equal(px('huge'), MIN_TAP_MAJORITY);
+});
+
+// REGRESSION (2026-08-21): the settings handler normalized a stored key with
+// `prefMinPx(key) > 0 ? key : 'fit'`, which read as "is this a key I know"
+// only because 'fit' happened to be the one preset priced at 0. The moment
+// every preset carried a real floor, that test passed for EVERY string, so a
+// garbage value in localStorage normalized to itself and was written straight
+// back, permanently. Membership is the only sound question.
+test('normalizeCellPref: membership decides, never the pixel value', () => {
+  for (const p of CELL_SIZE_PREFS) {
+    assert.equal(normalizeCellPref(p.key), p.key, `${p.key} is a real preset`);
+  }
+  for (const junk of ['huge', 'FIT', '', 'large ', '32', null, undefined, 0]) {
+    assert.equal(normalizeCellPref(/** @type {any} */ (junk)), CELL_SIZE_DEFAULT_KEY,
+      `${JSON.stringify(junk)} must fall back to the default`);
+  }
+  // NON-VACUITY: the fallback would be untestable if no preset were priced
+  // above zero, which is precisely the condition that hid the bug.
+  assert.ok(CELL_SIZE_PREFS.every((p) => p.px > 0),
+    'every preset carries a real floor, so px truthiness cannot identify a key');
+  // And the default it falls back to must itself be a real preset.
+  assert.ok(CELL_SIZE_PREFS.some((p) => p.key === CELL_SIZE_DEFAULT_KEY));
 });
 
 test('easeOutCubic: endpoints exact, monotone, clamped', () => {

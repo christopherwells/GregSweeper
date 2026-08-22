@@ -7,6 +7,7 @@
 
 import { test, expect } from '@playwright/test';
 import { prepareInteractionSpec, settleAnimations } from './helpers.mjs';
+import { CELL_SIZE_PREFS, prefMinPx } from '../../src/logic/boardCamera.js';
 
 async function openSheet(page) {
   await prepareInteractionSpec(page);
@@ -114,25 +115,44 @@ test('Settings: cell size is a chip row that drives the preference and previews 
   // The native dropdown is gone, replaced by the app's own chip vocabulary.
   await expect(page.locator('#cell-size-select')).toHaveCount(0);
   const chips = page.locator('#cell-size-chips .match-chip');
-  await expect(chips).toHaveCount(3);
+  // COUNT AND SIZES ARE DERIVED. Both were literals (3 chips, 40px, 32px) and
+  // all three went stale together when the ladder was re-anchored to the tap
+  // floor. The chip row renders from CELL_SIZE_PREFS, so that is what it owes.
+  await expect(chips).toHaveCount(CELL_SIZE_PREFS.length);
   await expect(chips.filter({ hasText: 'Fit to screen' })).toHaveAttribute('aria-pressed', 'true');
+
+  // Labels are matched EXACTLY: 'Large' is a substring of 'Largest', so a
+  // hasText filter resolves to two chips and the click fails strict mode.
+  const chip = (label) => chips.filter({ hasText: new RegExp(`^${label}$`) });
 
   // The preview shows REAL cells, and follows the choice.
   const swatch = page.locator('#cell-size-preview .cell-size-swatch').first();
-  await chips.filter({ hasText: 'Large' }).click();
-  await expect(chips.filter({ hasText: 'Large' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(swatch).toHaveCSS('width', '40px');
-  await expect(page.locator('#cell-size-preview .cell-size-caption')).toHaveText('40px');
+  await chip('Large').click();
+  await expect(chip('Large')).toHaveAttribute('aria-pressed', 'true');
+  await expect(swatch).toHaveCSS('width', `${prefMinPx('large')}px`);
+  await expect(page.locator('#cell-size-preview .cell-size-caption'))
+    .toHaveText(`${prefMinPx('large')}px`);
 
-  await chips.filter({ hasText: 'Comfortable' }).click();
-  await expect(swatch).toHaveCSS('width', '32px');
+  await chip('Comfortable').click();
+  await expect(swatch).toHaveCSS('width', `${prefMinPx('comfortable')}px`);
 
   // And the choice is what the board will actually be held to.
   const stored = await page.evaluate(() => localStorage.getItem('minesweeper_cell_size_pref'));
   expect(stored).toBe('comfortable');
   const token = await page.evaluate(() => getComputedStyle(document.documentElement)
     .getPropertyValue('--cell-pref-min-size').trim());
-  expect(token).toBe('32px');
+  expect(token).toBe(`${prefMinPx('comfortable')}px`);
+
+  // NON-VACUITY: the two sizes compared above must differ, or every assertion
+  // in this block would hold with the preference wired to nothing.
+  expect(prefMinPx('large')).not.toBe(prefMinPx('comfortable'));
+
+  // The default now carries the tap floor rather than removing the token, so
+  // a player who never opens Settings still gets a cell they can hit.
+  await chip('Fit to screen').click();
+  const fitToken = await page.evaluate(() => getComputedStyle(document.documentElement)
+    .getPropertyValue('--cell-pref-min-size').trim());
+  expect(fitToken).toBe(`${prefMinPx('fit')}px`);
 
   // The toggles are switches now, not raw checkboxes: still inputs (so every
   // handler and label association is untouched) but with the native

@@ -16,6 +16,7 @@
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { prepareInteractionSpec, settleAnimations } from './helpers.mjs';
+import { prefMinPx } from '../../src/logic/boardCamera.js';
 
 // The first live PLAIN rect board at least 12x9 in the match library, found
 // at run time (the library re-shards nightly; a hardcoded pin would rot).
@@ -142,9 +143,13 @@ test.describe('the camera engages behind the preference', () => {
       // assertion after this one is measuring nothing.
       const v = await liveView(page);
       expect(v.boardW, 'the preference must make the board wider than the wrapper').toBeGreaterThan(v.viewW + 1);
+      // DERIVED, never a literal: this pinned 40 until the ladder was
+      // re-anchored to the tap floor (2026-08-21) and then failed for saying
+      // nothing about the camera. What matters is that the preference the
+      // boot set is the size the board got, whatever that ladder says today.
       const cell = await page.evaluate(() => parseFloat(
         getComputedStyle(document.documentElement).getPropertyValue('--cell-size')));
-      expect(cell).toBe(40);
+      expect(cell).toBe(prefMinPx('large'));
 
       await expect(page.locator('#zoom-controls')).toBeVisible();
 

@@ -78,6 +78,7 @@
 import { buildTiling, containerIsStorable, CANONICAL_MAX_DIM } from './tilingGeometry.js';
 // The rectangular WIDTH rule, kept in difficulty.js where the search reads it.
 import { BOARD_WIDTH_CAP } from './difficulty.js';
+import { MIN_TAP_MAJORITY, MIN_TAP_MINORITY } from './tapFloor.js';
 
 /**
  * The phone the caps are sized for: the modal Android width, which also covers
@@ -93,13 +94,13 @@ export const FIT_REFERENCE = Object.freeze({ width: 360, height: 740 });
 /** Minimum tap diameter (px) for the board's majority cell class: the
  * diameter of the pressing circle (his 2026-08-19 ruling; the WHERE 24 CAME
  * FROM block above). */
-export const MIN_TAP_MAJORITY = 24;
+export { MIN_TAP_MAJORITY } from './tapFloor.js';
 
 /**
  * Minimum tap diameter (px) for a minority cell class. Only the 4.8.8 has one;
  * everywhere else this is unreachable because min === median.
  */
-export const MIN_TAP_MINORITY = 24;
+export { MIN_TAP_MINORITY } from './tapFloor.js';
 
 // MEASURED in headless Chromium (four viewports, 320-430), reproduced exactly
 // by these two formulas:
