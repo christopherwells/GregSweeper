@@ -20,7 +20,7 @@ import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { predictPar } from '../src/logic/dailyFeatures.js';
 import { packPayload } from '../src/logic/boardPack.js';
 import { timeBandOf } from '../src/logic/matchRules.js';
-import { marathonProvisionalPar, inSupportCells, marathonFits } from '../src/logic/marathonFit.js';
+import { marathonProvisionalPar, inSupportCells, marathonFits, anchorIsStale } from '../src/logic/marathonFit.js';
 import { boardFitsPhone, rectFitsPhone } from '../src/logic/boardFit.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
 import { OUT_DIR, writeMatchIndexFiles, matchPageNames } from './match-index-files.mjs';
@@ -43,6 +43,10 @@ function main() {
   let reclassedInSupport = 0;
   let deflagged = 0;
   let anchorless = 0;
+  // A stale anchor still prices, because a stale rate beats extrapolating,
+  // but it must never do so silently: only the top-up can mint a fresh one.
+  let staleAnchors = 0;
+  const staleShapes = new Set();
   let strandedOut = 0;
 
   // Two passes, because the index's feature header is the UNION over every
@@ -122,6 +126,10 @@ function main() {
             }
           }
           if (!inSupport && b.anchorFeatures && b.anchorCells) {
+            if (anchorIsStale(shape, b.anchorCells)) {
+              staleAnchors++;
+              staleShapes.add(shape);
+            }
             par = marathonProvisionalPar({
               cells: b.spec.cells,
               anchorPar: predictPar(b.anchorFeatures),
@@ -166,6 +174,7 @@ function main() {
     + (reclassedInSupport ? `, ${reclassedInSupport} provisional row(s) re-entered support and re-priced on the model` : '')
     + (deflagged ? `, ${deflagged} row(s) no longer oversized under the fit rules` : '')
     + (anchorless ? `, ${anchorless} past-support row(s) have NO anchor and priced on the model (supply one via the marathon top-up)` : '')
+    + (staleAnchors ? `, ${staleAnchors} row(s) priced on a STALE anchor (${[...staleShapes].sort().join(', ')}: the fit ceiling moved since the anchor was minted, re-mint via the marathon top-up)` : '')
     + (strandedOut ? `, ${strandedOut} flagged row(s) the grown frontier disqualified, tombstoned in place` : '')
     + (dry ? ' (dry run: nothing written)' : ''));
 }

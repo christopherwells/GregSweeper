@@ -1111,6 +1111,28 @@ message(sprintf("  archive rows: %d (pooled into the fit at >= %d)",
 MATCH_ROW_PREFIX <- "^match_[0-9a-f]{16}$"
 MATCH_FIT_THRESHOLD <- 20
 
+# SCROLLING BOARDS. `scrolled` says the board did not fit the view while it
+# was played, and it exists to give the fit the one cost no row has ever
+# carried: the time spent TRAVELLING a board rather than thinking about it.
+# The marathon lane and the Challenge scroll opt-in exist to collect it.
+#
+# Same instrument-first shape as matchPlay and archivePlay, and for the same
+# reason. A scroll row is not a different KIND of row, it is an ordinary row
+# with an extra cost, and until that cost is identifiable it has nowhere to
+# go: these are also the largest boards anyone plays, so their travel time
+# would be absorbed by the size curve, inflating cellCount for every board in
+# the fit. Held out entirely below the threshold, pooled with a signed offset
+# above it.
+#
+# Absent reads as 0, and that is sound rather than convenient: the field
+# asserts TRUE only, the 2026-08-21 backfill resolved every historical row it
+# could reach (875 of 875, 10 true), and dailies and weeklies cannot scroll at
+# the default cell size by construction. The census the day this shipped: 10
+# true rows, all Challenge rows, from 5 distinct boards and 2 players — which
+# is exactly why the threshold matters. Board identity and player identity are
+# perfectly confounded with the effect at that count.
+SCROLL_FIT_THRESHOLD <- 20
+
 # Canonical boards (dailyBoard/{date}): world-readable, no secret. Used to
 # derive the clue-digit shares at fit time (full historical coverage — every
 # board back to the canonical era carries the data, no client instrument).
@@ -1143,7 +1165,8 @@ parse_score_rows <- function(raw) {
     return(tibble(date = character(), time = double(), uid = character(),
                   bombHits = double(), totalBombPenalty = double(), bombBaseSum = double(),
                   wormRealized = double(),
-                  n_hints = integer(), cruxViewed = logical()))
+                  n_hints = integer(), cruxViewed = logical(),
+                  scrolled = logical()))
   }
   tibble(
     date  = rep(names(raw), map_int(raw, length)),
@@ -1194,6 +1217,13 @@ parse_score_rows <- function(raw) {
       # PR 4 crux preview: an archive row whose crux the player saw is dropped
       # from the fit (previewing the answer changes the completion time).
       cruxViewed        = map_lgl(entry, ~ isTRUE(.x$cruxViewed)),
+      # Did the board fit the view while it was played? The field asserts TRUE
+      # only: absent means a client older than it, false means one that
+      # measured. Both read as 0 here, which is sound rather than convenient —
+      # the 2026-08-21 backfill resolved every historical row it could (875 of
+      # 875, 10 true), and dailies and weeklies cannot scroll at the default
+      # cell size by construction (clampRectDims).
+      scrolled          = map_lgl(entry, ~ isTRUE(.x$scrolled)),
     ) |>
     select(-entry)
 }
@@ -1217,6 +1247,7 @@ scores_df <- bind_rows(
     # daily's; only the frame around them differs, which matchPlay absorbs.
     is_match       = grepl(MATCH_ROW_PREFIX, date),
     matchPlay      = as.numeric(is_match),
+    scrollPlay     = as.numeric(scrolled),
     is_legacy_bomb = bombHits > 0 & totalBombPenalty == 0,
     legacy_bombs   = if_else(is_legacy_bomb, bombHits, 0),
     # clean_time = the time the player would have scored solving the FULL
@@ -1285,6 +1316,18 @@ if (!pool_match) {
 message(sprintf("  match: %d row(s) after filters — %s", n_match,
                 if (pool_match) "POOLED into the fit (matchPlay offset)"
                 else sprintf("held out of the fit (< %d to pool)", MATCH_FIT_THRESHOLD)))
+
+# Scrolling-board pooling gate. Identical instrument, and it must sit AFTER the
+# match gate: every scroll row so far is also a match row, so a match holdout
+# removes them first and the count below has to reflect that.
+n_scroll <- sum(df$scrollPlay)
+pool_scroll <- n_scroll >= SCROLL_FIT_THRESHOLD
+if (!pool_scroll) {
+  df <- df |> filter(scrollPlay == 0)
+}
+message(sprintf("  scrolled: %d row(s) after filters — %s", n_scroll,
+                if (pool_scroll) "POOLED into the fit (scrollPlay offset)"
+                else sprintf("held out of the fit (< %d to pool)", SCROLL_FIT_THRESHOLD)))
 
 # v1.5.16+ structural features may not exist in older dailyMeta records
 # (the field is write-once per Firebase rules). Default missing columns
@@ -1820,8 +1863,19 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
   # empty, so the flat branch below survives as the specification anchor the
   # two-path comments reason from (and the digit fit's else-branch shape),
   # not as a branch this fit can reach.
+  # scrollPlay rides the dev nlpar for matchPlay's exact reason, and the
+  # argument is if anything stronger. It is not a board feature, so the base
+  # block's lb = 0 (a real claim that par cannot DECREASE in any board
+  # feature) does not apply to it, and its sign is genuinely unknown: travel
+  # time makes a big board slower, while a board large enough to need
+  # scrolling is often sparse and quick per cell. Bounded at zero the
+  # posterior would pile up against the bound and the effect would leak into
+  # the size curve, which is the one place it must not go, since these are the
+  # largest boards in the frame and cellCount would absorb them.
+  add_scroll_term <- pool_scroll && length(unique(df_fit$scrollPlay)) > 1
   dev_cols <- c(SIZE_DEV_COLS, active_shape_cols,
-                if (add_match_term) "matchPlay" else NULL)
+                if (add_match_term) "matchPlay" else NULL,
+                if (add_scroll_term) "scrollPlay" else NULL)
   use_nl_split <- length(dev_cols) > 0
   base_terms <- all.vars(fit_formula_fixed_active)[-1]
   # OLS seeds cover the BASE terms only: a deviation's prior center is fixed
@@ -2031,7 +2085,12 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
           SIZE_DEV_COLS,
           digit_shape_cols[vapply(digit_shape_cols,
                                   function(cn) any(digit_df[[cn]] != 0, na.rm = TRUE), logical(1))],
-          if (length(unique(digit_df$matchPlay)) > 1) "matchPlay" else NULL
+          if (length(unique(digit_df$matchPlay)) > 1) "matchPlay" else NULL,
+          # Same treatment for a scrolling board, and for the same reason the
+          # match offset gets one: a traversal cost left out of the model does
+          # not vanish, it lands in whatever correlates with it, and here that
+          # would be the digit shares this study exists to measure.
+          if (length(unique(digit_df$scrollPlay)) > 1) "scrollPlay" else NULL
         )
         # The size pair joins the OLS formula for the intercept seed's sake
         # (the primary fit's reasoning at its own ols_seeds call).

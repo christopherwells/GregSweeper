@@ -12,7 +12,7 @@ import {
   marathonFits, marathonDims, marathonDimsSpread, marathonShapes,
   fitLegalFrontier, fitCeilingCells, inSupportCells,
   marathonProvisionalPar, MARATHON_TRAVERSAL_FLOOR_PPC, CANONICAL_MAX_DIM,
-  MARATHON_MIN_SHORT_SIDE,
+  MARATHON_MIN_SHORT_SIDE, anchorIsStale,
 } from '../src/logic/marathonFit.js';
 import { boardFitsPhone, rectFitsPhone } from '../src/logic/boardFit.js';
 import { BOARD_WIDTH_CAP } from '../src/logic/difficulty.js';
@@ -253,4 +253,61 @@ test('the anchor search has somewhere to fall back to', async () => {
     assert.ok(fitCeilingSpecs(shape).length >= 2,
       `${shape} offers only one anchor geometry, so a failed certification has nowhere to fall back to`);
   }
+});
+
+test('REGRESSION: a stored anchor is STALE the moment the fit ceiling moves under it', () => {
+  // The anchor is "a real certified board at that shape's FIT-CEILING dims".
+  // The nightly reprice re-prices the stored anchor under each night's model,
+  // which is what keeps lane pars moving with the refit, but it reuses the
+  // stored anchorCells verbatim: it follows the MODEL and never the RULES.
+  //
+  // So when the 24px re-anchoring took BOARD_WIDTH_CAP from 11 to 12 on
+  // 2026-08-20 and grew every shape's ceiling, every stored anchor quietly
+  // stopped describing a ceiling board, and nothing could tell. Measured on
+  // the shipped library the day this landed: rect anchored at 187 cells
+  // against a 216 ceiling, hex 170 against 252, cairo 172 against 212,
+  // floret 126 against 216. Only the 4.8.8 was still right, and only because
+  // its ceiling had not moved.
+  for (const shape of marathonShapes()) {
+    const ceiling = fitCeilingCells(shape);
+    assert.ok(ceiling > 0, `${shape} has no fit ceiling`);
+    assert.equal(anchorIsStale(shape, ceiling), false,
+      `${shape}: an anchor AT the ceiling must read fresh`);
+    // Either side of the ceiling is stale: too small is the case that bit us,
+    // too large means the ceiling SHRANK and the anchor is now unreachable.
+    assert.equal(anchorIsStale(shape, ceiling - 1), true, `${shape}: below the ceiling`);
+    assert.equal(anchorIsStale(shape, ceiling + 1), true, `${shape}: above the ceiling`);
+  }
+
+  // A missing or nonsense anchor is stale, never quietly fresh: the caller
+  // must not price a board on a rate it cannot justify.
+  assert.equal(anchorIsStale('rect', 0), true);
+  assert.equal(anchorIsStale('rect', null), true);
+  assert.equal(anchorIsStale('rect', undefined), true);
+  assert.equal(anchorIsStale('rect', NaN), true);
+
+  // NON-VACUITY: the shipped ceilings must actually differ between shapes, or
+  // this test would pass against a predicate that ignored `shape` entirely.
+  const ceilings = new Set(marathonShapes().map((s) => fitCeilingCells(s)));
+  assert.ok(ceilings.size > 1,
+    'every shape shares one ceiling, so the per-shape check proves nothing');
+});
+
+test('the repricer REPORTS a stale anchor rather than pricing on it in silence', async () => {
+  // It cannot fix one: minting an anchor means certifying a real board at the
+  // ceiling, which is the marathon top-up's job. What it must not do is price
+  // 191 rows on a stale rate and print a clean summary, which is exactly the
+  // "stale and broken must be distinguishable" lesson from the ladder's own
+  // nightly re-price.
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../scripts/reprice-match-library.mjs', import.meta.url), 'utf8');
+  assert.ok(src.includes('anchorIsStale('),
+    'the repricer must consult the staleness predicate');
+  assert.ok(/staleAnchors\+\+/.test(src), 'it must count them');
+  assert.ok(/STALE anchor/.test(src) && /top-up/.test(src),
+    'the summary must name the condition and the remedy');
+  // The count has to reach the summary, or it is a variable nobody reads.
+  const summary = src.slice(src.indexOf('anchorless ?'));
+  assert.ok(summary.includes('staleAnchors'),
+    'the stale count must appear in the printed summary');
 });
