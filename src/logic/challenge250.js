@@ -155,6 +155,46 @@ export const PPC_BAND = 0.12;
 export const PPC_BAND_LO = 1 - PPC_BAND;
 export const PPC_BAND_HI = 1 + PPC_BAND;
 
+// THE BAND IS PER FACE (his ruling 2026-08-20, built 2026-08-22).
+//
+// The flat 12% above is sized on the MEASUREMENT's precision, and that
+// premise holds only while every face is about equally precise. It is not:
+// a face's own draws vary, and `spread` (maxPar/minPar over a face's
+// measurement) runs from 1.0 to past 7 on the shipped pool. For a wide-spread
+// face the flat band tests where the seed sample happened to land rather
+// than whether the stored price still describes the spec, so it fails on
+// noise, and the failure is not reproducible: re-roll the seeds and a
+// different set of faces fails.
+//
+// So the width is max(flat, k x (spread - 1)): a face measured tightly keeps
+// the 12% it always had, and a face whose own draws disagree is judged
+// against its own disagreement.
+//
+// K WAS RE-DERIVED BEFORE BUILDING, because the ruling's measurement predates
+// the rate form (#404), which re-scales par per cell entirely. Re-measured on
+// 2026-08-22 over the validator's own 290 priced faces under model 39de0ea5,
+// 16-seed stores against 10-seed fresh passes, which is production's own
+// comparison: k = 0.20 covers 92.4%, against the 93% it was chosen for under
+// M1. The ruling survived its own re-derivation, which is worth stating
+// because the expectation was that it would not.
+export const PPC_BAND_K = 0.20;
+
+// AND THE WIDTH IS CAPPED, or the band stops being a test.
+//
+// Uncapped, the widest face on the shipped pool (spread 7.18) earns a +-124%
+// band, which accepts almost any price and reports it as a pass. The cap is
+// FREE at this population: capped at 30% the validator fails exactly the same
+// 30 faces it fails uncapped, because every face the cap touches is one whose
+// own noise already exceeded any band. What it buys is that a face can never
+// be waved through by a band wide enough to contain anything.
+//
+// 30% rather than the 20% the search acceptance implies (spread <= 2 x k):
+// 20% costs 7 more failures for no gain in what the check can catch, and
+// those 7 are faces the acceptance should have refused rather than faces the
+// band should have failed. 22.4% of validated faces breach that acceptance
+// bar today, which is a SUPPLY problem and not the band's to paper over.
+export const PPC_BAND_MAX = 0.30;
+
 // Opener blocks: every draw must need at least this many deductions past
 // the opener click (check.totalClicks - 1). The 3-5 range in the map is
 // the SIZING guidance; 3 is the per-draw floor that kills one-click
@@ -466,6 +506,12 @@ function endlessBlock(blockStart) {
       tier: 12,
       endless: true,
       ppc: pick.ppc,
+      // The face's measured spread rides with its price, because the
+      // validator's band is sized from it (ppcBandWidth). A spec composed
+      // without it silently reads as the flat band, which is how the per-face
+      // band shipped doing nothing on its first run: the pool carried every
+      // spread and not one reached the check.
+      spread: pick.spread,
       dip: false,
       shape: pick.shape,
       rows: pick.rows, cols: pick.cols, M: pick.M, N: pick.N,
@@ -717,6 +763,7 @@ function assignBraid(pool, openerFaces) {
         level, block,
         tier: tierForPpc(pick.ppc),
         ppc: pick.ppc,
+        spread: pick.spread,   // sizes the validator band; see the endless note
         dip: false,
         intro: debut ? debut.key : null,
         shape: pick.shape,
@@ -894,5 +941,22 @@ export function blockStartLevel(level) {
  */
 export function ppcBandFor(spec) {
   if (spec.ppc == null) return null;
-  return [spec.ppc * PPC_BAND_LO, spec.ppc * PPC_BAND_HI];
+  const w = ppcBandWidth(spec.spread);
+  return [spec.ppc * (1 - w), spec.ppc * (1 + w)];
+}
+
+/**
+ * The half-width the band uses for a face of this spread.
+ *
+ * A face with NO stored spread reads as the flat band, never as a wide one:
+ * an unmeasured face is not a licence, and every entry predating the spread
+ * capture must keep exactly the tolerance it shipped with.
+ *
+ * @param {number|null|undefined} spread maxPar/minPar over the face's own draws
+ * @returns {number} half-width as a fraction of the stored price
+ */
+export function ppcBandWidth(spread) {
+  const s = Number(spread);
+  if (!Number.isFinite(s) || s <= 1) return PPC_BAND;
+  return Math.min(PPC_BAND_MAX, Math.max(PPC_BAND, PPC_BAND_K * (s - 1)));
 }
