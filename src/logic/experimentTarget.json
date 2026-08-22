@@ -1,71 +1,71 @@
 {
-  "updatedAt": "2026-08-20T20:31:04Z",
-  "target": "mysteryCellCount",
-  "reason": "highest posterior CV (0.711) excluding last 3 targets",
+  "updatedAt": "2026-08-21T23:51:29Z",
+  "target": "zeroClusterCount",
+  "reason": "highest posterior CV (0.554) excluding last 3 targets",
   "lastRevalidationDate": "2026-08-15",
   "recentTargets": [
+    "zeroClusterCount",
     "mysteryCellCount",
-    "wormLoad",
-    "clueShare2"
+    "wormLoad"
   ],
   "candidates": [
     {
       "feature": "mysteryCellCount",
-      "mean": 0.019,
-      "sd": 0.013,
-      "cv": 0.711
-    },
-    {
-      "feature": "clueShare5plus",
-      "mean": 0.057,
-      "sd": 0.039,
-      "cv": 0.682
+      "mean": 0.02,
+      "sd": 0.014,
+      "cv": 0.691
     },
     {
       "feature": "zeroClusterCount",
-      "mean": 0.013,
+      "mean": 0.014,
       "sd": 0.008,
-      "cv": 0.591
+      "cv": 0.554
     },
     {
-      "feature": "wormLoad",
-      "mean": 0.026,
-      "sd": 0.012,
-      "cv": 0.465
+      "feature": "clueShare5plus",
+      "mean": 0.104,
+      "sd": 0.057,
+      "cv": 0.551
     },
     {
       "feature": "wallEdgeCount",
-      "mean": 0.003,
-      "sd": 0.004,
-      "cv": 0.379
+      "mean": 0.006,
+      "sd": 0.005,
+      "cv": 0.538
+    },
+    {
+      "feature": "wormLoad",
+      "mean": 0.028,
+      "sd": 0.013,
+      "cv": 0.478
     }
   ],
   "coverage_targets": [],
   "shape_coverage": [
     {
-      "shape": "4.8.8",
-      "n_boards": 18,
-      "deficit_weight": 0.0526
+      "shape": "floret",
+      "n_boards": 27,
+      "deficit_weight": 0.0357
     },
     {
       "shape": "rhombille",
-      "n_boards": 21,
-      "deficit_weight": 0.0455
-    },
-    {
-      "shape": "cairo",
-      "n_boards": 24,
-      "deficit_weight": 0.04
-    },
-    {
-      "shape": "floret",
-      "n_boards": 26,
-      "deficit_weight": 0.037
+      "n_boards": 29,
+      "deficit_weight": 0.0333
     },
     {
       "shape": "deltoidal",
       "n_boards": 31,
       "deficit_weight": 0.0312
+    },
+    {
+      "shape": "4.8.8",
+      "n_boards": 32,
+      "deficit_weight": 0.0303
+    },
+    {
+      "shape": "cairo",
+      "n_boards": 34,
+      "deficit_weight": 0.0286
     },
     {
       "shape": "hex",
@@ -74,8 +74,8 @@
     },
     {
       "shape": "rect",
-      "n_boards": 213,
-      "deficit_weight": 0.0047
+      "n_boards": 215,
+      "deficit_weight": 0.0046
     }
   ],
   "lastDecorrelationDate": "2026-08-16"

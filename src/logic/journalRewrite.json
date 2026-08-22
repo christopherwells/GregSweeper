@@ -1,32 +1,28 @@
 {
   "format": "journal-rewrite-v2",
-  "date": "2026-08-20",
+  "date": "2026-08-21",
   "entries": {
-    "wormLoad": {
-      "sourceHash": 4233580373,
-      "paragraph": "Every fresh look at worm tiles gives the same reading, which my note marked with a question mark. The data answered with a real cost, estimating a real impact of about 3% per hundred worm moves, within a range of 2% to 4%. This range has narrowed by 27% since July 17, a change that, while not proof, does narrow the estimate."
+    "zeroClusterCount": {
+      "sourceHash": 1596911182,
+      "paragraph": "The blank patches band is widening when it should be narrowing, and my range has widened by 567%. More plays brought less certainty, making this finding even more complex than initially anticipated. The estimate stands at about 16% per ten blank patches, with a range between 7% and 25%. I wrote that blank patches should pay time back, but the ledger disagrees with this sign, a discrepancy that is worth losing sleep over. The results I did not expect get the most space in this notebook, highlighting the messier reality than I had envisioned."
     },
-    "patternMoves": {
-      "sourceHash": 3027742570,
-      "paragraph": "I closed the pattern reasoning file, and it moved while I wasn’t looking. On July 13, this file read about 11% per ten pattern deductions; now it reads about 44%. The cost per ten pattern deductions runs about 44%, with a floor around 36% and a ceiling around 53%. I wrote that a practiced read should cost seconds, not tens of seconds, and the data agree: the effect is real but small. Closed is supposed to be a state, not a mood."
+    "lockedCellCount": {
+      "sourceHash": 2295036481,
+      "paragraph": "I closed the locked cells file, and it moved while I wasn’t looking. On July 25, this file read about 41% per ten locked cells. Now, it reads about 68%, with the estimate standing at about 68%, between 40% and 101%. I don’t like surprises in closed drawers."
     },
     "sonarCellCount": {
-      "sourceHash": 1767991960,
-      "paragraph": "I closed the sonar file and found it had moved while I wasn't looking. My current estimate reads about 105% per ten sonar cells, likely between 70% and 147%. On study day 2, this file read about 37% per ten sonar cells. It now reads about 105%, which surprises me given its previous state."
+      "sourceHash": 4073425236,
+      "paragraph": "I closed the sonar file, and the model showed it at about 85% per ten sonar cells, with a range inside 53% to 123%. The parked estimate, which had read about 37% per ten sonar cells on Jul 2, has now moved to around 85%. A number that moves while nobody feeds it has my full attention."
     },
-    "wormholePairCount": {
-      "sourceHash": 4292415865,
-      "paragraph": "The wormholes band is widening when it should be narrowing, with an estimate of about 59% per ten wormhole pairs, ranging between 32% and 91%. This widening is unexpected, as I predicted that splitting one number across two places would slow the reading down, yet it does not. Uncertainty has increased by 928% since July 2. The results that I did not expect receive the most attention in this notebook."
-    },
-    "liarCellCount": {
-      "sourceHash": 3835570526,
-      "paragraph": "The liar cells case is closed. My note gave the data two doors: poison, or a rounding error. It picked the second. A liar barely moves the clock. The study ran ten study days from April 22 to June 28, and per ten liar cells, the cost reads as somewhere between 0% and about 3%. Closed files make room for open ones."
+    "mysteryCellCount": {
+      "sourceHash": 918884862,
+      "paragraph": "The mystery cells file is doing the thing measurement is not supposed to do, with the range having widened 907% since July 2. I wrote that missing information has a price, and now the data show the rate: about 23% per ten mystery cells, with the model placing it inside a range of 7% to 41%. Instruments drift, and so do estimates, but the notebook is the record."
     },
     "clueShare2": {
-      "sourceHash": 3053902655,
-      "paragraph": "In three study days, the answer for twos remains the same, aligning with my hypothesis that a two should read almost as fast as a one. The range slightly exceeds this expectation, but I have not yet managed to separate the twos from the boards they sit on. Uncertainty is down 28% since July 18. The estimate stands at about 5% per extra two in ten numbers, between 3% and 7%. A steady no is still valuable information."
+      "sourceHash": 10270672,
+      "paragraph": "The twos numbers have stopped surprising me, though I keep checking anyway. I wrote that a two should read almost as fast as a one, but the range puts it a little above that. I cannot yet split the twos from the boards they sit on. The band has barely moved since Jul 18, and each extra two in ten numbers adds about 11% to your time, likely between 8% and 13%. A steady no is still information."
     }
   },
   "model": "qwen2.5-7b-instruct-q4km-local",
-  "generatedAt": "2026-08-20T14:19:39.004Z"
+  "generatedAt": "2026-08-22T01:12:34.720Z"
 }
