@@ -147,12 +147,20 @@ test('Settings: cell size is a chip row that drives the preference and previews 
   // in this block would hold with the preference wired to nothing.
   expect(prefMinPx('large')).not.toBe(prefMinPx('comfortable'));
 
-  // The default now carries the tap floor rather than removing the token, so
-  // a player who never opens Settings still gets a cell they can hit.
+  // The default writes NO render floor (issue #421). It briefly wrote the tap
+  // floor for everyone, which on any viewport under 360px pushed the board off
+  // the screen and made dailies scroll for players who had chosen nothing.
+  // An explicit preset is a request and may scroll; the default is not.
   await chip('Fit to screen').click();
   const fitToken = await page.evaluate(() => getComputedStyle(document.documentElement)
     .getPropertyValue('--cell-pref-min-size').trim());
-  expect(fitToken).toBe(`${prefMinPx('fit')}px`);
+  expect(fitToken, 'the default must contribute no floor').toBe('');
+  // NON-VACUITY: the token is really the thing that carries a floor, so an
+  // explicit preset must still set it.
+  await chip('Large').click();
+  const largeToken = await page.evaluate(() => getComputedStyle(document.documentElement)
+    .getPropertyValue('--cell-pref-min-size').trim());
+  expect(largeToken).toBe(`${prefMinPx('large')}px`);
 
   // The toggles are switches now, not raw checkboxes: still inputs (so every
   // handler and label association is untouched) but with the native

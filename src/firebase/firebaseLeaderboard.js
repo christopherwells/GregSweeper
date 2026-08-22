@@ -1,4 +1,5 @@
 import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js';
+import { isMatchRowKey } from '../logic/matchCodes.js';
 import { isTestEnvironment } from './env.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
 import { planScoreSubmission, canonicalSeedPath } from '../logic/submitGate.js';
@@ -82,8 +83,17 @@ const MAX_VALID_TIME = 3600; // seconds, 1 hour cap
 // auth-race, transient Firebase error, or post-rules-deploy rejection on
 // a stale client), queue the payload to localStorage. Flushed from
 // initFirebase() on every successful boot.
-const PENDING_KEY = 'minesweeper_pending_daily_submissions';
+export const PENDING_KEY = 'minesweeper_pending_daily_submissions';
 const PENDING_WEEKLY_KEY = 'minesweeper_pending_weekly_submissions';
+// MATCH FIT ROWS GET THEIR OWN QUEUE (issue #423). They shared the daily one,
+// which holds ten entries and drops the OLDEST to make room, and a Challenge
+// run submits up to ten rows in a single pass: one offline run could evict
+// every daily and archive score already waiting, silently, and the player's
+// leaderboard row for that day was simply gone. The two things are not equal.
+// A daily score is the player's own visible result; a match fit row is model
+// data. One recency-ordered queue cannot express that, so they are separated
+// rather than ranked, which is the shape PENDING_WEEKLY_KEY already uses.
+export const PENDING_MATCH_KEY = 'minesweeper_pending_match_submissions';
 const PENDING_MAX_ENTRIES = 10;                   // Drop oldest beyond this
 // 14 days / 6 attempts (was 7 / 3). flushPending* only runs while online,
 // so attempts increment only on real online tries, but on persistently
@@ -93,9 +103,20 @@ const PENDING_MAX_ENTRIES = 10;                   // Drop oldest beyond this
 const PENDING_MAX_AGE_MS = 14 * 24 * 3600 * 1000; // 14 days, older entries are stale
 const PENDING_MAX_ATTEMPTS = 6;                   // Give up after N flushes per entry
 
+/**
+ * Which queue a row belongs in, DERIVED from the row's own key rather than
+ * passed by the caller. A caller that had to remember would eventually forget,
+ * and the failure is silent: the row still queues, it just evicts someone's
+ * daily score on the way in.
+ */
+export function pendingQueueKeyFor(dateString) {
+  return isMatchRowKey(dateString) ? PENDING_MATCH_KEY : PENDING_KEY;
+}
+
 function _queueFailedSubmission(dateString, name, time, bombHits, extras) {
   try {
-    const pending = safeGetJSON(PENDING_KEY) || [];
+    const queueKey = pendingQueueKeyFor(dateString);
+    const pending = safeGetJSON(queueKey) || [];
     pending.push({
       dateString,
       name,
@@ -106,7 +127,7 @@ function _queueFailedSubmission(dateString, name, time, bombHits, extras) {
       attempts: 0,
     });
     while (pending.length > PENDING_MAX_ENTRIES) pending.shift();
-    safeSetJSON(PENDING_KEY, pending);
+    safeSetJSON(queueKey, pending);
   } catch (err) {
     console.warn('Could not queue pending submission:', err.message);
   }
@@ -161,6 +182,7 @@ export async function initFirebase() {
     // Catch up on any queued failed submissions from prior offline / auth-race sessions
     flushPendingSubmissions().catch(err => reportCaughtError('flush-pending-daily', err));
     flushPendingWeeklySubmissions().catch(err => reportCaughtError('flush-pending-weekly', err));
+    flushPendingMatchSubmissions().catch(err => reportCaughtError('flush-pending-match', err));
   } catch (err) {
     console.warn('Firebase init failed, using local leaderboard:', err.message);
     if (err.message?.includes('permission')) {
@@ -647,6 +669,19 @@ export async function submitTimedScore(name, time, level, extras = {}) {
  * or that have hit PENDING_MAX_ATTEMPTS.
  */
 export async function flushPendingSubmissions() {
+  return _flushQueue(PENDING_KEY, 'daily');
+}
+
+/**
+ * Drain the match fit-row queue. Same path, same guards, its own key, so
+ * bulk model rows can never crowd out a player's own score (issue #423).
+ * Called at boot beside the other two.
+ */
+export async function flushPendingMatchSubmissions() {
+  return _flushQueue(PENDING_MATCH_KEY, 'match fit');
+}
+
+async function _flushQueue(queueKey, label) {
   // Never write prod scores from a test session, the pending queue lives in
   // localStorage, shared across the master/test github.io origin, so a score
   // queued on master must not flush while the test build is open.
@@ -654,7 +689,7 @@ export async function flushPendingSubmissions() {
   if (!isFirebaseOnline()) return;
   let pending;
   try {
-    pending = safeGetJSON(PENDING_KEY);
+    pending = safeGetJSON(queueKey);
   } catch (err) {
     console.warn('Could not read pending submissions:', err.message);
     return;
@@ -696,12 +731,12 @@ export async function flushPendingSubmissions() {
     else stillPending.push(entry);
   }
   try {
-    safeSetJSON(PENDING_KEY, stillPending);
+    safeSetJSON(queueKey, stillPending);
   } catch (err) {
     console.warn('Could not save pending submissions:', err.message);
   }
   if (flushed > 0) {
-    console.log(`Re-submitted ${flushed} pending daily score(s) after reconnect.`);
+    console.log(`Re-submitted ${flushed} pending ${label} score(s) after reconnect.`);
   }
 }
 

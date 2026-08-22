@@ -202,10 +202,28 @@ test('the grace period refuses ONLY the reveal, and every view move stamps it', 
   // that also flagged or chorded would be a worse bug than the one it fixes,
   // and neither of those can lose a run.
   assert.match(main, /viewMoveGraceActive\(\)/, 'the tap path must consult the grace');
-  const idxGrace = main.indexOf('viewMoveGraceActive()');
-  const idxReveal = main.indexOf('revealCell(row, col);', idxGrace);
-  assert.ok(idxReveal > idxGrace && idxReveal - idxGrace < 700,
-    'the guard must sit immediately before the reveal branch');
+  // Measured on the CODE, with comments stripped. This counted raw characters
+  // until 2026-08-22, which measured how much prose sat between the guard and
+  // the reveal rather than what ran between them, and it failed the moment the
+  // mouse path took the same guard with a longer explanation (issue #422).
+  // Adjacency is the real invariant, and asserting it on stripped code is
+  // strictly stronger than a character budget.
+  const code = main.replace(/^\s*\/\/.*$/gm, '');
+  let searched = 0;
+  for (let i = code.indexOf('viewMoveGraceActive()'); i !== -1;
+       i = code.indexOf('viewMoveGraceActive()', i + 1)) {
+    const reveal = code.indexOf('revealCell(row, col);', i);
+    assert.ok(reveal > i, 'a grace guard must be followed by the reveal it guards');
+    const between = code.slice(i + 'viewMoveGraceActive()'.length, reveal);
+    // Only the branch scaffolding may sit between them: no other statement.
+    assert.equal(between.replace(/[\s(){}]/g, ''), 'else',
+      `a statement sits between the grace guard and the reveal it guards: ${between.trim().slice(0, 80)}`);
+    searched++;
+  }
+  // NON-VACUITY: both pointer handlers take the guard, so this must have run
+  // twice. One is the bug #422 fixed.
+  assert.equal(searched, 2,
+    `expected the guard on both pointer paths, found ${searched}`);
   assert.match(main, /toggleFlag\(row, col\)/, 'flagging must still be reachable');
   assert.match(main, /handleChordReveal\(row, col\)/, 'chording must still be reachable');
 
