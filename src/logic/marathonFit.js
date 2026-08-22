@@ -371,6 +371,41 @@ export function marathonDimsSpread(shape, n) {
 export const MARATHON_TRAVERSAL_FLOOR_PPC = 0.4;
 
 /**
+ * Is a stored anchor still the board the contract says it should be?
+ *
+ * The anchor is "a real certified board at that shape's FIT-CEILING dims"
+ * (his design). The nightly reprice re-prices the stored anchor under each
+ * night's model, which keeps lane pars moving with the refit, but it reuses
+ * the stored `anchorCells` verbatim: it follows the MODEL and never the
+ * RULES. So when the fit ceiling moved (the 24px re-anchoring on 2026-08-20
+ * took BOARD_WIDTH_CAP from 11 to 12 and grew every shape's ceiling), every
+ * stored anchor silently stopped describing a ceiling board, and a stale
+ * anchor is indistinguishable from a fresh one at the point of use.
+ *
+ * Measured on the shipped library the day this was added: rect anchored at
+ * 187 cells against a 216 ceiling, hex 170 against 252, cairo 172 against
+ * 212, floret 126 against 216. Only the 4.8.8 was still correct, and only
+ * because its ceiling did not move.
+ *
+ * This is the same class as the Climb pool's re-check at CONSUMPTION: a
+ * generated artifact outlives the rules it was searched under. The repricer
+ * cannot fix it (minting an anchor means certifying a real board, which is
+ * the top-up's job), so it reports and names the remedy instead of pricing
+ * on a stale rate in silence.
+ *
+ * @param {string} shape
+ * @param {number} anchorCells
+ * @returns {boolean} true when the anchor no longer sits at the ceiling
+ */
+export function anchorIsStale(shape, anchorCells) {
+  const ceiling = fitCeilingCells(shape);
+  if (!Number.isFinite(ceiling) || ceiling <= 0) return false;
+  const cells = Number(anchorCells);
+  if (!Number.isFinite(cells) || cells <= 0) return true;
+  return cells !== ceiling;
+}
+
+/**
  * The lane's provisional par. Pure: the caller supplies the anchor board's
  * par and cells (the generator builds the anchor; the nightly reprice
  * re-prices the STORED anchor features under the model of the day and calls
