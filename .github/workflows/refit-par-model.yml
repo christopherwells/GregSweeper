@@ -204,6 +204,15 @@ jobs:
         continue-on-error: true
         run: node scripts/climb-match-index.mjs
 
+      # BEFORE the re-price, deliberately. The lane's anchors are the input the
+      # re-price reads, so re-attempting them first means a night's fix lands
+      # the same night rather than a day later. It only ever moves an anchor UP
+      # and never writes par, so a failure here leaves last night's anchors and
+      # the re-price below still runs.
+      - name: Re-attempt lane anchors the fit frontier has outgrown
+        continue-on-error: true
+        run: node scripts/topup-marathon-lane.mjs --reanchor --minutes 4
+
       - name: Re-price the Challenge match library
         id: matchreprice
         continue-on-error: true

@@ -52,6 +52,7 @@ import { buildChallenge250Board } from '../src/logic/challenge250Builder.js';
 import { serializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { packPayload } from '../src/logic/boardPack.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
+import { predictPar } from '../src/logic/dailyFeatures.js';
 import { specFace, CLIMB_MIN_DEDUCTIONS } from '../src/logic/challengeRules.js';
 import {
   timeBandOf, densityBandOf,
@@ -60,6 +61,7 @@ import {
 import {
   marathonDims, marathonDimsSpread, marathonShapes, marathonProvisionalPar,
   fitLegalFrontier, fitLegalDims, inSupportCells, MARATHON_MIN_SHORT_SIDE,
+  anchorSizeVerdict, fitCeilingCells,
 } from '../src/logic/marathonFit.js';
 import { buildTiling } from '../src/logic/tilingGeometry.js';
 import { OUT_DIR, writeMatchIndexFiles, matchPageFile, matchPageNames } from './match-index-files.mjs';
@@ -178,6 +180,24 @@ function anchorFor(shape, mods, densityMid, candidates) {
   return out;
 }
 
+/**
+ * The density an anchor is built at for a band: the band's own midpoint.
+ *
+ * ONE definition, because two callers need the identical number. The fill
+ * pass mints an anchor here, and the re-anchor pass has to re-mint at the
+ * SAME density or it would anchor a board against a rate drawn from a
+ * different mine count, which is exactly the mismatch the anchor contract
+ * ("wearing this cell's modifiers at this cell's density") exists to prevent.
+ * The lowest band opens at 0.06 and the highest closes at 0.34, which are the
+ * lane's own reachable extremes rather than the bands' unbounded edges.
+ */
+export function bandMidDensity(band) {
+  const i = MATCH_DENSITY_BANDS.indexOf(band);
+  const lo = i === 0 ? 0.06 : MATCH_DENSITY_BANDS[i - 1].max;
+  const hi = Number.isFinite(band.max) ? band.max : 0.34;
+  return lo + (hi - lo) * 0.5;
+}
+
 /** The fit-ceiling spec for a shape: the largest fit-legal board it has.
  * Derived from marathonFit's own frontier so the anchor and the lane ceiling
  * come from one source. */
@@ -282,6 +302,174 @@ function drawLaneBoard(dims, mods, mines, anchor, salt) {
   return null;
 }
 
+
+/**
+ * RE-ANCHOR (`--reanchor`): re-attempt every stored anchor the fit frontier
+ * has outgrown, and adopt the result only when it is genuinely bigger.
+ *
+ * WHY THIS EXISTS. A lane board past the model's support is priced against a
+ * real certified board at the largest fit-legal dims that would certify, and
+ * that anchor's features are STORED so the nightly reprice can re-price it
+ * under each night's model. The reprice therefore follows the MODEL forever,
+ * and the RULES never. When BOARD_WIDTH_CAP went 11 -> 12 and the tap floor
+ * went 28px -> 24px, larger boards became legal underneath every stored
+ * anchor and nothing re-attempted them: rect sat at 187 cells, which is
+ * exactly the 17x11 that was the tallest legal rect before the cap moved,
+ * against a frontier that now reaches 216. hex 170 against 252, cairo 172
+ * against 212, floret 126 against 216.
+ *
+ * That is a real bias, not an aesthetic one. A smaller anchor carries a
+ * HIGHER par per cell under the concave size curve, so every board it
+ * anchors is priced high.
+ *
+ * IT ONLY EVER MOVES AN ANCHOR UP. anchorFor deliberately walks DOWN the
+ * fit-legal geometries and takes the first that certifies, so a re-attempt
+ * that lands on the same size (or smaller, on a different seed's luck) has
+ * told us the frontier's new top does not certify at this density, which is
+ * information rather than failure. Adopting a smaller anchor would make the
+ * bias worse on a coin flip.
+ *
+ * IT DOES NOT RE-PRICE. Fixing the anchor is this tool's job; pricing is the
+ * repricer's, and it re-prices every page unconditionally on the next run. A
+ * pass that priced only the boards it touched would leave a page stamped with
+ * a model fingerprint its other boards were not priced under.
+ */
+async function reanchorPass() {
+  const t0 = Date.now();
+  const pages = loadPages();
+  if (pages.length === 0) {
+    console.error('topup-marathon-lane --reanchor: no pages found; run the build first');
+    process.exit(1);
+  }
+  const state = loadState();
+  const runNo = state.runs + 1;
+
+  // Group the boards whose anchor the frontier has moved past. The group key
+  // is what the anchor is a function of: shape, modifiers, density band.
+  const groups = new Map();
+  let scanned = 0;
+  pages.forEach((boards, pageNo) => (boards || []).forEach((b, idx) => {
+    if (!b || b.evicted || b.oversized !== true) return;
+    if (!b.parProvisional || !b.anchorCells || !b.spec) return;
+    scanned++;
+    const shape = b.spec.shape || 'rect';
+    const verdict = anchorSizeVerdict(shape, b.anchorCells);
+    if (verdict === 'ok') return;
+    const mods = (b.spec.gimmicks || []).slice().sort();
+    const band = MATCH_DENSITY_BANDS.find((x) => x.key === densityBandOf(b.spec.mines, b.spec.cells));
+    if (!band) return;
+    const key = laneCellKey(shape, mods, band.key);
+    let g = groups.get(key);
+    if (!g) {
+      g = { key, shape, mods, band, best: 0, verdicts: new Set(), rows: [] };
+      groups.set(key, g);
+    }
+    // The BEST anchor any board in the group already holds is the bar to
+    // beat: within a group they may have been minted on different nights.
+    g.best = Math.max(g.best, Number(b.anchorCells) || 0);
+    g.verdicts.add(verdict);
+    g.rows.push({ pageNo, idx });
+  }));
+
+  const due = [...groups.values()].filter((g) => cell_isDue(state.cells[`reanchor|${g.key}`], runNo));
+  console.log(`topup-marathon-lane --reanchor: ${scanned} anchored lane board(s);`
+    + ` ${groups.size} anchor(s) the frontier has outgrown, ${due.length} due this run`
+    + ` (run #${runNo}); budget ${BUDGET_MS / 60000} min`);
+  if (!due.length) {
+    console.log('  nothing due; every outgrown anchor is backing off or already at the frontier.');
+    if (!DRY) writeFileSync(STATE_FILE, JSON.stringify({ runs: runNo, cells: state.cells }, null, 1));
+    return;
+  }
+  // Biggest gap first: the anchors furthest below the frontier carry the most
+  // bias, so an interrupted run has fixed the worst of it.
+  due.sort((a, b) => (fitCeilingCells(b.shape) - b.best) - (fitCeilingCells(a.shape) - a.best));
+
+  const touched = new Map(); // pageNo -> board index -> {cells, features}
+  let improved = 0, held = 0, failed = 0, boardsFixed = 0;
+  const projected = [];
+  for (const g of due) {
+    if (Date.now() - t0 > BUDGET_MS) { console.log('  budget spent'); break; }
+    const specs = fitCeilingSpecs(g.shape).filter((sp) => sp.cells > g.best);
+    if (!specs.length) { held++; continue; }
+    const fresh = anchorFor(g.shape, g.mods, bandMidDensity(g.band), specs);
+    const rec = state.cells[`reanchor|${g.key}`] || { fails: 0 };
+    if (!fresh) {
+      failed++;
+      state.cells[`reanchor|${g.key}`] = { fails: Math.min(BACKOFF_CAP, (rec.fails || 0) + 1) };
+      console.log(`  ${g.key}: nothing certified above ${g.best}c, keeping it (${g.rows.length} board(s))`);
+      continue;
+    }
+    if (fresh.cells <= g.best) {
+      held++;
+      state.cells[`reanchor|${g.key}`] = { fails: Math.min(BACKOFF_CAP, (rec.fails || 0) + 1) };
+      continue;
+    }
+    improved++;
+    state.cells[`reanchor|${g.key}`] = { fails: 0 };
+    const freshPar = predictPar(fresh.features);
+    for (const { pageNo, idx } of g.rows) {
+      if (!touched.has(pageNo)) touched.set(pageNo, new Map());
+      touched.get(pageNo).set(idx, { cells: fresh.cells, features: fresh.features });
+      boardsFixed++;
+      // PROJECT what the repricer will do. This pass deliberately does not
+      // price, but an operator who has to wait a day to see the consequence
+      // cannot judge whether the run did the right thing.
+      const b = pages[pageNo][idx];
+      const before = Number(b.par) || 0;
+      const after = marathonProvisionalPar({
+        cells: b.spec.cells, anchorPar: freshPar, anchorCells: fresh.cells,
+      });
+      if (before > 0 && after > 0) projected.push({ before, after });
+    }
+    console.log(`  ${g.key}: ${g.best}c -> ${fresh.cells}c`
+      + ` (ceiling ${fitCeilingCells(g.shape)}c), ${g.rows.length} board(s) re-anchored`);
+  }
+
+  if (!DRY) {
+    for (const [pageNo, edits] of touched) {
+      // Re-read the page so `page`, `parModel` and every untouched board keep
+      // their exact bytes: this pass changes anchors and nothing else.
+      const file = matchPageFile(pageNo);
+      const page = JSON.parse(readFileSync(file, 'utf8'));
+      for (const [idx, a] of edits) {
+        page.boards[idx].anchorCells = a.cells;
+        page.boards[idx].anchorFeatures = a.features;
+      }
+      writeFileSync(file, JSON.stringify(page));
+    }
+    writeFileSync(STATE_FILE, JSON.stringify({ runs: runNo, cells: state.cells }, null, 1));
+  }
+
+  console.log(`topup-marathon-lane --reanchor: ${improved} anchor(s) improved`
+    + ` covering ${boardsFixed} board(s), ${held} already at the best certifying size,`
+    + ` ${failed} with nothing certifying above their current size,`
+    + ` ${touched.size} page(s) rewritten in ${(Date.now() - t0) / 1000 | 0}s`
+    + (DRY ? ' (dry run: nothing written)' : '')
+    + (boardsFixed ? '; run reprice-match-library to price them' : ''));
+  if (projected.length) {
+    const pcts = projected.map((x) => (x.after / x.before - 1) * 100).sort((a, b) => a - b);
+    const med = pcts[Math.floor(pcts.length / 2)];
+    const down = pcts.filter((x) => x < -1).length;
+    const up = pcts.filter((x) => x > 1).length;
+    console.log(`  projected re-price: median ${med >= 0 ? '+' : ''}${med.toFixed(1)}%`
+      + ` (range ${pcts[0].toFixed(1)}% to ${pcts[pcts.length - 1].toFixed(1)}%),`
+      + ` ${down} board(s) cheaper, ${up} dearer`);
+    // A re-anchor can only change par, never legality, but par has its own
+    // bar: MARATHON_PAR_CEILING_SECONDS is the lane's ADMISSION ceiling. A
+    // board the re-price lifts past it was admitted honestly under the old
+    // anchor and is not evicted here (that is the repricer's call on its own
+    // doctrine), but a silent breach would be the anchor bug's own shape.
+    const over = projected.filter((x) => x.after > MARATHON_PAR_CEILING_SECONDS);
+    if (over.length) {
+      console.log(`  WARNING: ${over.length} board(s) would price past the lane's`
+        + ` ${MARATHON_PAR_CEILING_SECONDS}s admission ceiling`
+        + ` (worst ${Math.round(Math.max(...over.map((x) => x.after)))}s)`);
+    } else {
+      console.log(`  all ${projected.length} stay inside the ${MARATHON_PAR_CEILING_SECONDS}s admission ceiling`);
+    }
+  }
+}
+
 async function main() {
   const t0 = Date.now();
   const pages = loadPages();
@@ -367,10 +555,7 @@ async function main() {
     // fills its wide half.
     const ceiling = fitCeilingSpecs(w.shape);
     if (!ceiling.length) continue;
-    const lo = MATCH_DENSITY_BANDS.indexOf(w.band) === 0
-      ? 0.06 : MATCH_DENSITY_BANDS[MATCH_DENSITY_BANDS.indexOf(w.band) - 1].max;
-    const hi = Number.isFinite(w.band.max) ? w.band.max : 0.34;
-    const mid = lo + (hi - lo) * 0.5;
+    const mid = bandMidDensity(w.band);
     const anchor = anchorFor(w.shape, w.mods, mid, ceiling);
     if (!anchor && w.sizeClass === 'big') {
       // Only the BIG half needs one: an out-of-support par is extrapolated
@@ -420,5 +605,5 @@ async function main() {
 
 // Importable for tests without running the tool.
 if (process.argv[1] && process.argv[1].endsWith('topup-marathon-lane.mjs')) {
-  main();
+  (args.includes('--reanchor') ? reanchorPass() : main());
 }
