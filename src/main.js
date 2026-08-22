@@ -10,7 +10,7 @@ import { PROD_SITE_BASE } from './config.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
 import { resizeCells, updateAllCells, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, renderWallOverlays, showGimmickRegion, clearGimmickRegion, cameraCenterOnCell, cameraMinZoom, snapFirstClick, viewMoveGraceActive} from './ui/boardRenderer.js';
 import { chordHasWork } from './logic/boardSolver.js';
-import { CELL_SIZE_PREFS, CELL_SIZE_DEFAULT_KEY, normalizeCellPref, prefMinPx } from './logic/boardCamera.js';
+import { CELL_SIZE_PREFS, CELL_SIZE_DEFAULT_KEY, normalizeCellPref, prefMinPx, renderFloorPx } from './logic/boardCamera.js';
 import { renderWormOverlays } from './ui/wormRenderer.js';
 import { preloadSprites, medalImgForEmoji, gimmickSpriteImgHTML, achievementSpriteImgHTML, uiSpriteImgHTML } from './ui/spriteLoader.js';
 import { startGregMascot } from './ui/gregMascot.js';
@@ -457,6 +457,17 @@ boardEl.addEventListener('mousedown', (e) => {
       // via the contextmenu handler, so users with right-click muscle
       // memory keep their workflow.
       toggleFlag(row, col);
+    } else if (viewMoveGraceActive()) {
+      // THE VIEW JUST MOVED, so this click did not choose this cell. Same
+      // rule as the touch path below, and it belongs here MORE, not less:
+      // the grace shipped guarding touch only (issue #422) while his report
+      // was about clicking ("I tripled clicked by accident... the first two
+      // clicks moved the view and the third revealed"), and this handler is
+      // mousedown, so the reveal fires on the press rather than the release.
+      // Double-CLICK centering is live on desktop exactly as double-tap is on
+      // a phone, and the glide moves the board under a cursor that has not
+      // moved. Refuse the REVEAL only: panning, flagging and chording all
+      // still work, because none of them can lose a run.
     } else {
       revealCell(row, col);
     }
@@ -588,6 +599,13 @@ boardEl.addEventListener('keydown', (e) => {
     case 'Enter':
     case ' ': {
       // Reveal, chord, or (sonar/compass) toggle the counted region.
+      //
+      // NO view-move grace here, deliberately (issue #422). The pointer paths
+      // need it because the board slides under a cursor or finger that has not
+      // moved, so the cell under the input changes without the player doing
+      // anything. Keyboard focus travels WITH the board: the focused cell is
+      // whichever cell the arrows last selected, and a camera glide does not
+      // move it. The player is always acting on the cell they chose.
       const cell = state.board[r]?.[c];
       if (cell && cell.isRevealed && (cell.isSonar || cell.isCompass)) {
         _toggleRegionPin(r, c);
@@ -2183,11 +2201,30 @@ function renderCellSizeChips() {
 
 function applyCellSizePref(key) {
   _cellPref = normalizeCellPref(key);
-  // Always written, including for the default: the tap floor applies whether or
-  // not the player has an opinion (his ruling 2026-08-21). Absent used to mean
-  // "let the theme's 18px render clamp decide", which is what put sub-24px
-  // cells on screen for anyone who never opened Settings.
-  document.documentElement.style.setProperty('--cell-pref-min-size', prefMinPx(_cellPref) + 'px');
+  // THE DEFAULT PRESET WRITES NO FLOOR, and that is the whole of issue #421.
+  //
+  // His two rulings meet here: "No dailies should be scrolled", and "boards
+  // shouldn't be scrollable at 24 px in the dailies. If people use more zoomed
+  // in, then they may get a scroll board." So an EXPLICIT choice may overflow
+  // the wrapper and bring up the camera, because the player asked for bigger
+  // cells; the default may not, because they asked for nothing.
+  //
+  // Writing it for the default could only ever cause scrolling and could never
+  // do anything else. The fit result is already the largest size that fits, so
+  // a 24px floor is a no-op wherever the board naturally reaches 24 (which is
+  // every supply-legal board at the 360px reference, by construction), and it
+  // binds ONLY where the board cannot reach 24 without leaving the screen.
+  // Measured at 320px before the fix: 10 of 25 reachable daily draws and 28 of
+  // 49 weekly draws overflowed, worst cell 21px on an 8x12.
+  //
+  // prefMinPx('fit') stays 24: it is the ladder's base and its unit, and the
+  // Settings preview reads it. It simply is not a floor the renderer applies.
+  const floor = renderFloorPx(_cellPref);
+  if (floor > 0) {
+    document.documentElement.style.setProperty('--cell-pref-min-size', floor + 'px');
+  } else {
+    document.documentElement.style.removeProperty('--cell-pref-min-size');
+  }
   safeSet(CELL_SIZE_PREF_KEY, _cellPref);
   // Re-fit a live board immediately: the same sequence the resize handler
   // runs, because a preference change is a geometry change.

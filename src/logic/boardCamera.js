@@ -74,6 +74,31 @@ export const CELL_SIZE_PREFS = Object.freeze(SIZE_STEPS.map((s) => Object.freeze
 })));
 
 /**
+ * The floor the RENDERER should actually apply for a stored preference, which
+ * is not the same question as what the preset is worth.
+ *
+ * The default contributes NOTHING (issue #421). His two rulings meet here:
+ * "No dailies should be scrolled", and "boards shouldn't be scrollable at
+ * 24 px in the dailies. If people use more zoomed in, then they may get a
+ * scroll board." An explicit choice may push a board off the screen, because
+ * the player asked for bigger cells; the default may not, because they asked
+ * for nothing.
+ *
+ * Applying it to the default could only ever cause scrolling and could never
+ * do anything else: the fit result is already the largest size that fits, so
+ * a 24px floor is a no-op wherever a board naturally reaches 24 (every
+ * supply-legal board at the 360px reference, by construction) and binds ONLY
+ * where the board cannot reach 24 without leaving the screen.
+ *
+ * @param {string|null|undefined} key
+ * @returns {number} px floor, or 0 for "apply no floor"
+ */
+export function renderFloorPx(key) {
+  const k = normalizeCellPref(key);
+  return k === CELL_SIZE_DEFAULT_KEY ? 0 : prefMinPx(k);
+}
+
+/**
  * The preset a stored key actually selects. Membership decides it, NEVER the
  * key's px: every preset now carries a nonzero floor, so a truthiness test on
  * the pixels would wave through whatever string localStorage happened to hold

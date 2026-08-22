@@ -21,8 +21,9 @@ import { readFileSync } from 'node:fs';
 import {
   boardFitsPhone, maxExtentUnits, tapRatios, tapSizeAt, fittingDims,
   widthBudget, heightBudget, comfortHeightBudget, FIT_REFERENCE, MIN_TAP_MAJORITY, MIN_TAP_MINORITY,
-  maxRectColumns, rectFitsPhone, clampRectDims,
+  maxRectColumns, rectFitsPhone, clampRectDims, rectCellSizeAt,
 } from '../src/logic/boardFit.js';
+import { renderFloorPx, prefMinPx, CELL_SIZE_DEFAULT_KEY, CELL_SIZE_PREFS } from '../src/logic/boardCamera.js';
 import { buildTiling, TILING_TYPES } from '../src/logic/tilingGeometry.js';
 import { TILING_BAND_CONFIGS } from '../src/logic/tilingBandConfigs.js';
 import { COASTLINE_BOARDS } from '../src/logic/coastlineLink.js';
@@ -368,4 +369,80 @@ test('BOARD_WIDTH_CAP is the tap floor, derived rather than remembered', () => {
     `${derived} columns must deliver at least the floor (${cellAt(derived)}px)`);
   assert.ok(cellAt(derived + 1) < MIN_TAP_MAJORITY,
     `${derived + 1} columns must fall under it (${cellAt(derived + 1)}px), or the cap is not the edge`);
+});
+
+test('REGRESSION #421: the DEFAULT cell-size preset never makes a daily or weekly scroll', () => {
+  // His two rulings meet here, and they collide only where a board physically
+  // cannot deliver the tap floor: "No dailies should be scrolled" / "or
+  // weeklies for that matter" / "boards shouldn't be scrollable at 24 px in
+  // the dailies. If people use more zoomed in, then they may get a scroll
+  // board."
+  //
+  // 2276a93ce gave the default preset a real 24px floor and wrote it for every
+  // player, including everyone who has never opened Settings. The supply rules
+  // are sized against a 360px reference where the worst legal draw delivers
+  // exactly 24.0px, so there is ZERO margin: below 360 the fit falls under the
+  // floor, the floor wins, and the board is laid out wider than its wrapper.
+  // A player on a 320px phone had not asked for more zoom and got a scroll
+  // board anyway, and `scrolled: true` then went onto their permanent fit row,
+  // recording their screen width as if it were a property of the board.
+  const reach = (minSize, range) => {
+    const out = [];
+    for (let rows = minSize; rows < minSize + range; rows++) {
+      for (let cols = minSize; cols < minSize + range; cols++) out.push([rows, cols]);
+    }
+    return out;
+  };
+  const draws = [
+    ['daily', reach(DAILY_MIN_SIZE, DAILY_SIZE_RANGE)],
+    ['weekly', reach(WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE)],
+  ];
+  // Real narrow viewports: iPhone SE 1st gen / 5S, and an Android split pane.
+  const VIEWPORTS = [320, 344, 360];
+
+  // A board scrolls exactly when the floor exceeds what the viewport can give.
+  const overflows = (r, c, width, floor) =>
+    rectCellSizeAt(r, c, { width, height: FIT_REFERENCE.height }) < floor;
+
+  const defaultFloor = renderFloorPx(CELL_SIZE_DEFAULT_KEY);
+  const bad = [];
+  for (const width of VIEWPORTS) {
+    for (const [label, pairs] of draws) {
+      for (const [r0, c0] of pairs) {
+        const { rows, cols } = clampRectDims(r0, c0);
+        if (overflows(rows, cols, width, defaultFloor)) {
+          bad.push(`${label} ${rows}x${cols} @${width}px`);
+        }
+      }
+    }
+  }
+  assert.deepEqual(bad, [],
+    `the default preset scrolls these: ${bad.slice(0, 6).join(', ')}`);
+
+  // NON-VACUITY: the sweep must be able to FAIL, or it proves nothing. Applying
+  // the tap floor as a hard floor (what shipped) overflows real draws at 320,
+  // which is the defect this test exists for.
+  const wouldBreak = [];
+  for (const [label, pairs] of draws) {
+    for (const [r0, c0] of pairs) {
+      const { rows, cols } = clampRectDims(r0, c0);
+      if (overflows(rows, cols, 320, MIN_TAP_MAJORITY)) wouldBreak.push(`${label} ${rows}x${cols}`);
+    }
+  }
+  assert.ok(wouldBreak.length > 0,
+    'the sweep cannot detect the bug it was written for: a hard tap floor overflows nothing at 320px');
+
+  // And the floor is still REAL for a player who chose it: only the default is
+  // exempt, because only the default is not a request.
+  for (const p of CELL_SIZE_PREFS) {
+    if (p.key === CELL_SIZE_DEFAULT_KEY) {
+      assert.equal(renderFloorPx(p.key), 0, 'the default must contribute no render floor');
+    } else {
+      assert.equal(renderFloorPx(p.key), prefMinPx(p.key),
+        `${p.key} was chosen deliberately and must stay a hard floor`);
+    }
+  }
+  // The ladder itself is untouched: fit is still worth the tap floor, it is
+  // simply not applied as a floor by the renderer.
+  assert.equal(prefMinPx(CELL_SIZE_DEFAULT_KEY), MIN_TAP_MAJORITY);
 });

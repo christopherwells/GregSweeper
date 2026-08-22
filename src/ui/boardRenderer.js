@@ -55,11 +55,12 @@ function _fitCellSize(widthBudget, gap, maxCap) {
 // --cell-pref-min-size on <html> so both fit paths read it the way they read
 // the theme tokens. Deliberately a SEPARATE token from --cell-min-size: an
 // inline write there would clobber the theme's own floor, and the effective
-// minimum is the max of the two. It is written for EVERY preset including the
-// default, because the tap floor applies whether or not the player has an
-// opinion; 0 here now means only "the preference has not been applied yet",
-// which is the boot window before main.js runs. When the floor wins, the
-// board overflows the scroll wrapper and
+// minimum is the max of the two. It is written only for an EXPLICIT preset
+// (issue #421): the default writes nothing, because a floor there could only
+// ever push a board off a narrow screen and never change anything else, and
+// his ruling is that a player who chose no zoom never gets a scroll board.
+// 0 (or absent) therefore means "no explicit preference". When the floor wins,
+// the board overflows the scroll wrapper and
 // the camera engages (needsZoom / updateZoom below). The chooser-side floors
 // in boardFit.js are untouched on purpose: this preference replaces the tap-
 // protection job of the 28/24px floors only, never their supply-legality job.
