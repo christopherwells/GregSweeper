@@ -398,10 +398,18 @@ test('GOLDEN: the first endless block is fixed', () => {
   // the derived prices written back: a different pool, so a different five.
   // All five changed, which is what a change to the model's FORM looks like
   // where a nightly re-price moves one.
+  // Moved on 2026-08-22 by the nightly refit, and this one is the SMALL kind:
+  // NOTHING left the pool. It still holds 68 entries across all seven shapes,
+  // and both of the specs that traded places are still in it. The re-price
+  // simply re-sorted them, so the deck deals 4.8.8's 50-cell entry into the
+  // block where its 85-cell one used to sit, and the other four are the same
+  // specs in a different order. Verified before re-freezing rather than
+  // assumed, because a golden that moved for supply loss reads identically to
+  // one that moved for a re-sort, and only the first is a problem.
   assert.deepEqual(got, [
-    '4.8.8:85c:28m:[sonar+compass]',
     'rect:25c:10m:[walls+compass]',
     'rhombille:45c:17m:[locked+wormhole+worm]',
+    '4.8.8:50c:13m:[walls+locked+compass]',
     'cairo:112c:34m:[wormhole+compass]',
     'hex:40c:15m:[walls+locked]',
   ]);
