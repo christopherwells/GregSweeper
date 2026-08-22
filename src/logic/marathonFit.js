@@ -371,38 +371,52 @@ export function marathonDimsSpread(shape, n) {
 export const MARATHON_TRAVERSAL_FLOOR_PPC = 0.4;
 
 /**
- * Is a stored anchor still the board the contract says it should be?
+ * How a stored anchor's SIZE stands against the fit frontier as it is today.
  *
- * The anchor is "a real certified board at that shape's FIT-CEILING dims"
- * (his design). The nightly reprice re-prices the stored anchor under each
- * night's model, which keeps lane pars moving with the refit, but it reuses
- * the stored `anchorCells` verbatim: it follows the MODEL and never the
- * RULES. So when the fit ceiling moved (the 24px re-anchoring on 2026-08-20
- * took BOARD_WIDTH_CAP from 11 to 12 and grew every shape's ceiling), every
- * stored anchor silently stopped describing a ceiling board, and a stale
- * anchor is indistinguishable from a fresh one at the point of use.
+ * The anchor is "a real certified board INSIDE the par model's support,
+ * wearing this cell's modifiers at this cell's density, as close to the
+ * extrapolation region as the support allows" (topup-marathon-lane's own
+ * contract). Two things follow, and the first cost me a wrong predicate on
+ * 2026-08-22 before this was written down properly.
  *
- * Measured on the shipped library the day this was added: rect anchored at
- * 187 cells against a 216 ceiling, hex 170 against 252, cairo 172 against
- * 212, floret 126 against 216. Only the 4.8.8 was still correct, and only
- * because its ceiling did not move.
+ * SITTING BELOW THE CEILING IS LEGITIMATE. anchorFor walks DOWN the fit-legal
+ * geometries and takes the first that certifies, because insisting on the
+ * single largest left deltoidal and rhombille cells permanently empty when
+ * their ceiling boards would not certify at ~21% mines. So "below the
+ * ceiling" cannot mean "wrong", and a predicate that says it does reports
+ * every one of those deliberate walk-downs as a defect.
  *
- * This is the same class as the Climb pool's re-check at CONSUMPTION: a
- * generated artifact outlives the rules it was searched under. The repricer
- * cannot fix it (minting an anchor means certifying a real board, which is
- * the top-up's job), so it reports and names the remedy instead of pricing
- * on a stale rate in silence.
+ * WHAT IS ACTUALLY WRONG is an anchor the frontier has OUTGROWN. The nightly
+ * reprice re-prices the stored anchor under each night's model but reuses its
+ * stored cells verbatim: it follows the MODEL and never the RULES. When the
+ * rules moved (BOARD_WIDTH_CAP 11 -> 12, and the tap floor 28px -> 24px,
+ * both 2026-08-19/20), larger boards became legal underneath every stored
+ * anchor and nothing re-attempted them. Measured on the shipped library: rect
+ * anchored at 187 cells, which is exactly the 17x11 that was the tallest
+ * legal rect BEFORE the cap moved, against a frontier that now reaches 216.
+ * hex 170 against 252, cairo 172 against 212, floret 126 against 216.
+ *
+ * That is a real bias rather than an aesthetic one. A smaller anchor board
+ * carries a HIGHER par per cell under the concave size curve, so pricing a
+ * huge board off it over-prices the board, which is why the contract asks for
+ * the anchor to sit as close to the extrapolation region as it can.
+ *
+ * The verdict is deliberately not a boolean: "outgrown" is an invitation to
+ * re-attempt (the re-mint may walk back down to the same size, and that is a
+ * fine outcome), while "illegal" is a board the rules would now refuse
+ * outright, which only happens if a ceiling SHRANK.
  *
  * @param {string} shape
  * @param {number} anchorCells
- * @returns {boolean} true when the anchor no longer sits at the ceiling
+ * @returns {'ok'|'outgrown'|'illegal'|'missing'}
  */
-export function anchorIsStale(shape, anchorCells) {
+export function anchorSizeVerdict(shape, anchorCells) {
   const ceiling = fitCeilingCells(shape);
-  if (!Number.isFinite(ceiling) || ceiling <= 0) return false;
+  if (!Number.isFinite(ceiling) || ceiling <= 0) return 'ok';
   const cells = Number(anchorCells);
-  if (!Number.isFinite(cells) || cells <= 0) return true;
-  return cells !== ceiling;
+  if (!Number.isFinite(cells) || cells <= 0) return 'missing';
+  if (cells > ceiling) return 'illegal';
+  return cells < ceiling ? 'outgrown' : 'ok';
 }
 
 /**

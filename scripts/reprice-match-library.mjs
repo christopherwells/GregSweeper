@@ -19,8 +19,8 @@
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { predictPar } from '../src/logic/dailyFeatures.js';
 import { packPayload } from '../src/logic/boardPack.js';
-import { timeBandOf } from '../src/logic/matchRules.js';
-import { marathonProvisionalPar, inSupportCells, marathonFits, anchorIsStale } from '../src/logic/marathonFit.js';
+import { timeBandOf, MARATHON_PAR_CEILING_SECONDS } from '../src/logic/matchRules.js';
+import { marathonProvisionalPar, inSupportCells, marathonFits, anchorSizeVerdict } from '../src/logic/marathonFit.js';
 import { boardFitsPhone, rectFitsPhone } from '../src/logic/boardFit.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
 import { OUT_DIR, writeMatchIndexFiles, matchPageNames } from './match-index-files.mjs';
@@ -43,10 +43,13 @@ function main() {
   let reclassedInSupport = 0;
   let deflagged = 0;
   let anchorless = 0;
-  // A stale anchor still prices, because a stale rate beats extrapolating,
-  // but it must never do so silently: only the top-up can mint a fresh one.
-  let staleAnchors = 0;
-  const staleShapes = new Set();
+  // An OUTGROWN anchor still prices, because its rate beats extrapolating,
+  // but it must never do so silently: only the top-up can re-attempt one, and
+  // a smaller anchor over-prices the boards it anchors.
+  let ceilingOut = 0;
+  let outgrownAnchors = 0;
+  let illegalAnchors = 0;
+  const outgrownShapes = new Set();
   let strandedOut = 0;
 
   // Two passes, because the index's feature header is the UNION over every
@@ -126,9 +129,13 @@ function main() {
             }
           }
           if (!inSupport && b.anchorFeatures && b.anchorCells) {
-            if (anchorIsStale(shape, b.anchorCells)) {
-              staleAnchors++;
-              staleShapes.add(shape);
+            const verdict = anchorSizeVerdict(shape, b.anchorCells);
+            if (verdict === 'outgrown') {
+              outgrownAnchors++;
+              outgrownShapes.add(shape);
+            } else if (verdict === 'illegal') {
+              illegalAnchors++;
+              outgrownShapes.add(shape);
             }
             par = marathonProvisionalPar({
               cells: b.spec.cells,
@@ -142,6 +149,27 @@ function main() {
         } catch { par = 0; }
         if (par > 0) {
           par = Math.round(par * 10) / 10;
+          // THE LANE'S CEILING IS A MEMBERSHIP RULE, not merely an admission
+          // one. test/matchLibrary.test.mjs asserts every oversized board sits
+          // inside MARATHON_PAR_CEILING_SECONDS, so a board the re-price lifts
+          // past it is a board the rules now refuse, and it tombstones in
+          // place exactly as a structurally-outgrown one does: the slot keeps
+          // its index, so `page:idx` holds and no seen record moves anywhere.
+          //
+          // Met for real on 2026-08-22, when the lane's anchors were
+          // re-attempted at the grown fit frontier: two floret boards (504c
+          // and 468c, sonar) re-priced to 2090s and 1941s against a 1800s
+          // ceiling. Reported rather than silent, because a night that evicted
+          // dozens would mean the model moved under the whole lane and that is
+          // a thing to look at, not to absorb.
+          if (b.oversized === true && par > MARATHON_PAR_CEILING_SECONDS) {
+            const seed = b.seed;
+            for (const k of Object.keys(b)) delete b[k];
+            b.evicted = true;
+            b.seed = seed;
+            ceilingOut++;
+            continue;
+          }
           const shift = Math.abs(par - b.par);
           if (shift > maxShift) maxShift = shift;
           if (timeBandOf(par) !== timeBandOf(b.par)) bandMoves++;
@@ -174,7 +202,9 @@ function main() {
     + (reclassedInSupport ? `, ${reclassedInSupport} provisional row(s) re-entered support and re-priced on the model` : '')
     + (deflagged ? `, ${deflagged} row(s) no longer oversized under the fit rules` : '')
     + (anchorless ? `, ${anchorless} past-support row(s) have NO anchor and priced on the model (supply one via the marathon top-up)` : '')
-    + (staleAnchors ? `, ${staleAnchors} row(s) priced on a STALE anchor (${[...staleShapes].sort().join(', ')}: the fit ceiling moved since the anchor was minted, re-mint via the marathon top-up)` : '')
+    + (outgrownAnchors ? `, ${outgrownAnchors} row(s) priced on an OUTGROWN anchor (${[...outgrownShapes].sort().join(', ')}: larger boards are fit-legal now than when the anchor was minted, so these price high; re-attempt via the marathon top-up --reanchor)` : '')
+    + (illegalAnchors ? `, ${illegalAnchors} row(s) priced on an anchor the rules would now REFUSE (a fit ceiling shrank; re-attempt via the marathon top-up --reanchor)` : '')
+    + (ceilingOut ? `, ${ceilingOut} lane board(s) tombstoned for re-pricing past the ${MARATHON_PAR_CEILING_SECONDS}s ceiling` : '')
     + (strandedOut ? `, ${strandedOut} flagged row(s) the grown frontier disqualified, tombstoned in place` : '')
     + (dry ? ' (dry run: nothing written)' : ''));
 }

@@ -12,7 +12,7 @@ import {
   marathonFits, marathonDims, marathonDimsSpread, marathonShapes,
   fitLegalFrontier, fitCeilingCells, inSupportCells,
   marathonProvisionalPar, MARATHON_TRAVERSAL_FLOOR_PPC, CANONICAL_MAX_DIM,
-  MARATHON_MIN_SHORT_SIDE, anchorIsStale,
+  MARATHON_MIN_SHORT_SIDE, anchorSizeVerdict,
 } from '../src/logic/marathonFit.js';
 import { boardFitsPhone, rectFitsPhone } from '../src/logic/boardFit.js';
 import { BOARD_WIDTH_CAP } from '../src/logic/difficulty.js';
@@ -255,45 +255,59 @@ test('the anchor search has somewhere to fall back to', async () => {
   }
 });
 
-test('REGRESSION: a stored anchor is STALE the moment the fit ceiling moves under it', () => {
-  // The anchor is "a real certified board at that shape's FIT-CEILING dims".
-  // The nightly reprice re-prices the stored anchor under each night's model,
-  // which is what keeps lane pars moving with the refit, but it reuses the
-  // stored anchorCells verbatim: it follows the MODEL and never the RULES.
+test('REGRESSION: an anchor the frontier has OUTGROWN is distinguishable from a legitimate one', () => {
+  // The nightly reprice re-prices the stored anchor under each night's model
+  // but reuses its stored cells verbatim: it follows the MODEL and never the
+  // RULES. When BOARD_WIDTH_CAP went 11 -> 12 and the tap floor 28px -> 24px,
+  // larger boards became legal underneath every stored anchor and nothing
+  // re-attempted them. Measured on the shipped library: rect anchored at 187
+  // cells, which is EXACTLY the 17x11 that was the tallest legal rect before
+  // the cap moved, against a frontier now reaching 216.
   //
-  // So when the 24px re-anchoring took BOARD_WIDTH_CAP from 11 to 12 on
-  // 2026-08-20 and grew every shape's ceiling, every stored anchor quietly
-  // stopped describing a ceiling board, and nothing could tell. Measured on
-  // the shipped library the day this landed: rect anchored at 187 cells
-  // against a 216 ceiling, hex 170 against 252, cairo 172 against 212,
-  // floret 126 against 216. Only the 4.8.8 was still right, and only because
-  // its ceiling had not moved.
+  // THE FIRST VERSION OF THIS TEST WAS WRONG, and the way it was wrong is the
+  // point. It asserted that any anchor below the ceiling was stale. But
+  // anchorFor deliberately WALKS DOWN the fit-legal geometries and takes the
+  // first that certifies, because insisting on the largest left deltoidal and
+  // rhombille cells permanently empty. So "below the ceiling" is a legitimate
+  // outcome, and a boolean cannot separate "outgrown" from "walked down on
+  // purpose". The verdict reports the size relation and nothing more; only a
+  // re-attempt can tell which it was, and walking back to the same size is a
+  // fine outcome.
   for (const shape of marathonShapes()) {
     const ceiling = fitCeilingCells(shape);
     assert.ok(ceiling > 0, `${shape} has no fit ceiling`);
-    assert.equal(anchorIsStale(shape, ceiling), false,
-      `${shape}: an anchor AT the ceiling must read fresh`);
-    // Either side of the ceiling is stale: too small is the case that bit us,
-    // too large means the ceiling SHRANK and the anchor is now unreachable.
-    assert.equal(anchorIsStale(shape, ceiling - 1), true, `${shape}: below the ceiling`);
-    assert.equal(anchorIsStale(shape, ceiling + 1), true, `${shape}: above the ceiling`);
+    assert.equal(anchorSizeVerdict(shape, ceiling), 'ok',
+      `${shape}: an anchor AT the frontier is what the contract asks for`);
+    assert.equal(anchorSizeVerdict(shape, ceiling - 1), 'outgrown',
+      `${shape}: a larger legal board exists, so the anchor is worth re-attempting`);
+    assert.equal(anchorSizeVerdict(shape, ceiling + 1), 'illegal',
+      `${shape}: past the frontier the rules would refuse the board outright`);
   }
 
-  // A missing or nonsense anchor is stale, never quietly fresh: the caller
-  // must not price a board on a rate it cannot justify.
-  assert.equal(anchorIsStale('rect', 0), true);
-  assert.equal(anchorIsStale('rect', null), true);
-  assert.equal(anchorIsStale('rect', undefined), true);
-  assert.equal(anchorIsStale('rect', NaN), true);
+  // A missing or unreadable anchor is its own verdict, never quietly 'ok':
+  // the caller must not price a board on a rate it cannot justify.
+  for (const bad of [0, null, undefined, NaN, -5]) {
+    assert.equal(anchorSizeVerdict('rect', bad), 'missing', `${String(bad)} is not an anchor`);
+  }
 
   // NON-VACUITY: the shipped ceilings must actually differ between shapes, or
-  // this test would pass against a predicate that ignored `shape` entirely.
+  // this would pass against a verdict that ignored `shape` entirely.
   const ceilings = new Set(marathonShapes().map((s) => fitCeilingCells(s)));
   assert.ok(ceilings.size > 1,
     'every shape shares one ceiling, so the per-shape check proves nothing');
+
+  // And the live library's own anchors must be READABLE by this verdict: a
+  // value it calls 'illegal' or 'missing' would mean the shipped data and the
+  // shipped rules disagree, which is a different and louder problem.
+  for (const [shape, cells] of [['rect', 187], ['hex', 170], ['cairo', 172],
+                                ['floret', 126], ['4.8.8', 124]]) {
+    const v = anchorSizeVerdict(shape, cells);
+    assert.ok(v === 'ok' || v === 'outgrown',
+      `${shape}'s shipped anchor reads ${v}, which the library should never contain`);
+  }
 });
 
-test('the repricer REPORTS a stale anchor rather than pricing on it in silence', async () => {
+test('the repricer REPORTS an outgrown anchor rather than pricing on it in silence', async () => {
   // It cannot fix one: minting an anchor means certifying a real board at the
   // ceiling, which is the marathon top-up's job. What it must not do is price
   // 191 rows on a stale rate and print a clean summary, which is exactly the
@@ -301,13 +315,17 @@ test('the repricer REPORTS a stale anchor rather than pricing on it in silence',
   // nightly re-price.
   const { readFileSync } = await import('node:fs');
   const src = readFileSync(new URL('../scripts/reprice-match-library.mjs', import.meta.url), 'utf8');
-  assert.ok(src.includes('anchorIsStale('),
-    'the repricer must consult the staleness predicate');
-  assert.ok(/staleAnchors\+\+/.test(src), 'it must count them');
-  assert.ok(/STALE anchor/.test(src) && /top-up/.test(src),
+  assert.ok(src.includes('anchorSizeVerdict('),
+    'the repricer must consult the size verdict');
+  assert.ok(/outgrownAnchors\+\+/.test(src), 'it must count them');
+  assert.ok(/OUTGROWN anchor/.test(src) && /top-up/.test(src),
     'the summary must name the condition and the remedy');
-  // The count has to reach the summary, or it is a variable nobody reads.
+  // An anchor the rules would now REFUSE is a louder case and gets its own
+  // line, rather than being pooled with the ordinary outgrown ones.
+  assert.ok(/illegalAnchors/.test(src) && /REFUSE/.test(src),
+    'an illegal anchor must be reported separately from an outgrown one');
+  // The counts have to reach the summary, or they are variables nobody reads.
   const summary = src.slice(src.indexOf('anchorless ?'));
-  assert.ok(summary.includes('staleAnchors'),
-    'the stale count must appear in the printed summary');
+  assert.ok(summary.includes('outgrownAnchors') && summary.includes('illegalAnchors'),
+    'both counts must appear in the printed summary');
 });

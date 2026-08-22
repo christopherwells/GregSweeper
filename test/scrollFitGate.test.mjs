@@ -21,8 +21,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const R = readFileSync(new URL('../scripts/refit-par-model.R', import.meta.url), 'utf8');
-
+// NORMALIZED at the read. A Windows checkout carries CRLF, and every
+// newline-anchored pattern below then matches nothing while still reporting a
+// clean "not found" — a scan that cannot fail for the reason it claims. Found
+// the hard way on 2026-08-22: these assertions passed on an LF working tree
+// and failed the moment the file was checked out fresh.
+const R = readFileSync(new URL('../scripts/refit-par-model.R', import.meta.url), 'utf8')
+  .split('\r\n').join('\n');
 test('the scroll gate mirrors the match gate: accumulate, then pool at the threshold', () => {
   const m = R.match(/SCROLL_FIT_THRESHOLD\s*<-\s*(\d+)/);
   assert.ok(m, 'SCROLL_FIT_THRESHOLD must exist');
